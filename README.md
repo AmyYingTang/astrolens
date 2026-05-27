@@ -5,37 +5,35 @@ report anchored to specific spots on the image.
 
 ## Quick start
 
-Requires Node ≥ 18 and the [`claude` CLI](https://claude.com/claude-code) (BYO subscription,
-only needed for `read`).
-
-### Easiest: the `quickastrolens` wrapper
-
-`quickastrolens` is a thin shell wrapper around the CLI for the common workflow — it
-auto-builds on first use and runs read + render in one step.
+Requires Node ≥ 18 and the [`claude` CLI](https://claude.com/claude-code) (BYO subscription).
 
 ```bash
-./quickastrolens setup                              # install deps + build (first time)
-./quickastrolens                                    # open the studio (home: new / open existing)
-./quickastrolens read path/to/photo.jpg "Sh2-308"   # CLI: read + render in one go
-./quickastrolens read path/to/photo.jpg "NGC 6357" en   # English output
-./quickastrolens edit out/Sh2-308/report.json       # open the editor for one report
+./quickastrolens setup   # one time: install deps + build
+./quickastrolens         # open the studio in your browser
 ```
 
-Output lands in `out/<image-name>/` as `report.json`, `image.jpg`, and `annotated.jpg`.
+That's it. The studio (at `http://localhost:3000`) is the whole tool in one window:
 
-Other subcommands:
+- **New reading** — pick an image, add an optional object hint + language, and astrolens
+  identifies the object and auto-annotates it (~1 min), then drops you into the editor.
+- **Open existing** — reopen any past reading to keep tweaking it.
+- **Editor** — drag circles to reposition/resize, edit the text and color keys, then
+  **Export ▾** an annotated image, an interactive `embed.html`, or a shareable poster.
+
+Edits auto-save. Stop the server with Ctrl+C. Everything lives under `out/<name>/`.
+
+For most use, the two commands above are all you need.
+
+---
+
+Everything below is the **underlying CLI**. The studio wraps all of it — reach for these
+only to script/automate, work without a browser, or understand what's happening under the
+hood. `quickastrolens` is a thin shell wrapper over this CLI (run `./quickastrolens help`).
+
+## CLI
 
 ```bash
-./quickastrolens build                       # rebuild
-./quickastrolens render out/foo/report.json  # re-render only (no claude call)
-./quickastrolens help
-```
-
-### Or use the underlying CLI directly
-
-```bash
-pnpm install
-pnpm build
+pnpm install && pnpm build   # quickastrolens setup does this for you
 
 # Generate a reading from an image
 node packages/cli/dist/index.js read path/to/photo.jpg --hint "Sh2-308" --out ./out
@@ -43,49 +41,27 @@ node packages/cli/dist/index.js read path/to/photo.jpg --hint "Sh2-308" --out ./
 # Render outputs from the report
 node packages/cli/dist/index.js render ./out/report.json --format all
 # -> annotated.jpg, embed.html, poster-portrait.png, poster-landscape.png
+
+# Open the browser editor for one report
+node packages/cli/dist/index.js edit ./out/report.json
+
+# Launch the studio (same as bare quickastrolens)
+node packages/cli/dist/index.js studio
 ```
 
-`read` options: `--hint <name>`, `--lang zh|en` (default `zh`), `--out <dir>`,
-`--model <model>`, `--no-simbad`.
+| Command | Key options |
+|---|---|
+| `read <image>` | `--hint <name>`, `--lang zh\|en` (default `zh`), `--out <dir>`, `--model <model>`, `--no-simbad` |
+| `render <report.json>` | `--format annotated\|embed\|poster\|all` (default `annotated`), `--out <dir>` (default: the report's dir) |
+| `edit <report.json>` | `--port <n>` (default 3000), `--no-open` |
+| `studio` | `--workspace <dir>` (default `out`), `--port <n>`, `--no-open` |
 
-`render` options: `--format annotated|embed|poster|all` (default `annotated`), `--out <dir>`
-(default: the report's directory).
-
-## Studio
-
-`astrolens studio` (or just bare `./quickastrolens`) launches the full browser app at
-`http://localhost:3000`:
-
-```bash
-node packages/cli/dist/index.js studio   # --workspace out  --port 3000  --no-open
-```
-
-- **Home** lists existing projects in the workspace (default `out/`) and offers **New reading**:
-  pick an image, add an optional object hint + language, and astrolens runs the LLM read
-  (~1 min) then drops you into the editor.
-- **Editor** is the same fine-tuning surface as `edit`, plus an **Export ▾** menu that writes
-  `annotated` / `embed` / `poster` / `all` into the project folder and links to the files.
-
-Each project is a subfolder of the workspace (`out/<slug>/`) holding `report.json`, the image,
-and any rendered outputs.
-
-## Editor
-
-`astrolens edit <report.json>` opens just the editor for a single report at
-`http://localhost:3000` to fine-tune the LLM's best-effort output:
-
-```bash
-node packages/cli/dist/index.js edit out/Sh2-308/report.json   # add --port / --no-open
-```
-
-- Drag a circle to move it, drag its edge handle to resize, drag a badge to reposition.
-- Edit narrative, labels, explanations, and color keys in the sidebar; add/delete features.
-- Arrow keys nudge the selected circle (Shift = 10px); Cmd+Z/Y undo/redo; Cmd+S saves.
-- Edits auto-save to `report.json` (debounced 2s). Re-run `render` to regenerate outputs.
+The `quickastrolens` wrapper mirrors these: `read`, `render <report> [format]`,
+`edit <report> [port]`, plus `setup` / `build` / `help`.
 
 ## Outputs: annotated / embed / poster
 
-`render --format` produces:
+`render --format` (and the studio's Export menu) produce:
 
 - **`annotated`** — a flat JPG with circles + numbered badges burned in (via `sharp`).
 - **`embed`** — a single self-contained `embed.html`: hover/click circles to reveal
@@ -105,8 +81,6 @@ import '@astrolens/viewer/style.css';
 
 <Reading report={report} imageSrc="/photos/sh2-308.jpg" onFeatureClick={(f) => ...} />
 ```
-
-Implemented commands: `read`, `render` (annotated/embed/poster/all), `edit`, `studio`.
 
 ## Examples
 
