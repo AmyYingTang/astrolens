@@ -15,9 +15,10 @@ auto-builds on first use and runs read + render in one step.
 
 ```bash
 ./quickastrolens setup                              # install deps + build (first time)
-./quickastrolens read path/to/photo.jpg "Sh2-308"   # read + render in one go
+./quickastrolens                                    # open the studio (home: new / open existing)
+./quickastrolens read path/to/photo.jpg "Sh2-308"   # CLI: read + render in one go
 ./quickastrolens read path/to/photo.jpg "NGC 6357" en   # English output
-./quickastrolens edit out/Sh2-308/report.json       # fine-tune in the browser
+./quickastrolens edit out/Sh2-308/report.json       # open the editor for one report
 ```
 
 Output lands in `out/<image-name>/` as `report.json`, `image.jpg`, and `annotated.jpg`.
@@ -50,9 +51,27 @@ node packages/cli/dist/index.js render ./out/report.json --format all
 `render` options: `--format annotated|embed|poster|all` (default `annotated`), `--out <dir>`
 (default: the report's directory).
 
+## Studio
+
+`astrolens studio` (or just bare `./quickastrolens`) launches the full browser app at
+`http://localhost:3000`:
+
+```bash
+node packages/cli/dist/index.js studio   # --workspace out  --port 3000  --no-open
+```
+
+- **Home** lists existing projects in the workspace (default `out/`) and offers **New reading**:
+  pick an image, add an optional object hint + language, and astrolens runs the LLM read
+  (~1 min) then drops you into the editor.
+- **Editor** is the same fine-tuning surface as `edit`, plus an **Export ▾** menu that writes
+  `annotated` / `embed` / `poster` / `all` into the project folder and links to the files.
+
+Each project is a subfolder of the workspace (`out/<slug>/`) holding `report.json`, the image,
+and any rendered outputs.
+
 ## Editor
 
-`astrolens edit <report.json>` launches a local web editor (Express + React + Konva) at
+`astrolens edit <report.json>` opens just the editor for a single report at
 `http://localhost:3000` to fine-tune the LLM's best-effort output:
 
 ```bash
@@ -87,7 +106,7 @@ import '@astrolens/viewer/style.css';
 <Reading report={report} imageSrc="/photos/sh2-308.jpg" onFeatureClick={(f) => ...} />
 ```
 
-Implemented commands: `read`, `render` (annotated/embed/poster/all), `edit`.
+Implemented commands: `read`, `render` (annotated/embed/poster/all), `edit`, `studio`.
 
 ## Examples
 

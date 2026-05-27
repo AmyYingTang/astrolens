@@ -2,6 +2,7 @@
 #
 # astrolens 便捷运行脚本
 #
+#   ./quickastrolens                             打开 studio(首页:新读图 / 打开已有)
 #   ./quickastrolens setup                       安装依赖并构建所有包(首次使用)
 #   ./quickastrolens build                       重新构建
 #   ./quickastrolens read <图片> [对象名] [语言]   读图 + 渲染,一步到位
@@ -37,11 +38,16 @@ ensure_built() {
 }
 
 usage() {
-  sed -n '3,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '3,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
-cmd="${1:-help}"
+cmd="${1:-studio}"
 case "$cmd" in
+  studio)
+    ensure_built
+    node "$CLI" studio
+    ;;
+
   setup)
     ensure_pnpm
     echo "==> pnpm install"

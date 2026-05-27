@@ -50,12 +50,21 @@ importers:
 
   packages/editor:
     dependencies:
+      '@astrolens/reader':
+        specifier: workspace:*
+        version: link:../reader
+      '@astrolens/renderer':
+        specifier: workspace:*
+        version: link:../renderer
       '@astrolens/schema':
         specifier: workspace:*
         version: link:../schema
       express:
         specifier: ^4.21.2
         version: 4.22.2
+      sharp:
+        specifier: ^0.33.5
+        version: 0.33.5
     devDependencies:
       '@types/express':
         specifier: ^4.17.21

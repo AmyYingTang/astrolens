@@ -1,6 +1,7 @@
-import { resolve } from 'node:path';
+import { resolve, dirname, basename } from 'node:path';
 import { spawn } from 'node:child_process';
-import { startEditorServer } from '@astrolens/editor';
+import { startStudioServer } from '@astrolens/editor';
+import { TOOL_VERSION } from '../version.js';
 
 export interface EditArgs {
   report: string;
@@ -8,16 +9,23 @@ export interface EditArgs {
   open: boolean;
 }
 
+/** Open the studio focused on one report.json. The report's directory is the
+ * project (slug = its name), and its parent is the workspace. */
 export async function editReport(args: EditArgs): Promise<void> {
   const reportPath = resolve(args.report);
-  const handle = await startEditorServer({ reportPath, port: args.port });
+  const dir = dirname(reportPath);
+  const slug = basename(dir);
+  const workspace = dirname(dir);
 
-  console.log(`astrolens editor running at ${handle.url}`);
+  const handle = await startStudioServer({ workspace, port: args.port, toolVersion: TOOL_VERSION });
+  const url = `${handle.url}/#/p/${encodeURIComponent(slug)}`;
+
+  console.log(`astrolens editor running at ${url}`);
   console.log(`Editing: ${reportPath}`);
   console.log('Press Ctrl+C to stop.');
 
   if (args.open) {
-    spawn('open', [handle.url], { stdio: 'ignore', detached: true }).unref();
+    spawn('open', [url], { stdio: 'ignore', detached: true }).unref();
   }
 
   const shutdown = (): void => {

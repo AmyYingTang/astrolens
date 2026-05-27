@@ -4,6 +4,7 @@ import { TOOL_VERSION } from './version.js';
 import { readReport } from './commands/read.js';
 import { renderReport } from './commands/render.js';
 import { editReport } from './commands/edit.js';
+import { studio } from './commands/studio.js';
 
 const cli = cac('astrolens');
 
@@ -39,6 +40,15 @@ cli
   .option('--no-open', 'Do not open the browser automatically')
   .action(async (report: string, options) => {
     await editReport({ report, port: Number(options.port), open: options.open });
+  });
+
+cli
+  .command('studio', 'Launch the astrolens studio (home + editor) in the browser')
+  .option('--workspace <dir>', 'Projects directory', { default: 'out' })
+  .option('--port <port>', 'Port to serve on', { default: 3000 })
+  .option('--no-open', 'Do not open the browser automatically')
+  .action(async (options) => {
+    await studio({ workspace: options.workspace, port: Number(options.port), open: options.open });
   });
 
 cli.help();

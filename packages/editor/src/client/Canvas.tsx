@@ -38,10 +38,11 @@ interface Props {
   report: Report;
   selectedId: string | null;
   dispatch: React.Dispatch<Action>;
+  imageUrl: string;
 }
 
-export function Canvas({ report, selectedId, dispatch }: Props): React.JSX.Element {
-  const img = useImage('/image');
+export function Canvas({ report, selectedId, dispatch, imageUrl }: Props): React.JSX.Element {
+  const img = useImage(imageUrl);
   const [ref, containerW] = useWidth();
   const { width, height } = report.image;
   const scale = containerW / width;

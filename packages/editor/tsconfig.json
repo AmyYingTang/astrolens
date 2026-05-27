@@ -5,5 +5,5 @@
     "outDir": "dist"
   },
   "include": ["src/server.ts", "src/shared.ts"],
-  "references": [{ "path": "../schema" }]
+  "references": [{ "path": "../schema" }, { "path": "../reader" }, { "path": "../renderer" }]
 }

@@ -16,8 +16,11 @@
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit"
   },
   "dependencies": {
+    "@astrolens/reader": "workspace:*",
+    "@astrolens/renderer": "workspace:*",
     "@astrolens/schema": "workspace:*",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

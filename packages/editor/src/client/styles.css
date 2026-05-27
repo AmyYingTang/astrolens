@@ -22,9 +22,226 @@ body,
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
+.editor-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
 .app {
   display: flex;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.toolbar .home-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.toolbar .home-link:hover {
+  color: var(--text);
+}
+
+.toolbar-title {
+  font-weight: 600;
+  flex: 1;
+}
+
+.export {
+  position: relative;
+}
+
+.export-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  z-index: 10;
+}
+
+.export-menu button {
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.export-menu button:hover {
+  background: var(--border);
+}
+
+.export-result {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.export-result a {
+  color: var(--accent);
+}
+
+.export-result .dismiss {
+  padding: 2px 8px;
+}
+
+/* Home */
+.home {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px;
+}
+
+.home-title {
+  font-size: 28px;
+  letter-spacing: 2px;
+  margin: 0 0 24px;
+}
+
+.home-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.home-card h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.home-card .row {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.home-card .row input {
+  flex: 1;
+}
+
+.home-card .row select {
+  width: 110px;
+}
+
+.file-pick {
+  display: block;
+  margin-top: 12px;
+}
+
+.file-pick input {
+  display: none;
+}
+
+.file-pick span {
+  display: inline-block;
+  padding: 8px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.file-pick:hover span {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+button.primary {
+  background: var(--accent);
+  color: #0b0e14;
+  font-weight: 700;
+  border: none;
+  margin-top: 4px;
+}
+
+button.primary:disabled {
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.err {
+  color: #ff8a8a;
+  font-size: 13px;
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.project-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text);
+}
+
+.project-card:hover {
+  border-color: var(--accent);
+}
+
+.project-card img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+
+.project-meta {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.project-meta .muted {
+  font-size: 11px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 16, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.overlay-box {
+  text-align: center;
+  font-size: 16px;
 }
 
 .canvas {
