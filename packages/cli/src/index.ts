@@ -3,6 +3,7 @@ import { cac } from 'cac';
 import { TOOL_VERSION } from './version.js';
 import { readReport } from './commands/read.js';
 import { renderReport } from './commands/render.js';
+import { editReport } from './commands/edit.js';
 
 const cli = cac('astrolens');
 
@@ -30,6 +31,14 @@ cli
   .option('--out <path>', 'Output image path (default: <reportDir>/annotated.jpg)')
   .action(async (report: string, options) => {
     await renderReport({ report, format: options.format, out: options.out });
+  });
+
+cli
+  .command('edit <report>', 'Open the local editor for a report.json')
+  .option('--port <port>', 'Port to serve on', { default: 3000 })
+  .option('--no-open', 'Do not open the browser automatically')
+  .action(async (report: string, options) => {
+    await editReport({ report, port: Number(options.port), open: options.open });
   });
 
 cli.help();

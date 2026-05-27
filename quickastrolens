@@ -6,12 +6,13 @@
 #   ./quickastrolens build                       重新构建
 #   ./quickastrolens read <图片> [对象名] [语言]   读图 + 渲染,一步到位
 #   ./quickastrolens render <report.json> [输出]  仅重新渲染标注图
+#   ./quickastrolens edit <report.json> [端口]    打开本地编辑器,浏览器里微调圈和文字
 #   ./quickastrolens help                        显示帮助
 #
 # 示例:
 #   ./quickastrolens setup
 #   ./quickastrolens read testimage/SH2-308.jpg "Sh2-308"
-#   ./quickastrolens read testimage/NGC6357.jpg "NGC 6357" en
+#   ./quickastrolens edit out/SH2-308/report.json
 #
 set -euo pipefail
 
@@ -36,7 +37,7 @@ ensure_built() {
 }
 
 usage() {
-  sed -n '3,14p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+  sed -n '3,15p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 }
 
 cmd="${1:-help}"
@@ -93,6 +94,21 @@ case "$cmd" in
       node "$CLI" render "$report" --out "$2"
     else
       node "$CLI" render "$report"
+    fi
+    ;;
+
+  edit)
+    shift
+    if [ $# -lt 1 ]; then
+      echo "用法: ./quickastrolens edit <report.json> [端口]" >&2
+      exit 1
+    fi
+    ensure_built
+    report="$1"
+    if [ $# -ge 2 ]; then
+      node "$CLI" edit "$report" --port "$2"
+    else
+      node "$CLI" edit "$report"
     fi
     ;;
 

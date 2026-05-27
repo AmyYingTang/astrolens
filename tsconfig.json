@@ -4,6 +4,7 @@
     { "path": "packages/schema" },
     { "path": "packages/reader" },
     { "path": "packages/renderer" },
+    { "path": "packages/editor" },
     { "path": "packages/cli" }
   ]
 }

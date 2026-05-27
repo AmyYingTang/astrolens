@@ -9,6 +9,7 @@
   "references": [
     { "path": "../schema" },
     { "path": "../reader" },
-    { "path": "../renderer" }
+    { "path": "../renderer" },
+    { "path": "../editor" }
   ]
 }

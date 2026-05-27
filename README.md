@@ -3,7 +3,7 @@
 An interactive astronomical image reader. Upload a deep-sky photo, get a structured reading
 report anchored to specific spots on the image.
 
-## Quick start (Phase 1 MVP)
+## Quick start
 
 Requires Node ≥ 18 and the [`claude` CLI](https://claude.com/claude-code) (BYO subscription,
 only needed for `read`).
@@ -17,6 +17,7 @@ auto-builds on first use and runs read + render in one step.
 ./quickastrolens setup                              # install deps + build (first time)
 ./quickastrolens read path/to/photo.jpg "Sh2-308"   # read + render in one go
 ./quickastrolens read path/to/photo.jpg "NGC 6357" en   # English output
+./quickastrolens edit out/Sh2-308/report.json       # fine-tune in the browser
 ```
 
 Output lands in `out/<image-name>/` as `report.json`, `image.jpg`, and `annotated.jpg`.
@@ -46,8 +47,21 @@ node packages/cli/dist/index.js render ./out/report.json
 `read` options: `--hint <name>`, `--lang zh|en` (default `zh`), `--out <dir>`,
 `--model <model>`, `--no-simbad`.
 
-Phase 1 ships the `read` and `render` commands only. Editor, embed, poster, and viewer are
-later phases (see `astrolens-design.md`).
+## Editor
+
+`astrolens edit <report.json>` launches a local web editor (Express + React + Konva) at
+`http://localhost:3000` to fine-tune the LLM's best-effort output:
+
+```bash
+node packages/cli/dist/index.js edit out/Sh2-308/report.json   # add --port / --no-open
+```
+
+- Drag a circle to move it, drag its edge handle to resize, drag a badge to reposition.
+- Edit narrative, labels, explanations, and color keys in the sidebar; add/delete features.
+- Arrow keys nudge the selected circle (Shift = 10px); Cmd+Z/Y undo/redo; Cmd+S saves.
+- Edits auto-save to `report.json` (debounced 2s). Re-run `render` to regenerate the image.
+
+Implemented commands: `read`, `render`, `edit`. Embed, poster, and viewer are later phases.
 
 ## Examples
 
