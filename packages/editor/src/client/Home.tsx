@@ -2,6 +2,7 @@ import type * as React from 'react';
 import { useEffect, useState } from 'react';
 import type { ProjectSummary } from '../shared.js';
 import { createProject, imageUrl, listProjects } from './api.js';
+import { LangToggle, useUi } from './i18n.js';
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((res, rej) => {
@@ -13,10 +14,11 @@ function readAsDataUrl(file: File): Promise<string> {
 }
 
 export function Home(): React.JSX.Element {
+  const { t, lang: uiLang } = useUi();
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [hint, setHint] = useState('');
-  const [lang, setLang] = useState<'zh' | 'en'>('zh');
+  const [lang, setLang] = useState<'zh' | 'en'>(uiLang);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,40 +45,39 @@ export function Home(): React.JSX.Element {
 
   return (
     <div className="home">
-      <h1 className="home-title">astrolens</h1>
+      <div className="home-header">
+        <h1 className="home-title">astrolens</h1>
+        <LangToggle />
+      </div>
 
       <section className="home-card">
-        <h2>新读图</h2>
-        <p className="muted">选一张深空摄影图,astrolens 会识别天体并自动标注,然后进入微调页面。</p>
+        <h2>{t.newReading}</h2>
+        <p className="muted">{t.newReadingDesc}</p>
         <label className="file-pick">
           <input
             type="file"
             accept="image/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-          <span>{file ? file.name : '选择图片…'}</span>
+          <span>{file ? file.name : t.pickImage}</span>
         </label>
         <div className="row">
-          <input
-            placeholder='对象名提示(可选),如 "Sh2-308"'
-            value={hint}
-            onChange={(e) => setHint(e.target.value)}
-          />
+          <input placeholder={t.hintPlaceholder} value={hint} onChange={(e) => setHint(e.target.value)} />
           <select value={lang} onChange={(e) => setLang(e.target.value as 'zh' | 'en')}>
             <option value="zh">中文</option>
             <option value="en">English</option>
           </select>
         </div>
         <button className="primary" disabled={!file || busy} onClick={() => void generate()}>
-          {busy ? '识别中…' : '生成读图'}
+          {busy ? t.generating : t.generate}
         </button>
         {error && <p className="err">{error}</p>}
       </section>
 
       <section className="home-card">
-        <h2>打开已有作品</h2>
-        {projects === null && <p className="muted">加载中…</p>}
-        {projects?.length === 0 && <p className="muted">工作区还没有作品。先做一个新读图吧。</p>}
+        <h2>{t.openExisting}</h2>
+        {projects === null && <p className="muted">{t.loading}</p>}
+        {projects?.length === 0 && <p className="muted">{t.emptyWorkspace}</p>}
         <div className="project-grid">
           {projects?.map((p) => (
             <a key={p.slug} className="project-card" href={`#/p/${encodeURIComponent(p.slug)}`}>
@@ -85,7 +86,7 @@ export function Home(): React.JSX.Element {
                 <b>{p.name}</b>
                 <span className="muted">
                   {p.type}
-                  {p.stage ? ` · Stage ${p.stage}` : ''} · {p.features} 标注
+                  {p.stage ? ` · ${t.stagePrefix} ${p.stage}` : ''} · {p.features} {t.featuresSuffix}
                 </span>
               </div>
             </a>
@@ -96,8 +97,8 @@ export function Home(): React.JSX.Element {
       {busy && (
         <div className="overlay">
           <div className="overlay-box">
-            正在识别和标注…
-            <p className="muted">调用 claude 看图,可能需要 1 分钟左右。</p>
+            {t.overlayTitle}
+            <p className="muted">{t.overlaySub}</p>
           </div>
         </div>
       )}

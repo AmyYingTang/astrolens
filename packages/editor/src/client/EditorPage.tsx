@@ -6,15 +6,12 @@ import { exportProject, fetchReport, fileUrl, imageUrl, saveReport } from './api
 import { initState, reducer } from './state.js';
 import { Canvas } from './Canvas.js';
 import { Sidebar } from './Sidebar.js';
+import { LangToggle, useUi } from './i18n.js';
 
-const EXPORT_FORMATS: { format: ExportFormat; label: string }[] = [
-  { format: 'annotated', label: 'Annotated JPG' },
-  { format: 'embed', label: 'Embed HTML' },
-  { format: 'poster', label: 'Poster PNG' },
-  { format: 'all', label: '全部' },
-];
+const EXPORT_ORDER: ExportFormat[] = ['annotated', 'embed', 'poster', 'all'];
 
 export function EditorPage({ slug }: { slug: string }): React.JSX.Element {
+  const { t } = useUi();
   const [data, setData] = useState<{ report: Report; imageName: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,10 +26,10 @@ export function EditorPage({ slug }: { slug: string }): React.JSX.Element {
   if (error)
     return (
       <div className="status">
-        加载失败: {error} · <a href="#/">返回作品库</a>
+        {t.loadFailed}: {error} · <a href="#/">{t.backToLibrary}</a>
       </div>
     );
-  if (!data) return <div className="status">加载中…</div>;
+  if (!data) return <div className="status">{t.loading}</div>;
   return <Editor key={slug} slug={slug} initial={data.report} imageName={data.imageName} />;
 }
 
@@ -45,6 +42,13 @@ function Editor({
   initial: Report;
   imageName: string;
 }): React.JSX.Element {
+  const { t } = useUi();
+  const exportLabels: Record<ExportFormat, string> = {
+    annotated: t.fmtAnnotated,
+    embed: t.fmtEmbed,
+    poster: t.fmtPoster,
+    all: t.fmtAll,
+  };
   const [state, dispatch] = useReducer(reducer, initial, initState);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -134,18 +138,19 @@ function Editor({
     <div className="editor-page">
       <header className="toolbar">
         <a className="home-link" href="#/">
-          ← 作品库
+          {t.backToLibrary}
         </a>
         <span className="toolbar-title">{state.report.object.name}</span>
+        <LangToggle />
         <div className="export">
           <button onClick={() => setMenuOpen((v) => !v)} disabled={exporting !== null}>
-            {exporting ? `导出中… (${exporting})` : '导出 ▾'}
+            {exporting ? `${t.exporting} (${exporting})` : `${t.exportLabel} ▾`}
           </button>
           {menuOpen && (
             <div className="export-menu">
-              {EXPORT_FORMATS.map((f) => (
-                <button key={f.format} onClick={() => void runExport(f.format)}>
-                  {f.label}
+              {EXPORT_ORDER.map((format) => (
+                <button key={format} onClick={() => void runExport(format)}>
+                  {exportLabels[format]}
                 </button>
               ))}
             </div>
@@ -172,7 +177,7 @@ function Editor({
 
       {exported && (
         <div className="export-result">
-          已导出:
+          {t.exported}
           {exported.map((name) => (
             <a key={name} href={fileUrl(slug, name)} target="_blank" rel="noreferrer">
               {name}
@@ -183,7 +188,7 @@ function Editor({
           </button>
         </div>
       )}
-      {saveError && <div className="save-error">出错: {saveError}</div>}
+      {saveError && <div className="save-error">{t.errorLabel}: {saveError}</div>}
     </div>
   );
 }

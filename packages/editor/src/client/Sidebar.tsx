@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { ColorKey, COLOR_PALETTE, type Report } from '@astrolens/schema';
 import type { Action } from './state.js';
+import { useUi } from './i18n.js';
 
 interface Props {
   report: Report;
@@ -19,6 +20,7 @@ export function Sidebar({
   dispatch,
   onSave,
 }: Props): React.JSX.Element {
+  const { t } = useUi();
   const obj = report.object;
   return (
     <aside className="sidebar">
@@ -27,16 +29,16 @@ export function Sidebar({
           <h1>{obj.name}</h1>
           <p className="muted">
             {obj.type}
-            {obj.stage ? ` · Stage ${obj.stage}` : ''} · {imageName}
+            {obj.stage ? ` · ${t.stagePrefix} ${obj.stage}` : ''} · {imageName}
           </p>
         </div>
         <button className="save" onClick={onSave} disabled={!dirty}>
-          {dirty ? 'Save' : 'Saved'}
+          {dirty ? t.save : t.saved}
         </button>
       </header>
 
       <section className="block">
-        <label className="field-label">Narrative</label>
+        <label className="field-label">{t.narrative}</label>
         <textarea
           className="narrative"
           value={report.narrative}
@@ -50,8 +52,10 @@ export function Sidebar({
 
       <section className="block">
         <div className="block-head">
-          <label className="field-label">Features ({report.features.length})</label>
-          <button onClick={() => dispatch({ type: 'addFeature' })}>+ Add</button>
+          <label className="field-label">
+            {t.featuresLabel} ({report.features.length})
+          </label>
+          <button onClick={() => dispatch({ type: 'addFeature' })}>{t.add}</button>
         </div>
 
         {report.features.map((f) => {
@@ -76,7 +80,7 @@ export function Sidebar({
                 />
                 <button
                   className="delete"
-                  title="Delete feature"
+                  title={t.deleteFeature}
                   onClick={() => dispatch({ type: 'deleteFeature', id: f.id })}
                 >
                   ✕
@@ -99,7 +103,7 @@ export function Sidebar({
                 <input
                   className="num-input"
                   value={f.badge.num}
-                  title="Badge number"
+                  title={t.badgeNum}
                   onFocus={() => dispatch({ type: 'beginChange' })}
                   onChange={(e) =>
                     dispatch({ type: 'setBadgeNum', id: f.id, num: e.target.value, commit: false })
@@ -111,7 +115,7 @@ export function Sidebar({
                 className="explanation"
                 value={f.explanation}
                 rows={3}
-                placeholder="explanation"
+                placeholder={t.phExplanation}
                 onFocus={() => dispatch({ type: 'beginChange' })}
                 onChange={(e) =>
                   dispatch({ type: 'setFeatureText', id: f.id, field: 'explanation', value: e.target.value, commit: false })
@@ -121,7 +125,7 @@ export function Sidebar({
                 className="explanation"
                 value={f.physics ?? ''}
                 rows={2}
-                placeholder="physics (optional)"
+                placeholder={t.phPhysics}
                 onFocus={() => dispatch({ type: 'beginChange' })}
                 onChange={(e) =>
                   dispatch({ type: 'setFeatureText', id: f.id, field: 'physics', value: e.target.value, commit: false })
@@ -131,7 +135,7 @@ export function Sidebar({
                 className="explanation"
                 value={f.interesting ?? ''}
                 rows={2}
-                placeholder="interesting (optional)"
+                placeholder={t.phInteresting}
                 onFocus={() => dispatch({ type: 'beginChange' })}
                 onChange={(e) =>
                   dispatch({ type: 'setFeatureText', id: f.id, field: 'interesting', value: e.target.value, commit: false })

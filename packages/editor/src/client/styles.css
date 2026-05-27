@@ -109,11 +109,27 @@ body,
   padding: 2px 8px;
 }
 
+.lang-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
 /* Home */
 .home {
   max-width: 900px;
   margin: 0 auto;
   padding: 48px 24px;
+}
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.home-header .home-title {
+  margin: 0;
 }
 
 .home-title {
