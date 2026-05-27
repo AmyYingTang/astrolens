@@ -26,9 +26,9 @@ cli
   });
 
 cli
-  .command('render <report>', 'Render a report.json to an annotated image')
-  .option('--format <format>', 'Output format: annotated', { default: 'annotated' })
-  .option('--out <path>', 'Output image path (default: <reportDir>/annotated.jpg)')
+  .command('render <report>', 'Render a report.json to image / embed / poster')
+  .option('--format <format>', 'annotated | embed | poster | all', { default: 'annotated' })
+  .option('--out <dir>', 'Output directory (default: the report directory)')
   .action(async (report: string, options) => {
     await renderReport({ report, format: options.format, out: options.out });
   });

@@ -39,13 +39,16 @@ pnpm build
 # Generate a reading from an image
 node packages/cli/dist/index.js read path/to/photo.jpg --hint "Sh2-308" --out ./out
 
-# Render the report to an annotated image
-node packages/cli/dist/index.js render ./out/report.json
-# -> ./out/annotated.jpg
+# Render outputs from the report
+node packages/cli/dist/index.js render ./out/report.json --format all
+# -> annotated.jpg, embed.html, poster-portrait.png, poster-landscape.png
 ```
 
 `read` options: `--hint <name>`, `--lang zh|en` (default `zh`), `--out <dir>`,
 `--model <model>`, `--no-simbad`.
+
+`render` options: `--format annotated|embed|poster|all` (default `annotated`), `--out <dir>`
+(default: the report's directory).
 
 ## Editor
 
@@ -59,9 +62,32 @@ node packages/cli/dist/index.js edit out/Sh2-308/report.json   # add --port / --
 - Drag a circle to move it, drag its edge handle to resize, drag a badge to reposition.
 - Edit narrative, labels, explanations, and color keys in the sidebar; add/delete features.
 - Arrow keys nudge the selected circle (Shift = 10px); Cmd+Z/Y undo/redo; Cmd+S saves.
-- Edits auto-save to `report.json` (debounced 2s). Re-run `render` to regenerate the image.
+- Edits auto-save to `report.json` (debounced 2s). Re-run `render` to regenerate outputs.
 
-Implemented commands: `read`, `render`, `edit`. Embed, poster, and viewer are later phases.
+## Outputs: annotated / embed / poster
+
+`render --format` produces:
+
+- **`annotated`** — a flat JPG with circles + numbered badges burned in (via `sharp`).
+- **`embed`** — a single self-contained `embed.html`: hover/click circles to reveal
+  explanations, syncs with a feature panel, mobile-friendly. The image is inlined as a data
+  URI, so the one file can be `<iframe>`d or pasted into any page.
+- **`poster`** — `poster-portrait.png` + `poster-landscape.png`, a composed image + text
+  layout for sharing (rendered with Puppeteer; downloads Chromium once on first install).
+
+## Viewer component (`@astrolens/viewer`)
+
+A small React component for embedding a reading into your own site (the consumer-mode path,
+vs. the standalone `embed.html`):
+
+```tsx
+import { Reading } from '@astrolens/viewer';
+import '@astrolens/viewer/style.css';
+
+<Reading report={report} imageSrc="/photos/sh2-308.jpg" onFeatureClick={(f) => ...} />
+```
+
+Implemented commands: `read`, `render` (annotated/embed/poster/all), `edit`.
 
 ## Examples
 

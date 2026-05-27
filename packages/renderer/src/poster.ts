@@ -1,0 +1,112 @@
+import { join } from 'node:path';
+import { COLOR_PALETTE, type Report } from '@astrolens/schema';
+import { buildOverlaySvg } from './annotate.js';
+
+export type PosterLayout = 'portrait' | 'landscape';
+
+function esc(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Static poster HTML: image + overlay + reading text. Responsive layout — the
+ * viewport width chosen at screenshot time selects portrait vs landscape. */
+export function buildPosterHtml(report: Report, imageDataUri: string): string {
+  const o = report.object;
+  const meta = [
+    o.type,
+    o.stage ? `阶段 ${o.stage}` : null,
+    o.constellation,
+    o.distance_ly ? `约 ${o.distance_ly.toLocaleString()} 光年` : null,
+    o.size_arcmin ? `视直径 ${o.size_arcmin}′` : null,
+  ]
+    .filter(Boolean)
+    .map((x) => esc(x as string))
+    .join('  ·  ');
+
+  const features = report.features
+    .map((f) => {
+      const c = COLOR_PALETTE[f.color_key];
+      return `<li><span class="dot" style="background:${c.badge}">${esc(f.badge.num)}</span>
+        <div><b>${esc(f.label)}</b><p>${esc(f.explanation)}</p></div></li>`;
+    })
+    .join('');
+
+  const facts = report.extra_facts.map((x) => `<li>${esc(x)}</li>`).join('');
+  const aliases = o.aliases.length ? `<div class="aliases">${o.aliases.map(esc).join(' · ')}</div>` : '';
+
+  return `<!doctype html><html lang="${esc(report.language)}"><head><meta charset="utf-8">
+<style>
+  :root{--bg:#070a10;--text:#e6e9f0;--muted:#8a93a8;--line:#222b3d;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;}
+  .root{max-width:1280px;margin:0 auto;padding:40px;}
+  header{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px;}
+  h1{font-size:40px;margin:0;letter-spacing:1px;}
+  .meta{color:var(--muted);margin-top:10px;font-size:15px;}
+  .aliases{color:var(--muted);font-size:13px;margin-top:4px;}
+  .poster{display:flex;gap:36px;align-items:flex-start;}
+  .stage{flex:1 1 58%;min-width:0;position:relative;line-height:0;}
+  .stage img{width:100%;border-radius:10px;display:block;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .stage svg{position:absolute;inset:0;width:100%;height:100%;}
+  .panel{flex:1 1 42%;}
+  .narrative{font-size:15px;line-height:1.85;color:#cfd6e4;margin:0 0 24px;}
+  .label{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px;}
+  ul.features{list-style:none;margin:0 0 24px;padding:0;}
+  ul.features li{display:flex;gap:12px;margin-bottom:16px;}
+  .dot{flex-shrink:0;width:26px;height:26px;border-radius:50%;color:#070a10;font-weight:700;
+    font-size:13px;display:flex;align-items:center;justify-content:center;}
+  ul.features b{font-size:15px;}
+  ul.features p{margin:4px 0 0;font-size:13.5px;line-height:1.7;color:#aeb6c6;}
+  ul.facts{margin:0;padding-left:18px;color:#9aa5b8;font-size:13px;line-height:1.7;}
+  footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:12px;display:flex;justify-content:space-between;}
+  @media (max-width:1000px){.root{padding:28px;}h1{font-size:32px;}.poster{flex-direction:column;}
+    .stage,.panel{flex:1 1 100%;width:100%;}.panel{margin-top:8px;}}
+</style></head><body>
+<div class="root">
+  <header><h1>${esc(o.name)}</h1><div class="meta">${meta}</div>${aliases}</header>
+  <div class="poster">
+    <div class="stage"><img src="${imageDataUri}" alt="${esc(o.name)}">${buildOverlaySvg(report)}</div>
+    <div class="panel">
+      <p class="label">导读</p><p class="narrative">${esc(report.narrative)}</p>
+      <p class="label">画面要点</p><ul class="features">${features}</ul>
+      ${facts ? `<p class="label">冷知识</p><ul class="facts">${facts}</ul>` : ''}
+    </div>
+  </div>
+  <footer><span>astrolens · 读图报告</span><span>${esc(report.generator.tool)} v${esc(report.generator.tool_version)}</span></footer>
+</div></body></html>`;
+}
+
+export interface RenderPosterOptions {
+  report: Report;
+  imageDataUri: string;
+  outDir: string;
+  layouts?: PosterLayout[];
+}
+
+const VIEWPORT: Record<PosterLayout, number> = { portrait: 820, landscape: 1280 };
+
+/** Render poster PNG(s) by screenshotting the poster HTML with Puppeteer. */
+export async function renderPoster(opts: RenderPosterOptions): Promise<string[]> {
+  const layouts = opts.layouts ?? ['portrait', 'landscape'];
+  const html = buildPosterHtml(opts.report, opts.imageDataUri);
+
+  const { default: puppeteer } = await import('puppeteer');
+  const browser = await puppeteer.launch({ headless: true });
+  const written: string[] = [];
+  try {
+    for (const layout of layouts) {
+      const page = await browser.newPage();
+      await page.setViewport({ width: VIEWPORT[layout], height: 800, deviceScaleFactor: 2 });
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const outPath = join(opts.outDir, `poster-${layout}.png`);
+      await page.screenshot({ path: outPath as `${string}.png`, fullPage: true });
+      await page.close();
+      written.push(outPath);
+    }
+  } finally {
+    await browser.close();
+  }
+  return written;
+}

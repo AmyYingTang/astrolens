@@ -5,7 +5,7 @@
 #   ./quickastrolens setup                       安装依赖并构建所有包(首次使用)
 #   ./quickastrolens build                       重新构建
 #   ./quickastrolens read <图片> [对象名] [语言]   读图 + 渲染,一步到位
-#   ./quickastrolens render <report.json> [输出]  仅重新渲染标注图
+#   ./quickastrolens render <report.json> [格式]  渲染 annotated|embed|poster|all
 #   ./quickastrolens edit <report.json> [端口]    打开本地编辑器,浏览器里微调圈和文字
 #   ./quickastrolens help                        显示帮助
 #
@@ -85,16 +85,13 @@ case "$cmd" in
   render)
     shift
     if [ $# -lt 1 ]; then
-      echo "用法: ./quickastrolens render <report.json> [输出图片路径]" >&2
+      echo "用法: ./quickastrolens render <report.json> [格式 annotated|embed|poster|all]" >&2
       exit 1
     fi
     ensure_built
     report="$1"
-    if [ $# -ge 2 ]; then
-      node "$CLI" render "$report" --out "$2"
-    else
-      node "$CLI" render "$report"
-    fi
+    fmt="${2:-annotated}"
+    node "$CLI" render "$report" --format "$fmt"
     ;;
 
   edit)
