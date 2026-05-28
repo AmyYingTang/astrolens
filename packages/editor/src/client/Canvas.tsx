@@ -18,18 +18,26 @@ function useImage(src: string): HTMLImageElement | null {
   return img;
 }
 
-function useWidth(): [React.RefObject<HTMLDivElement>, number] {
+function useSize(): [React.RefObject<HTMLDivElement>, { w: number; h: number }] {
   const ref = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(800);
+  const [size, setSize] = useState({ w: 800, h: 600 });
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => setW(entries[0]!.contentRect.width));
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0]!.contentRect;
+      // Round to avoid sub-pixel feedback loops with the observer.
+      setSize((prev) => {
+        const w = Math.round(r.width);
+        const h = Math.round(r.height);
+        return prev.w === w && prev.h === h ? prev : { w, h };
+      });
+    });
     ro.observe(el);
-    setW(el.clientWidth);
+    setSize({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, []);
-  return [ref, w];
+  return [ref, size];
 }
 
 const ANCHOR = 0.7071;
@@ -43,16 +51,20 @@ interface Props {
 
 export function Canvas({ report, selectedId, dispatch, imageUrl }: Props): React.JSX.Element {
   const img = useImage(imageUrl);
-  const [ref, containerW] = useWidth();
+  const [ref, { w: containerW, h: containerH }] = useSize();
   const { width, height } = report.image;
-  const scale = containerW / width;
+  // Fit the image fully within the container so it never overflows (which
+  // would trigger a scrollbar and a ResizeObserver feedback loop).
+  const scale = Math.min(containerW / width, containerH / height) || 1;
+  const stageW = width * scale;
+  const stageH = height * scale;
   const px = (screen: number): number => screen / scale; // screen px -> image px
 
   return (
     <div className="canvas" ref={ref}>
       <Stage
-        width={containerW}
-        height={height * scale}
+        width={stageW}
+        height={stageH}
         scaleX={scale}
         scaleY={scale}
         onMouseDown={(e) => {
