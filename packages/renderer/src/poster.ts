@@ -104,7 +104,9 @@ export async function renderPosterBuffers(opts: {
       const page = await browser.newPage();
       await page.setViewport({ width: VIEWPORT[layout], height: 800, deviceScaleFactor: 2 });
       await page.setContent(html, { waitUntil: 'networkidle0' });
-      const shot = (await page.screenshot({ fullPage: true, type: 'png' })) as Buffer;
+      // Puppeteer ≥ 22 returns a Uint8Array (not a Node Buffer); wrap so
+      // `.toString('base64')` works.
+      const shot = Buffer.from(await page.screenshot({ fullPage: true, type: 'png' }));
       await page.close();
       out.push({ layout, name: `poster-${layout}.png`, buffer: shot });
     }
