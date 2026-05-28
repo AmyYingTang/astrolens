@@ -17,6 +17,7 @@ export type Action =
   | { type: 'setBadgeOffset'; id: string; offset_x: number; offset_y: number; commit?: boolean }
   | { type: 'nudge'; id: string; dx: number; dy: number }
   | { type: 'setFeatureText'; id: string; field: TextField; value: string; commit?: boolean }
+  | { type: 'setFeatureBody'; id: string; value: string; commit?: boolean }
   | { type: 'setColor'; id: string; color: ColorKey }
   | { type: 'setBadgeNum'; id: string; num: string; commit?: boolean }
   | { type: 'setNarrative'; value: string; commit?: boolean }
@@ -91,6 +92,18 @@ export function reducer(state: EditorState, action: Action): EditorState {
       return change(
         state,
         mapFeature(state.report, action.id, (f) => ({ ...f, [action.field]: action.value })),
+        action.commit ?? true,
+      );
+
+    case 'setFeatureBody':
+      return change(
+        state,
+        mapFeature(state.report, action.id, (f) => ({
+          ...f,
+          explanation: action.value,
+          physics: undefined,
+          interesting: undefined,
+        })),
         action.commit ?? true,
       );
 

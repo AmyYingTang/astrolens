@@ -1,6 +1,15 @@
 import { join } from 'node:path';
-import { COLOR_PALETTE, type Report } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
 import { buildOverlaySvg } from './annotate.js';
+
+function paragraphs(f: Feature): string[] {
+  return [f.explanation, f.physics, f.interesting]
+    .filter((s): s is string => !!s)
+    .join('\n\n')
+    .split(/\n\s*\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export type PosterLayout = 'portrait' | 'landscape';
 
@@ -48,8 +57,9 @@ export function buildPosterHtml(report: Report, imageDataUri: string): string {
   const features = report.features
     .map((f) => {
       const c = COLOR_PALETTE[f.color_key];
+      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<li><span class="dot" style="background:${c.badge}">${esc(f.badge.num)}</span>
-        <div><b>${esc(f.label)}</b><p>${esc(f.explanation)}</p></div></li>`;
+        <div><b>${esc(f.label)}</b>${body}</div></li>`;
     })
     .join('');
 

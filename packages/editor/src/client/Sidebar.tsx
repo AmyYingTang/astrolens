@@ -113,32 +113,12 @@ export function Sidebar({
 
               <textarea
                 className="explanation"
-                value={f.explanation}
-                rows={3}
+                value={[f.explanation, f.physics, f.interesting].filter(Boolean).join('\n\n')}
+                rows={7}
                 placeholder={t.phExplanation}
                 onFocus={() => dispatch({ type: 'beginChange' })}
                 onChange={(e) =>
-                  dispatch({ type: 'setFeatureText', id: f.id, field: 'explanation', value: e.target.value, commit: false })
-                }
-              />
-              <textarea
-                className="explanation"
-                value={f.physics ?? ''}
-                rows={2}
-                placeholder={t.phPhysics}
-                onFocus={() => dispatch({ type: 'beginChange' })}
-                onChange={(e) =>
-                  dispatch({ type: 'setFeatureText', id: f.id, field: 'physics', value: e.target.value, commit: false })
-                }
-              />
-              <textarea
-                className="explanation"
-                value={f.interesting ?? ''}
-                rows={2}
-                placeholder={t.phInteresting}
-                onFocus={() => dispatch({ type: 'beginChange' })}
-                onChange={(e) =>
-                  dispatch({ type: 'setFeatureText', id: f.id, field: 'interesting', value: e.target.value, commit: false })
+                  dispatch({ type: 'setFeatureBody', id: f.id, value: e.target.value, commit: false })
                 }
               />
             </div>

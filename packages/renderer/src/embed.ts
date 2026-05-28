@@ -1,4 +1,13 @@
-import { COLOR_PALETTE, type Report } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
+
+function paragraphs(f: Feature): string[] {
+  return [f.explanation, f.physics, f.interesting]
+    .filter((s): s is string => !!s)
+    .join('\n\n')
+    .split(/\n\s*\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 export interface EmbedOptions {
   /** data: URI of the source image, so the output is a single portable file. */
@@ -37,9 +46,9 @@ export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
     .map((f) => {
       const left = ((f.circle.cx / width) * 100).toFixed(2);
       const top = ((f.circle.cy / height) * 100).toFixed(2);
-      const extra = [f.physics, f.interesting].filter(Boolean).map((t) => `<p>${esc(t!)}</p>`).join('');
+      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<div class="al-tip" data-f="${esc(f.id)}" style="left:${left}%;top:${top}%">
-  <b>${esc(f.badge.num)}. ${esc(f.label)}</b><p>${esc(f.explanation)}</p>${extra}
+  <b>${esc(f.badge.num)}. ${esc(f.label)}</b>${body}
 </div>`;
     })
     .join('\n');
@@ -47,10 +56,10 @@ export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
   const panel = report.features
     .map((f) => {
       const c = COLOR_PALETTE[f.color_key];
-      const extra = [f.physics, f.interesting].filter(Boolean).map((t) => `<p>${esc(t!)}</p>`).join('');
+      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<div class="al-feature" data-f="${esc(f.id)}">
   <span class="al-dot" style="background:${c.badge}">${esc(f.badge.num)}</span>
-  <div><b>${esc(f.label)}</b><p>${esc(f.explanation)}</p>${extra}</div>
+  <div><b>${esc(f.label)}</b>${body}</div>
 </div>`;
     })
     .join('\n');

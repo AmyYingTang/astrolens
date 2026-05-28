@@ -2,6 +2,15 @@ import type * as React from 'react';
 import { useState } from 'react';
 import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
 
+function paragraphs(f: Feature): string[] {
+  return [f.explanation, f.physics, f.interesting]
+    .filter((s): s is string => !!s)
+    .join('\n\n')
+    .split(/\n\s*\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export interface ReadingProps {
   report: Report;
   imageSrc: string;
@@ -81,7 +90,9 @@ export function Reading(props: ReadingProps): React.JSX.Element {
               <b>
                 {f.badge.num}. {f.label}
               </b>
-              <p>{f.explanation}</p>
+              {paragraphs(f).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </div>
           ) : null,
         )}
@@ -102,9 +113,9 @@ export function Reading(props: ReadingProps): React.JSX.Element {
             </span>
             <div>
               <b>{f.label}</b>
-              <p>{f.explanation}</p>
-              {f.physics ? <p>{f.physics}</p> : null}
-              {f.interesting ? <p>{f.interesting}</p> : null}
+              {paragraphs(f).map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </div>
           </div>
         ))}
