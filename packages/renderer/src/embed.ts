@@ -56,7 +56,8 @@ export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
     .join('\n');
 
   const o = report.object;
-  const meta = [o.type, o.stage ? `Stage ${o.stage}` : null, o.constellation]
+  const stagePrefix = report.language === 'zh' ? '阶段' : 'Stage';
+  const meta = [o.type, o.stage ? `${stagePrefix} ${o.stage}` : null, o.constellation]
     .filter(Boolean)
     .map((x) => esc(x as string))
     .join(' · ');

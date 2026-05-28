@@ -8,16 +8,38 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const POSTER_STRINGS = {
+  zh: {
+    overview: '导读',
+    features: '画面要点',
+    facts: '冷知识',
+    footer: 'astrolens · 读图报告',
+    stage: (n: number) => `阶段 ${n}`,
+    distance: (ly: number) => `约 ${ly.toLocaleString()} 光年`,
+    size: (am: number) => `视直径 ${am}′`,
+  },
+  en: {
+    overview: 'Overview',
+    features: 'Visual features',
+    facts: 'Fun facts',
+    footer: 'astrolens · reading report',
+    stage: (n: number) => `Stage ${n}`,
+    distance: (ly: number) => `~${ly.toLocaleString()} light-years`,
+    size: (am: number) => `angular size ${am}′`,
+  },
+} as const;
+
 /** Static poster HTML: image + overlay + reading text. Responsive layout — the
  * viewport width chosen at screenshot time selects portrait vs landscape. */
 export function buildPosterHtml(report: Report, imageDataUri: string): string {
   const o = report.object;
+  const s = POSTER_STRINGS[report.language];
   const meta = [
     o.type,
-    o.stage ? `阶段 ${o.stage}` : null,
+    o.stage ? s.stage(o.stage) : null,
     o.constellation,
-    o.distance_ly ? `约 ${o.distance_ly.toLocaleString()} 光年` : null,
-    o.size_arcmin ? `视直径 ${o.size_arcmin}′` : null,
+    o.distance_ly ? s.distance(o.distance_ly) : null,
+    o.size_arcmin ? s.size(o.size_arcmin) : null,
   ]
     .filter(Boolean)
     .map((x) => esc(x as string))
@@ -69,12 +91,12 @@ export function buildPosterHtml(report: Report, imageDataUri: string): string {
   <div class="poster">
     <div class="stage"><img src="${imageDataUri}" alt="${esc(o.name)}">${buildOverlaySvg(report)}</div>
     <div class="panel">
-      <p class="label">导读</p><p class="narrative">${esc(report.narrative)}</p>
-      <p class="label">画面要点</p><ul class="features">${features}</ul>
-      ${facts ? `<p class="label">冷知识</p><ul class="facts">${facts}</ul>` : ''}
+      <p class="label">${s.overview}</p><p class="narrative">${esc(report.narrative)}</p>
+      <p class="label">${s.features}</p><ul class="features">${features}</ul>
+      ${facts ? `<p class="label">${s.facts}</p><ul class="facts">${facts}</ul>` : ''}
     </div>
   </div>
-  <footer><span>astrolens · 读图报告</span><span>${esc(report.generator.tool)} v${esc(report.generator.tool_version)}</span></footer>
+  <footer><span>${s.footer}</span><span>${esc(report.generator.tool)} v${esc(report.generator.tool_version)}</span></footer>
 </div></body></html>`;
 }
 
