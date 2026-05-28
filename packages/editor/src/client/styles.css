@@ -349,9 +349,9 @@ button.primary:disabled {
 }
 
 .sidebar {
-  width: 380px;
+  width: 480px;
   flex-shrink: 0;
-  height: 100vh;
+  height: 100%;
   overflow-y: auto;
   background: var(--panel);
   border-left: 1px solid var(--border);
