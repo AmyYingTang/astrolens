@@ -338,7 +338,7 @@ button.primary:disabled {
 }
 
 .canvas {
-  flex: 1;
+  flex: 1 1 50%;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -349,8 +349,8 @@ button.primary:disabled {
 }
 
 .sidebar {
-  width: 480px;
-  flex-shrink: 0;
+  flex: 1 1 50%;
+  min-width: 320px;
   height: 100%;
   overflow-y: auto;
   background: var(--panel);
