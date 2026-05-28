@@ -27,6 +27,9 @@ export interface Strings {
   exported: string;
   pickerUnsupported: string;
   savedTo: string;
+  saveModeFolder: string;
+  saveModeDownload: string;
+  browserDefault: string;
   loadFailed: string;
   errorLabel: string;
   narrative: string;
@@ -70,6 +73,9 @@ const STRINGS: Record<UiLang, Strings> = {
     exported: '已导出:',
     pickerUnsupported: '当前浏览器不支持选择文件夹,请使用 Chrome / Edge / Arc 等基于 Chromium 的浏览器。',
     savedTo: '已保存到',
+    saveModeFolder: '选择文件夹',
+    saveModeDownload: '直接下载',
+    browserDefault: '浏览器默认下载位置',
     loadFailed: '加载失败',
     errorLabel: '出错',
     narrative: '导读',
@@ -112,6 +118,9 @@ const STRINGS: Record<UiLang, Strings> = {
     exported: 'Exported:',
     pickerUnsupported: 'This browser does not support the folder picker. Use a Chromium-based browser (Chrome / Edge / Arc).',
     savedTo: 'Saved to',
+    saveModeFolder: 'Folder picker',
+    saveModeDownload: 'Browser download',
+    browserDefault: 'browser default location',
     loadFailed: 'Failed to load',
     errorLabel: 'Error',
     narrative: 'Narrative',

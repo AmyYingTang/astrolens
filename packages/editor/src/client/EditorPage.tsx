@@ -10,6 +10,34 @@ import { LangToggle, useUi } from './i18n.js';
 
 const EXPORT_ORDER: ExportFormat[] = ['annotated', 'embed', 'poster', 'all'];
 
+type SaveMode = 'folder' | 'download';
+const SAVE_MODE_KEY = 'astrolens.saveMode';
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+function downloadBlob(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoke after a tick — Safari/Firefox sometimes need the URL alive briefly.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function EditorPage({ slug }: { slug: string }): React.JSX.Element {
   const { t } = useUi();
   const [data, setData] = useState<{ report: Report; imageName: string } | null>(null);
@@ -56,6 +84,13 @@ function Editor({
   const [menuOpen, setMenuOpen] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exported, setExported] = useState<{ dir: string; files: string[] } | null>(null);
+  const [saveMode, setSaveModeState] = useState<SaveMode>(
+    () => (localStorage.getItem(SAVE_MODE_KEY) as SaveMode | null) ?? 'folder',
+  );
+  const setSaveMode = (m: SaveMode): void => {
+    localStorage.setItem(SAVE_MODE_KEY, m);
+    setSaveModeState(m);
+  };
 
   const doSave = useCallback(async () => {
     try {
@@ -120,39 +155,69 @@ function Editor({
 
   const runExport = async (format: ExportFormat): Promise<void> => {
     setMenuOpen(false);
-    type Picker = (options?: {
-      mode?: 'read' | 'readwrite';
-      startIn?: string;
-      id?: string;
-    }) => Promise<FileSystemDirectoryHandle>;
-    const picker = (window as unknown as { showDirectoryPicker?: Picker }).showDirectoryPicker;
-    if (!picker) {
-      setSaveError(t.pickerUnsupported);
-      return;
+
+    let dirHandle: FileSystemDirectoryHandle | null = null;
+    if (saveMode === 'folder') {
+      type Picker = (options?: {
+        mode?: 'read' | 'readwrite';
+        startIn?: string;
+        id?: string;
+      }) => Promise<FileSystemDirectoryHandle>;
+      const picker = (window as unknown as { showDirectoryPicker?: Picker }).showDirectoryPicker;
+      if (!picker) {
+        setSaveError(t.pickerUnsupported);
+        return;
+      }
+      try {
+        dirHandle = await picker({ mode: 'readwrite', startIn: 'downloads', id: 'astrolens-export' });
+      } catch {
+        return; // user cancelled the picker
+      }
     }
-    let dirHandle: FileSystemDirectoryHandle;
-    try {
-      dirHandle = await picker({ mode: 'readwrite', startIn: 'downloads', id: 'astrolens-export' });
-    } catch {
-      return; // user cancelled the picker
-    }
+
     setExported(null);
     setExporting(format);
     try {
       if (stateRef.current.dirty) await doSave();
+
+      if (dirHandle) {
+        const reqPerm =
+          (dirHandle as unknown as { requestPermission?: (o: { mode: string }) => Promise<string> })
+            .requestPermission;
+        if (reqPerm) {
+          const state = await reqPerm.call(dirHandle, { mode: 'readwrite' });
+          if (state !== 'granted')
+            throw new Error(`Write permission ${state} for ${dirHandle.name}`);
+        }
+      }
+
       const files = await exportProject(slug, format);
+      if (files.length === 0) throw new Error('Server returned no files');
+
       const written: string[] = [];
       for (const f of files) {
-        const fh = await dirHandle.getFileHandle(f.name, { create: true });
-        const w = await fh.createWritable();
-        const bin = atob(f.base64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        await w.write(bytes);
-        await w.close();
-        written.push(f.name);
+        if (!f.base64) throw new Error(`Empty payload for ${f.name}`);
+        const bytes = base64ToBytes(f.base64);
+        const blob = new Blob([bytes], { type: f.contentType });
+
+        if (dirHandle) {
+          const fh = await dirHandle.getFileHandle(f.name, { create: true });
+          const w = await fh.createWritable();
+          await w.write(blob);
+          await w.close();
+          const onDisk = await fh.getFile();
+          if (onDisk.size !== bytes.length) {
+            throw new Error(
+              `${f.name}: wrote ${bytes.length} bytes but file is ${onDisk.size} bytes on disk`,
+            );
+          }
+          written.push(`${f.name} (${formatSize(onDisk.size)})`);
+        } else {
+          downloadBlob(blob, f.name);
+          written.push(`${f.name} (${formatSize(bytes.length)})`);
+        }
       }
-      setExported({ dir: dirHandle.name, files: written });
+      setExported({ dir: dirHandle ? dirHandle.name : t.browserDefault, files: written });
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {
@@ -174,6 +239,20 @@ function Editor({
           </button>
           {menuOpen && (
             <div className="export-menu">
+              <div className="mode-row">
+                <button
+                  className={saveMode === 'folder' ? 'active' : ''}
+                  onClick={() => setSaveMode('folder')}
+                >
+                  {t.saveModeFolder}
+                </button>
+                <button
+                  className={saveMode === 'download' ? 'active' : ''}
+                  onClick={() => setSaveMode('download')}
+                >
+                  {t.saveModeDownload}
+                </button>
+              </div>
               {EXPORT_ORDER.map((format) => (
                 <button key={format} onClick={() => void runExport(format)}>
                   {exportLabels[format]}
