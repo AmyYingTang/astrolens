@@ -14,6 +14,7 @@ cli
   .option('--lang <lang>', 'Output language: zh or en', { default: 'zh' })
   .option('--out <dir>', 'Output directory', { default: '.' })
   .option('--model <model>', 'Model passed to the claude CLI')
+  .option('--style <text>', 'Extra instructions for tone/audience/focus')
   .option('--no-simbad', 'Skip SIMBAD distance/size enrichment')
   .action(async (image: string, options) => {
     await readReport({
@@ -22,6 +23,7 @@ cli
       lang: options.lang,
       out: options.out,
       model: options.model,
+      style: options.style,
       simbad: options.simbad,
     });
   });

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { extractJson, parseReading } from './parseJson.js';
 import { parseSimbadAscii } from './simbad.js';
+import { buildReaderPrompt } from './prompt.js';
 import { generateReport, ReaderError } from './index.js';
 
 const readingJson = JSON.stringify({
@@ -25,6 +26,24 @@ describe('extractJson', () => {
   });
   it('strips a prose preamble', () => {
     expect(extractJson('Here is the JSON:\n{"a":1}\nThanks!')).toBe('{"a":1}');
+  });
+});
+
+describe('buildReaderPrompt', () => {
+  const base = { imagePath: '/abs/image.jpg', width: 800, height: 600 } as const;
+
+  it('omits the style block when no style is given', () => {
+    expect(buildReaderPrompt({ ...base, lang: 'zh' })).not.toContain('额外要求');
+  });
+
+  it('appends the style block (zh / en)', () => {
+    expect(buildReaderPrompt({ ...base, lang: 'zh', style: '面向儿童' })).toContain(
+      '额外要求',
+    );
+    expect(buildReaderPrompt({ ...base, lang: 'zh', style: '面向儿童' })).toContain('面向儿童');
+    expect(buildReaderPrompt({ ...base, lang: 'en', style: 'for kids' })).toContain(
+      'Additional instructions',
+    );
   });
 });
 

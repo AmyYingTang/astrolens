@@ -4,6 +4,8 @@ export interface PromptOptions {
   height: number;
   hint?: string;
   lang: 'zh' | 'en';
+  /** Optional extra instructions (tone/audience/focus) appended to the prompt. */
+  style?: string;
 }
 
 const COLOR_KEYS_ZH = `
@@ -59,6 +61,9 @@ const SHAPE = `{
 
 function buildZh(opts: PromptOptions): string {
   const hintLine = opts.hint ? `用户提示:这张图是 ${opts.hint}。\n` : '';
+  const styleBlock = opts.style?.trim()
+    ? `\n\n额外要求(在不破坏上述 JSON 结构的前提下贯彻):\n${opts.style.trim()}`
+    : '';
   return `你是一位天文科普作者,正在为一张深空摄影作品写一份结构化的"读图报告"。
 
 请先读取这张图片文件:${opts.imagePath}
@@ -76,11 +81,14 @@ stage 是恒星/星云生命周期阶段(1-7),只有在你有把握时才填,否
 3. 给出 3-6 个 feature。每个 explanation 写 2-3 句话,读者是有好奇心的天文爱好者。
 4. circle 位置尽力而为即可,用户之后会在编辑器里微调,不需要精确。
 5. 每个 feature 必须有唯一的 id(如 "f1")和 badge.num(如 "1")。
-6. 如果你无法识别这是什么天体,在 narrative 里诚实说明,features 可以是空数组。`;
+6. 如果你无法识别这是什么天体,在 narrative 里诚实说明,features 可以是空数组。${styleBlock}`;
 }
 
 function buildEn(opts: PromptOptions): string {
   const hintLine = opts.hint ? `The user says this image is ${opts.hint}.\n` : '';
+  const styleBlock = opts.style?.trim()
+    ? `\n\nAdditional instructions (honor these without breaking the JSON structure above):\n${opts.style.trim()}`
+    : '';
   return `You are an astronomy science writer producing a structured reading report for a deep-sky image.
 
 First read this image file: ${opts.imagePath}
@@ -98,7 +106,7 @@ Requirements:
 3. Provide 3-6 features. Each explanation should be 2-3 sentences for a curious non-astronomer.
 4. circle positions are best-effort; the user will fine-tune them later.
 5. Every feature must have a unique id (e.g. "f1") and a badge.num (e.g. "1").
-6. If you cannot identify the object, say so honestly in narrative; features may be an empty array.`;
+6. If you cannot identify the object, say so honestly in narrative; features may be an empty array.${styleBlock}`;
 }
 
 export function buildReaderPrompt(opts: PromptOptions): string {

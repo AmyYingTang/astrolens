@@ -25,6 +25,8 @@ export interface GenerateReportOptions {
   height: number;
   hint?: string;
   lang: 'zh' | 'en';
+  /** Optional extra instructions (tone/audience/focus) appended to the prompt. */
+  style?: string;
   toolVersion: string;
   model?: string;
   /** Relative path stored in report.image.src. Defaults to "image.jpg". */
@@ -44,6 +46,7 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Repor
     height: opts.height,
     hint: opts.hint,
     lang: opts.lang,
+    style: opts.style,
   });
 
   let raw = await runner({ prompt: basePrompt, model: opts.model });

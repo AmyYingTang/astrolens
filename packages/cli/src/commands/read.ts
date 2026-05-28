@@ -11,6 +11,7 @@ export interface ReadArgs {
   out: string;
   model?: string;
   simbad: boolean;
+  style?: string;
 }
 
 export async function readReport(args: ReadArgs): Promise<void> {
@@ -33,6 +34,7 @@ export async function readReport(args: ReadArgs): Promise<void> {
       height: meta.height,
       hint: args.hint,
       lang,
+      style: args.style,
       toolVersion: TOOL_VERSION,
       model: args.model,
       imageSrc: imageName,
