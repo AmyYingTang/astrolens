@@ -101,8 +101,14 @@ body,
   gap: 12px;
 }
 
-.export-result a {
+.export-result a,
+.export-result .exported-file {
   color: var(--accent);
+}
+
+.export-result .exported-file {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
 }
 
 .export-result .dismiss {
@@ -186,6 +192,54 @@ body,
 .file-pick:hover span {
   border-color: var(--accent);
   color: var(--text);
+}
+
+.style-block {
+  margin: 14px 0 4px;
+}
+
+.style-block .field-label {
+  margin-bottom: 10px;
+}
+
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.chip-group-label {
+  font-size: 12px;
+  color: var(--muted);
+  width: 48px;
+  flex-shrink: 0;
+}
+
+.chip {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.chip.active {
+  background: var(--accent);
+  color: #0b0e14;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.style-free {
+  margin-top: 4px;
 }
 
 button.primary {

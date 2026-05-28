@@ -2,6 +2,7 @@ import type { Report } from '@astrolens/schema';
 import type {
   CreateProjectRequest,
   CreateProjectResponse,
+  ExportFile,
   ExportFormat,
   ExportResponse,
   ProjectsResponse,
@@ -43,7 +44,7 @@ export async function saveReport(slug: string, report: Report): Promise<void> {
   if (!body.ok) throw new Error(body.error ?? `Save failed (${res.status})`);
 }
 
-export async function exportProject(slug: string, format: ExportFormat): Promise<string[]> {
+export async function exportProject(slug: string, format: ExportFormat): Promise<ExportFile[]> {
   const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/export`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -51,7 +52,7 @@ export async function exportProject(slug: string, format: ExportFormat): Promise
   });
   const body = (await res.json()) as ExportResponse;
   if (!body.ok) throw new Error(body.error ?? `Export failed (${res.status})`);
-  return body.written ?? [];
+  return body.files ?? [];
 }
 
 export const imageUrl = (slug: string): string => `/api/projects/${encodeURIComponent(slug)}/image`;

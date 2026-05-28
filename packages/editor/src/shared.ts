@@ -20,6 +20,8 @@ export interface CreateProjectRequest {
   filename: string;
   hint?: string;
   lang?: 'zh' | 'en';
+  /** Extra instructions (tone/audience/focus) appended to the read prompt. */
+  style?: string;
 }
 
 export interface CreateProjectResponse {
@@ -50,9 +52,16 @@ export interface ExportRequest {
   format: ExportFormat;
 }
 
+export interface ExportFile {
+  name: string;
+  /** base64-encoded file bytes. */
+  base64: string;
+  /** MIME type. */
+  contentType: string;
+}
+
 export interface ExportResponse {
   ok: boolean;
-  /** basenames of written files, relative to the project dir. */
-  written?: string[];
+  files?: ExportFile[];
   error?: string;
 }

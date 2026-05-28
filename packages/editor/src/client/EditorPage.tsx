@@ -2,7 +2,7 @@ import type * as React from 'react';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { Report } from '@astrolens/schema';
 import type { ExportFormat } from '../shared.js';
-import { exportProject, fetchReport, fileUrl, imageUrl, saveReport } from './api.js';
+import { exportProject, fetchReport, imageUrl, saveReport } from './api.js';
 import { initState, reducer } from './state.js';
 import { Canvas } from './Canvas.js';
 import { Sidebar } from './Sidebar.js';
@@ -55,7 +55,7 @@ function Editor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
-  const [exported, setExported] = useState<string[] | null>(null);
+  const [exported, setExported] = useState<{ dir: string; files: string[] } | null>(null);
 
   const doSave = useCallback(async () => {
     try {
@@ -120,13 +120,39 @@ function Editor({
 
   const runExport = async (format: ExportFormat): Promise<void> => {
     setMenuOpen(false);
+    type Picker = (options?: {
+      mode?: 'read' | 'readwrite';
+      startIn?: string;
+      id?: string;
+    }) => Promise<FileSystemDirectoryHandle>;
+    const picker = (window as unknown as { showDirectoryPicker?: Picker }).showDirectoryPicker;
+    if (!picker) {
+      setSaveError(t.pickerUnsupported);
+      return;
+    }
+    let dirHandle: FileSystemDirectoryHandle;
+    try {
+      dirHandle = await picker({ mode: 'readwrite', startIn: 'downloads', id: 'astrolens-export' });
+    } catch {
+      return; // user cancelled the picker
+    }
     setExported(null);
     setExporting(format);
     try {
-      // Persist any pending edits first so the export reflects them.
       if (stateRef.current.dirty) await doSave();
       const files = await exportProject(slug, format);
-      setExported(files);
+      const written: string[] = [];
+      for (const f of files) {
+        const fh = await dirHandle.getFileHandle(f.name, { create: true });
+        const w = await fh.createWritable();
+        const bin = atob(f.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        await w.write(bytes);
+        await w.close();
+        written.push(f.name);
+      }
+      setExported({ dir: dirHandle.name, files: written });
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {
@@ -177,11 +203,13 @@ function Editor({
 
       {exported && (
         <div className="export-result">
-          {t.exported}
-          {exported.map((name) => (
-            <a key={name} href={fileUrl(slug, name)} target="_blank" rel="noreferrer">
+          <span>
+            {t.savedTo} <b>{exported.dir}/</b>
+          </span>
+          {exported.files.map((name) => (
+            <span key={name} className="exported-file">
               {name}
-            </a>
+            </span>
           ))}
           <button className="dismiss" onClick={() => setExported(null)}>
             ✕

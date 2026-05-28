@@ -14,11 +14,14 @@ Requires Node ≥ 18 and the [`claude` CLI](https://claude.com/claude-code) (BYO
 
 That's it. The studio (at `http://localhost:3000`) is the whole tool in one window:
 
-- **New reading** — pick an image, add an optional object hint + language, and astrolens
-  identifies the object and auto-annotates it (~1 min), then drops you into the editor.
+- **New reading** — pick an image, add an optional object hint + language, optionally choose
+  **style** presets (audience: kids/experienced/playful · focus: artistic/history/cultures) or
+  type your own, and astrolens identifies + auto-annotates it (~1 min), then opens the editor.
 - **Open existing** — reopen any past reading to keep tweaking it.
 - **Editor** — drag circles to reposition/resize, edit the text and color keys, then
   **Export ▾** an annotated image, an interactive `embed.html`, or a shareable poster.
+  The export uses a native folder picker (needs a Chromium-based browser — Chrome / Edge / Arc),
+  and saves the files to wherever you choose.
 
 Edits auto-save. Stop the server with Ctrl+C. Everything lives under `out/<name>/`.
 
@@ -51,7 +54,7 @@ node packages/cli/dist/index.js studio
 
 | Command | Key options |
 |---|---|
-| `read <image>` | `--hint <name>`, `--lang zh\|en` (default `zh`), `--out <dir>`, `--model <model>`, `--no-simbad` |
+| `read <image>` | `--hint <name>`, `--lang zh\|en` (default `zh`), `--out <dir>`, `--model <model>`, `--style "<text>"`, `--no-simbad` |
 | `render <report.json>` | `--format annotated\|embed\|poster\|all` (default `annotated`), `--out <dir>` (default: the report's dir) |
 | `edit <report.json>` | `--port <n>` (default 3000), `--no-open` |
 | `studio` | `--workspace <dir>` (default `out`), `--port <n>`, `--no-open` |

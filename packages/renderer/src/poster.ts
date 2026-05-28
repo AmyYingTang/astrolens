@@ -78,6 +78,42 @@ export function buildPosterHtml(report: Report, imageDataUri: string): string {
 </div></body></html>`;
 }
 
+const VIEWPORT: Record<PosterLayout, number> = { portrait: 820, landscape: 1280 };
+
+export interface PosterBuffer {
+  layout: PosterLayout;
+  /** Suggested filename: `poster-<layout>.png`. */
+  name: string;
+  buffer: Buffer;
+}
+
+/** Render the poster PNG bytes per layout via Puppeteer. */
+export async function renderPosterBuffers(opts: {
+  report: Report;
+  imageDataUri: string;
+  layouts?: PosterLayout[];
+}): Promise<PosterBuffer[]> {
+  const layouts = opts.layouts ?? ['portrait', 'landscape'];
+  const html = buildPosterHtml(opts.report, opts.imageDataUri);
+
+  const { default: puppeteer } = await import('puppeteer');
+  const browser = await puppeteer.launch({ headless: true });
+  const out: PosterBuffer[] = [];
+  try {
+    for (const layout of layouts) {
+      const page = await browser.newPage();
+      await page.setViewport({ width: VIEWPORT[layout], height: 800, deviceScaleFactor: 2 });
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const shot = (await page.screenshot({ fullPage: true, type: 'png' })) as Buffer;
+      await page.close();
+      out.push({ layout, name: `poster-${layout}.png`, buffer: shot });
+    }
+  } finally {
+    await browser.close();
+  }
+  return out;
+}
+
 export interface RenderPosterOptions {
   report: Report;
   imageDataUri: string;
@@ -85,28 +121,19 @@ export interface RenderPosterOptions {
   layouts?: PosterLayout[];
 }
 
-const VIEWPORT: Record<PosterLayout, number> = { portrait: 820, landscape: 1280 };
-
-/** Render poster PNG(s) by screenshotting the poster HTML with Puppeteer. */
+/** Render poster PNG(s) and write them into outDir. */
 export async function renderPoster(opts: RenderPosterOptions): Promise<string[]> {
-  const layouts = opts.layouts ?? ['portrait', 'landscape'];
-  const html = buildPosterHtml(opts.report, opts.imageDataUri);
-
-  const { default: puppeteer } = await import('puppeteer');
-  const browser = await puppeteer.launch({ headless: true });
+  const buffers = await renderPosterBuffers({
+    report: opts.report,
+    imageDataUri: opts.imageDataUri,
+    layouts: opts.layouts,
+  });
+  const { writeFile } = await import('node:fs/promises');
   const written: string[] = [];
-  try {
-    for (const layout of layouts) {
-      const page = await browser.newPage();
-      await page.setViewport({ width: VIEWPORT[layout], height: 800, deviceScaleFactor: 2 });
-      await page.setContent(html, { waitUntil: 'networkidle0' });
-      const outPath = join(opts.outDir, `poster-${layout}.png`);
-      await page.screenshot({ path: outPath as `${string}.png`, fullPage: true });
-      await page.close();
-      written.push(outPath);
-    }
-  } finally {
-    await browser.close();
+  for (const b of buffers) {
+    const outPath = join(opts.outDir, b.name);
+    await writeFile(outPath, b.buffer);
+    written.push(outPath);
   }
   return written;
 }

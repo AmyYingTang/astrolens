@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { Report } from '@astrolens/schema';
 import { generateReport } from '@astrolens/reader';
-import { renderAnnotated, generateEmbedHtml, renderPoster } from '@astrolens/renderer';
+import { renderAnnotatedBuffer, generateEmbedHtml, renderPosterBuffers } from '@astrolens/renderer';
 import type {
   CreateProjectRequest,
+  ExportFile,
   ExportFormat,
   ExportRequest,
   ProjectSummary,
@@ -120,6 +121,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
         height: meta.height,
         hint: body.hint || undefined,
         lang: body.lang === 'en' ? 'en' : 'zh',
+        style: body.style || undefined,
         toolVersion,
         imageSrc: imageName,
       });
@@ -171,11 +173,11 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       const dir = projectDir(slug);
       const imagePath = join(dir, report.image.src);
       const want = (f: ExportFormat): boolean => format === 'all' || format === f;
-      const written: string[] = [];
+      const files: ExportFile[] = [];
 
       if (want('annotated')) {
-        await renderAnnotated({ report, imagePath, outPath: join(dir, 'annotated.jpg') });
-        written.push('annotated.jpg');
+        const buf = await renderAnnotatedBuffer({ report, imagePath, format: 'jpeg' });
+        files.push({ name: 'annotated.jpg', base64: buf.toString('base64'), contentType: 'image/jpeg' });
       }
       let dataUri = '';
       if (want('embed') || want('poster')) {
@@ -183,14 +185,20 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
         dataUri = `data:${mime};base64,${(await readFile(imagePath)).toString('base64')}`;
       }
       if (want('embed')) {
-        await writeFile(join(dir, 'embed.html'), generateEmbedHtml(report, { imageDataUri: dataUri }), 'utf8');
-        written.push('embed.html');
+        const html = generateEmbedHtml(report, { imageDataUri: dataUri });
+        files.push({
+          name: 'embed.html',
+          base64: Buffer.from(html, 'utf8').toString('base64'),
+          contentType: 'text/html',
+        });
       }
       if (want('poster')) {
-        const ps = await renderPoster({ report, imageDataUri: dataUri, outDir: dir });
-        written.push(...ps.map((p) => basename(p)));
+        const posters = await renderPosterBuffers({ report, imageDataUri: dataUri });
+        for (const p of posters) {
+          files.push({ name: p.name, base64: p.buffer.toString('base64'), contentType: 'image/png' });
+        }
       }
-      res.json({ ok: true, written });
+      res.json({ ok: true, files });
     } catch (e) {
       res.status(500).json({ ok: false, error: (e as Error).message });
     }

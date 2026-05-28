@@ -10,6 +10,10 @@ export interface Strings {
   hintPlaceholder: string;
   generate: string;
   generating: string;
+  styleLabel: string;
+  audienceLabel: string;
+  focusLabel: string;
+  styleFreePlaceholder: string;
   openExisting: string;
   loading: string;
   emptyWorkspace: string;
@@ -21,6 +25,8 @@ export interface Strings {
   exportLabel: string;
   exporting: string;
   exported: string;
+  pickerUnsupported: string;
+  savedTo: string;
   loadFailed: string;
   errorLabel: string;
   narrative: string;
@@ -47,6 +53,10 @@ const STRINGS: Record<UiLang, Strings> = {
     hintPlaceholder: '对象名提示(可选),如 "Sh2-308"',
     generate: '生成读图',
     generating: '识别中…',
+    styleLabel: '风格(可选)',
+    audienceLabel: '读者',
+    focusLabel: '侧重',
+    styleFreePlaceholder: '其他要求…(可选,会附加到提示词)',
     openExisting: '打开已有作品',
     loading: '加载中…',
     emptyWorkspace: '工作区还没有作品。先做一个新读图吧。',
@@ -58,6 +68,8 @@ const STRINGS: Record<UiLang, Strings> = {
     exportLabel: '导出',
     exporting: '导出中…',
     exported: '已导出:',
+    pickerUnsupported: '当前浏览器不支持选择文件夹,请使用 Chrome / Edge / Arc 等基于 Chromium 的浏览器。',
+    savedTo: '已保存到',
     loadFailed: '加载失败',
     errorLabel: '出错',
     narrative: '导读',
@@ -83,6 +95,10 @@ const STRINGS: Record<UiLang, Strings> = {
     hintPlaceholder: 'Object hint (optional), e.g. "Sh2-308"',
     generate: 'Generate',
     generating: 'Reading…',
+    styleLabel: 'Style (optional)',
+    audienceLabel: 'Audience',
+    focusLabel: 'Focus',
+    styleFreePlaceholder: 'Other instructions… (optional, appended to the prompt)',
     openExisting: 'Open existing',
     loading: 'Loading…',
     emptyWorkspace: 'No readings yet. Start a new one above.',
@@ -94,6 +110,8 @@ const STRINGS: Record<UiLang, Strings> = {
     exportLabel: 'Export',
     exporting: 'Exporting…',
     exported: 'Exported:',
+    pickerUnsupported: 'This browser does not support the folder picker. Use a Chromium-based browser (Chrome / Edge / Arc).',
+    savedTo: 'Saved to',
     loadFailed: 'Failed to load',
     errorLabel: 'Error',
     narrative: 'Narrative',
