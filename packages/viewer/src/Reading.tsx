@@ -23,7 +23,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
   const { report, imageSrc, onFeatureClick, className } = props;
   const [active, setActive] = useState<string | null>(null);
   const { width, height } = report.image;
-  const strokeW = Math.max(2, Math.round(Math.min(width, height) / 400));
+  const strokeW = Math.max(2, Math.round(Math.min(width, height) / 300));
   const o = report.object;
 
   const meta = [o.type, o.stage ? `Stage ${o.stage}` : null, o.constellation]

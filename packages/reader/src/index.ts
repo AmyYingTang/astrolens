@@ -71,6 +71,16 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Repor
   const reading = parsed.data;
   let object = reading.object;
 
+  // Badge size scales with image resolution so labels read at a consistent
+  // visual size across photos of very different pixel dimensions (calibrated
+  // so a ~2800px image yields a ~70px bubble). The editor can still resize
+  // individual badges afterward.
+  const bubbleR = Math.max(24, Math.round(Math.min(opts.width, opts.height) / 40));
+  const features = reading.features.map((f) => ({
+    ...f,
+    badge: { ...f.badge, bubble_r: bubbleR },
+  }));
+
   if (opts.simbad !== false) {
     const lookup = opts.simbadLookup ?? lookupSimbad;
     const facts = await lookup(object.name);
@@ -87,7 +97,7 @@ export async function generateReport(opts: GenerateReportOptions): Promise<Repor
     language: reading.language ?? opts.lang,
     object,
     narrative: reading.narrative,
-    features: reading.features,
+    features,
     extra_facts: reading.extra_facts,
     created_at: new Date().toISOString(),
     generator: { tool: 'astrolens', tool_version: opts.toolVersion, llm: opts.model ?? 'claude' },

@@ -12,7 +12,7 @@ function escapeXml(s: string): string {
 /** Build the SVG overlay (circles + numbered badges) for a report. */
 export function buildOverlaySvg(report: Report): string {
   const { width, height } = report.image;
-  const strokeW = Math.max(2, Math.round(Math.min(width, height) / 500));
+  const strokeW = Math.max(2, Math.round(Math.min(width, height) / 300));
   const parts: string[] = [];
 
   for (const f of report.features) {
