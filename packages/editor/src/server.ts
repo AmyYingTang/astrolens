@@ -40,6 +40,17 @@ function slugify(s: string): string {
     .slice(0, 60);
 }
 
+/** Filesystem-safe stem from an object name for export filenames: drop spaces
+ * (so "NGC 3372" → "NGC3372"), keep hyphens ("Sh2-308" stays intact),
+ * neutralize unsafe chars. Falls back to "report". */
+function objectStem(name: string): string {
+  const cleaned = name
+    .replace(/[/\\:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '')
+    .replace(/^[.-]+|[.-]+$/g, '');
+  return cleaned || 'report';
+}
+
 async function exists(p: string): Promise<boolean> {
   try {
     await access(p);
@@ -173,11 +184,25 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       const dir = projectDir(slug);
       const imagePath = join(dir, report.image.src);
       const want = (f: ExportFormat): boolean => format === 'all' || format === f;
+      const stem = objectStem(report.object.name);
       const files: ExportFile[] = [];
+
+      // Always carry the full report.json so the gallery site has the
+      // structured metadata (color_key per feature, object info, labels)
+      // alongside the rendered image instead of guessing from pixels.
+      files.push({
+        name: `${stem}.json`,
+        base64: Buffer.from(JSON.stringify(report, null, 2), 'utf8').toString('base64'),
+        contentType: 'application/json',
+      });
 
       if (want('annotated')) {
         const buf = await renderAnnotatedBuffer({ report, imagePath, format: 'jpeg' });
-        files.push({ name: 'annotated.jpg', base64: buf.toString('base64'), contentType: 'image/jpeg' });
+        files.push({
+          name: `${stem}_annotated.jpg`,
+          base64: buf.toString('base64'),
+          contentType: 'image/jpeg',
+        });
       }
       let dataUri = '';
       if (want('embed') || want('poster')) {
@@ -187,7 +212,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       if (want('embed')) {
         const html = generateEmbedHtml(report, { imageDataUri: dataUri });
         files.push({
-          name: 'embed.html',
+          name: `${stem}_embed.html`,
           base64: Buffer.from(html, 'utf8').toString('base64'),
           contentType: 'text/html',
         });
@@ -195,7 +220,11 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       if (want('poster')) {
         const posters = await renderPosterBuffers({ report, imageDataUri: dataUri });
         for (const p of posters) {
-          files.push({ name: p.name, base64: p.buffer.toString('base64'), contentType: 'image/png' });
+          files.push({
+            name: `${stem}_${p.name}`,
+            base64: p.buffer.toString('base64'),
+            contentType: 'image/png',
+          });
         }
       }
       res.json({ ok: true, files });
