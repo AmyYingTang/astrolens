@@ -1,0 +1,71 @@
+{
+  "version": "1.0",
+  "image": {
+    "src": "image.jpg",
+    "width": 6000,
+    "height": 4000,
+    "hash": "sha256:demo",
+    "band": "broadband",
+    "starless": false
+  },
+  "solve": {
+    "status": "solved",
+    "ra_deg": 83.82,
+    "dec_deg": -5.39,
+    "radius_deg": 0.6,
+    "pixscale_arcsec": 1.8,
+    "orientation_deg": 90.0,
+    "nova_job_id": "demo-123",
+    "frame": "display"
+  },
+  "objects": [
+    {
+      "id": "obj1",
+      "role": "primary",
+      "names": ["M42", "Orion Nebula", "NGC 1976"],
+      "category": "emission_nebula",
+      "type": { "otype": "HII", "zh": "发射星云", "en": "Emission nebula" },
+      "coord": { "ra_deg": 83.82, "dec_deg": -5.39, "pixel": [3010, 2005] },
+      "size_arcmin": [85, 60],
+      "distance": { "value": 412, "unit": "pc", "source": "NED" },
+      "catalog_ids": { "messier": "M42", "ngc": "NGC 1976" },
+      "confidence": 0.98,
+      "features": [
+        {
+          "id": "f1",
+          "name": { "zh": "猎户四边形星团", "en": "Trapezium cluster" },
+          "feature_type": "embedded_cluster",
+          "class": "A",
+          "source": "SIMBAD",
+          "localization": {
+            "method": "world_to_pixel",
+            "pixel": [3040, 2010],
+            "confidence": 0.97
+          },
+          "needs_human_review": false
+        },
+        {
+          "id": "f2",
+          "name": { "zh": "电离锋面", "en": "Ionization front" },
+          "feature_type": "ionization_front",
+          "class": "B-anchor",
+          "source": "taxonomy",
+          "localization": {
+            "method": "anchor",
+            "anchor_ref": "Trapezium",
+            "direction": "朝向激发星团一侧",
+            "pixel": null,
+            "confidence": 0.5
+          },
+          "needs_human_review": true
+        }
+      ]
+    }
+  ],
+  "warnings": [],
+  "provenance": {
+    "queries": ["SIMBAD region r=0.6deg"],
+    "solver": "nova.astrometry.net",
+    "timestamp": "2026-06-21T00:00:00.000Z"
+  }
+}

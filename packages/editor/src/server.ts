@@ -3,14 +3,24 @@ import { readFile, writeFile, mkdir, readdir, access } from 'node:fs/promises';
 import { resolve, dirname, join, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { Report } from '@astrolens/schema';
-import { generateReport } from '@astrolens/reader';
+import { Reading, FactSheet } from '@astrolens/schema';
+import {
+  identify,
+  createNovaSolveClient,
+  createCachedSolveClient,
+  createSimbadCatalogClient,
+  createVizierCatalogClient,
+  createCompositeCatalogClient,
+} from '@astrolens/identify';
+import { readingFromFactsheet, tailorReading, ReaderError } from '@astrolens/reader';
 import { renderAnnotatedBuffer, generateEmbedHtml, renderPosterBuffers } from '@astrolens/renderer';
 import type {
   CreateProjectRequest,
   ExportFile,
   ExportFormat,
   ExportRequest,
+  FactsheetResponse,
+  JobStatus,
   ProjectSummary,
   ReportResponse,
   SaveRequest,
@@ -81,8 +91,21 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
     if (!SLUG_RE.test(slug)) throw new Error(`Invalid project id: ${slug}`);
     return join(workspace, slug);
   };
-  const loadReport = async (slug: string): Promise<Report> =>
-    Report.parse(JSON.parse(await readFile(join(projectDir(slug), 'report.json'), 'utf8')));
+  const loadReport = async (slug: string): Promise<Reading> =>
+    Reading.parse(JSON.parse(await readFile(join(projectDir(slug), 'reading.json'), 'utf8')));
+  const loadFactsheet = async (slug: string): Promise<FactSheet> =>
+    FactSheet.parse(JSON.parse(await readFile(join(projectDir(slug), 'factsheet.json'), 'utf8')));
+
+  // In-memory create-job status, mirrored to job.json for durability/visibility.
+  const jobs = new Map<string, JobStatus>();
+  const setJob = async (slug: string, status: JobStatus): Promise<void> => {
+    jobs.set(slug, status);
+    try {
+      await writeFile(join(projectDir(slug), 'job.json'), JSON.stringify(status, null, 2) + '\n', 'utf8');
+    } catch {
+      // project dir may not exist yet / was removed — in-memory status still holds
+    }
+  };
 
   const app = express();
   app.use(express.json({ limit: '48mb' }));
@@ -94,14 +117,25 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       if (!e.isDirectory()) continue;
       try {
         const r = await loadReport(e.name);
-        projects.push({
+        const summary: ProjectSummary = {
           slug: e.name,
           name: r.object.name,
-          type: r.object.type,
+          type: r.object.type[r.display_language],
           stage: r.object.stage,
           imageName: basename(r.image.src),
           features: r.features.length,
-        });
+        };
+        try {
+          const fs = await loadFactsheet(e.name);
+          summary.solveStatus = fs.solve.status;
+          summary.needsReview = fs.objects.reduce(
+            (n, o) => n + o.features.filter((f) => f.needs_human_review).length,
+            0,
+          );
+        } catch {
+          // pre-Stage-1 project without a fact sheet — leave chips unset
+        }
+        projects.push(summary);
       } catch {
         // not a project dir — skip
       }
@@ -109,9 +143,67 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
     res.json({ projects });
   });
 
+  const requireApiKey = (): string => {
+    const apiKey = process.env.ASTROMETRY_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        'Plate-solving needs a nova API key. Put ASTROMETRY_API_KEY in a .env file (where you run the studio) or export it, then restart. Free key from nova.astrometry.net.',
+      );
+    }
+    return apiKey;
+  };
+
+  /** Stage 1 background job: identify → factsheet.json + a stub reading.json (no LLM). */
+  const runIdentify = async (
+    slug: string,
+    dir: string,
+    imagePath: string,
+    imageName: string,
+    width: number,
+    height: number,
+    opts: { apiKey: string; hint?: string; lang: 'zh' | 'en'; starMagMax?: number },
+  ): Promise<void> => {
+    try {
+      const factsheet = await identify(
+        { imagePath, width, height, imageSrc: imageName, targetName: opts.hint, starMagMax: opts.starMagMax },
+        {
+          solve: createCachedSolveClient(createNovaSolveClient({ apiKey: opts.apiKey })),
+          catalog: createCompositeCatalogClient([
+            createSimbadCatalogClient(),
+            createVizierCatalogClient(),
+          ]),
+        },
+      );
+      await writeFile(join(dir, 'factsheet.json'), JSON.stringify(factsheet, null, 2) + '\n', 'utf8');
+
+      if (factsheet.objects.length === 0) {
+        await setJob(slug, {
+          state: 'failed',
+          error: `No object identified (solve=${factsheet.solve.status}). ${factsheet.warnings.join(' ')}`.trim(),
+          warnings: factsheet.warnings,
+        });
+        return;
+      }
+
+      // Stub reading: grounded annotations, no explanations. AI text is generated
+      // later from the editor (after the user reviews the annotations).
+      const reading = readingFromFactsheet(factsheet, {
+        toolVersion,
+        displayLanguage: opts.lang,
+        imageSrc: imageName,
+      });
+      await writeFile(join(dir, 'reading.json'), JSON.stringify(reading, null, 2) + '\n', 'utf8');
+      await setJob(slug, { state: 'done', stage: 'done', warnings: factsheet.warnings });
+    } catch (e) {
+      await setJob(slug, { state: 'failed', error: (e as Error).message });
+    }
+  };
+
   app.post('/api/projects', async (req, res) => {
     try {
       const body = req.body as CreateProjectRequest;
+      const apiKey = requireApiKey();
+
       const ext = (extname(body.filename ?? '') || '.jpg').toLowerCase();
       const base = slugify(basename(body.filename ?? 'reading', ext));
       const slug = await uniqueSlug(workspace, base);
@@ -126,20 +218,117 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       const meta = await sharp(imagePath).metadata();
       if (!meta.width || !meta.height) throw new Error('Could not read image dimensions');
 
-      const report = await generateReport({
-        imagePath,
-        width: meta.width,
-        height: meta.height,
+      // nova is slow: run identify as a background job; client polls /job.
+      await setJob(slug, { state: 'running', stage: 'solving' });
+      res.json({ ok: true, slug });
+      void runIdentify(slug, dir, imagePath, imageName, meta.width, meta.height, {
+        apiKey,
         hint: body.hint || undefined,
         lang: body.lang === 'en' ? 'en' : 'zh',
-        style: body.style || undefined,
-        toolVersion,
-        imageSrc: imageName,
       });
-      await writeFile(join(dir, 'report.json'), JSON.stringify(report, null, 2) + '\n', 'utf8');
-      res.json({ ok: true, slug });
     } catch (e) {
       res.status(500).json({ ok: false, error: (e as Error).message });
+    }
+  });
+
+  // Generate the AI reading on demand (LLM only) — tailors text onto the
+  // already-reviewed annotations, preserving their circles/labels.
+  app.post('/api/projects/:slug/reading', async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      const dir = projectDir(slug);
+      const tone = ((req.body ?? {}) as { tone?: string }).tone || undefined;
+      const reading = await loadReport(slug);
+      const files = await readdir(dir);
+      const imageName = files.find((f) => /^image\.(jpe?g|png)$/i.test(f));
+      const imagePath = imageName ? join(dir, imageName) : undefined;
+
+      await setJob(slug, { state: 'running', stage: 'reading' });
+      res.json({ ok: true, slug });
+      void (async () => {
+        try {
+          const tailored = await tailorReading(reading, { imagePath, tone });
+          await writeFile(join(dir, 'reading.json'), JSON.stringify(tailored, null, 2) + '\n', 'utf8');
+          await setJob(slug, { state: 'done', stage: 'done' });
+        } catch (e) {
+          // On parse failure, save the raw LLM output so it can be inspected.
+          let error = (e as Error).message;
+          if (e instanceof ReaderError && e.raw) {
+            try {
+              await writeFile(join(dir, 'raw_llm_output.txt'), e.raw, 'utf8');
+              error += ` (raw output saved to ${slug}/raw_llm_output.txt)`;
+            } catch {
+              // best-effort
+            }
+          }
+          await setJob(slug, { state: 'failed', error });
+        }
+      })();
+    } catch (e) {
+      res.status(500).json({ ok: false, error: (e as Error).message });
+    }
+  });
+
+  // Re-run identification on an existing project's stored image (no re-upload).
+  app.post('/api/projects/:slug/reidentify', async (req, res) => {
+    try {
+      const slug = req.params.slug;
+      const dir = projectDir(slug);
+      const apiKey = requireApiKey();
+      const starMagMax = ((req.body ?? {}) as { starMagMax?: number }).starMagMax;
+
+      const files = await readdir(dir);
+      const imageName = files.find((f) => /^image\.(jpe?g|png)$/i.test(f));
+      if (!imageName) throw new Error('No source image found in this project');
+      const imagePath = join(dir, imageName);
+      const meta = await sharp(imagePath).metadata();
+      if (!meta.width || !meta.height) throw new Error('Could not read image dimensions');
+
+      let lang: 'zh' | 'en' = 'zh';
+      try {
+        lang = (await loadReport(slug)).display_language;
+      } catch {
+        // no prior reading — default zh
+      }
+
+      await setJob(slug, { state: 'running', stage: 'solving' });
+      res.json({ ok: true, slug });
+      void runIdentify(slug, dir, imagePath, imageName, meta.width, meta.height, {
+        apiKey,
+        lang,
+        starMagMax: typeof starMagMax === 'number' ? starMagMax : undefined,
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: (e as Error).message });
+    }
+  });
+
+  app.get('/api/projects/:slug/job', async (req, res) => {
+    const slug = req.params.slug;
+    const inMem = jobs.get(slug);
+    if (inMem) {
+      res.json(inMem satisfies JobStatus);
+      return;
+    }
+    try {
+      const raw = await readFile(join(projectDir(slug), 'job.json'), 'utf8');
+      res.json(JSON.parse(raw) as JobStatus);
+    } catch {
+      try {
+        await access(join(projectDir(slug), 'reading.json'));
+        res.json({ state: 'done', stage: 'done' } satisfies JobStatus);
+      } catch {
+        res.status(404).json({ state: 'failed', error: 'no such job' } satisfies JobStatus);
+      }
+    }
+  });
+
+  app.get('/api/projects/:slug/factsheet', async (req, res) => {
+    try {
+      const factsheet = await loadFactsheet(req.params.slug);
+      res.json({ factsheet } satisfies FactsheetResponse);
+    } catch (e) {
+      res.status(404).json({ error: (e as Error).message });
     }
   });
 
@@ -154,10 +343,10 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
 
   app.post('/api/projects/:slug/report', async (req, res) => {
     try {
-      const report = Report.parse((req.body as SaveRequest).report);
+      const report = Reading.parse((req.body as SaveRequest).report);
       report.edited_at = new Date().toISOString();
       await writeFile(
-        join(projectDir(req.params.slug), 'report.json'),
+        join(projectDir(req.params.slug), 'reading.json'),
         JSON.stringify(report, null, 2) + '\n',
         'utf8',
       );
@@ -187,7 +376,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       const stem = objectStem(report.object.name);
       const files: ExportFile[] = [];
 
-      // Always carry the full report.json so the gallery site has the
+      // Always carry the full reading.json so the gallery site has the
       // structured metadata (color_key per feature, object info, labels)
       // alongside the rendered image instead of guessing from pixels.
       files.push({

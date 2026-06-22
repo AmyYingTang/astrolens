@@ -1,4 +1,26 @@
-import type { ColorKey } from './index.js';
+import { z } from 'zod';
+
+/**
+ * The closed palette of feature color keys. Defined here (next to the palette
+ * it drives) rather than in index.ts so taxonomy.ts can map onto it without a
+ * circular import through index.ts.
+ */
+export const ColorKey = z.enum([
+  // Hot stars / ionizing sources
+  'hot', // bright stars, WR, OB
+  'star', // generic star/cluster
+  // Front matter
+  'front', // ionization front
+  'shock', // shock wave (SNR)
+  'shell', // bubble shell
+  // Inner structure
+  'cavity', // central cavity
+  'pillar', // pillar / evaporating gas
+  // Surroundings
+  'dark', // dark cloud / dust band
+  'bg', // untouched background / molecular cloud
+]);
+export type ColorKey = z.infer<typeof ColorKey>;
 
 export interface PaletteEntry {
   stroke: string;

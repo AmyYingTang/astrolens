@@ -32,6 +32,9 @@ importers:
       '@astrolens/editor':
         specifier: workspace:*
         version: link:../editor
+      '@astrolens/identify':
+        specifier: workspace:*
+        version: link:../identify
       '@astrolens/reader':
         specifier: workspace:*
         version: link:../reader
@@ -50,6 +53,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@astrolens/identify':
+        specifier: workspace:*
+        version: link:../identify
       '@astrolens/reader':
         specifier: workspace:*
         version: link:../reader
@@ -93,6 +99,18 @@ importers:
       vite:
         specifier: ^5.4.11
         version: 5.4.21(@types/node@22.19.19)
+
+  packages/identify:
+    dependencies:
+      '@astrolens/schema':
+        specifier: workspace:*
+        version: link:../schema
+      ofetch:
+        specifier: ^1.4.1
+        version: 1.5.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
 
   packages/reader:
     dependencies:

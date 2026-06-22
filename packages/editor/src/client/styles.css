@@ -338,7 +338,8 @@ button.primary:disabled {
 }
 
 .canvas {
-  flex: 1 1 50%;
+  position: relative;
+  flex: 2 1 0;
   min-width: 0;
   min-height: 0;
   display: flex;
@@ -347,14 +348,47 @@ button.primary:disabled {
   overflow: hidden;
   padding: 16px;
 }
+.grid-toggle-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  font-size: 12px;
+  padding: 4px 10px;
+  background: rgba(20, 25, 37, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+}
+.grid-toggle-float.active {
+  color: var(--text);
+  border-color: var(--accent);
+}
 
-.sidebar {
-  flex: 1 1 50%;
+/* Right column = always-visible action bar + scrollable text editor (~25%). */
+.text-col {
+  flex: 1 1 0;
   min-width: 320px;
-  height: 100%;
-  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--panel);
   border-left: 1px solid var(--border);
+}
+.text-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.sidebar {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
   padding: 16px;
 }
 
@@ -509,4 +543,291 @@ textarea.explanation {
   padding: 8px 14px;
   border-radius: 6px;
   font-size: 13px;
+}
+
+/* Read-only fact sheet panel (Stage 1 grounding) */
+.facts-toggle.active {
+  background: #25324a;
+}
+.facts-panel {
+  position: relative;
+  flex: 0 0 20%;
+  min-width: 180px;
+  overflow: hidden;
+  border-right: 1px solid #222b3d;
+  background: #0d111a;
+  font-size: 13px;
+}
+.facts-panel.collapsed {
+  flex: 0 0 32px;
+  min-width: 32px;
+}
+.facts-body {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+}
+.facts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.facts-head h2 {
+  margin: 0;
+}
+/* Re-identify confirm + params popover (in-app, not a native dialog) */
+.reid {
+  position: relative;
+}
+.reid-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  width: 240px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reid-warn {
+  margin: 0;
+  font-size: 12px;
+  color: #ffcf8a;
+}
+.reid-param {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.reid-param input {
+  width: 70px;
+}
+.reid-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Collapse tab pinned to the panel's right edge, vertically centered */
+.collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 5;
+  padding: 12px 3px;
+  font-size: 13px;
+  line-height: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+}
+
+/* Draggable splitter between the image and the text panel */
+.divider {
+  flex: 0 0 6px;
+  cursor: col-resize;
+  background: var(--border);
+}
+.divider:hover {
+  background: #3a4a66;
+}
+.facts-panel h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+.facts-panel h3 {
+  font-size: 13px;
+  margin: 16px 0 6px;
+  color: #8a93a8;
+}
+.facts-warn {
+  color: #ffcf8a;
+  font-size: 12px;
+  margin: 4px 0;
+}
+.facts-obj {
+  margin-bottom: 12px;
+}
+
+.facts-solve {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+/* Editable reading title (theme) */
+.sidebar-title {
+  flex: 1;
+  min-width: 0;
+}
+.title-input {
+  width: 100%;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin: 0 0 2px -6px;
+}
+.title-input:hover {
+  border-color: var(--border);
+}
+.title-input:focus {
+  border-color: var(--accent);
+  background: var(--panel-2);
+  outline: none;
+}
+
+/* Numbered legend: badge number ↔ object */
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.legend-row:hover {
+  background: #1c2333;
+}
+.legend-row.sel {
+  background: #25324a;
+}
+.legend-dot {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #0b0e14;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.legend-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  min-width: 0;
+}
+.legend-name {
+  font-size: 13px;
+}
+.legend-text .muted {
+  font-size: 11px;
+}
+.gen-reading {
+  padding: 6px 14px;
+}
+.gen {
+  position: relative;
+}
+.gen-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  width: 300px;
+  max-width: 80vw;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gen-menu .style-free {
+  width: 100%;
+}
+.gen-menu > .primary {
+  margin-top: 4px;
+}
+.facts-features {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  color: #cfd6e4;
+}
+.facts-features li.needs-review {
+  color: #ffcf8a;
+}
+
+/* Project-card grounding chips on the home page */
+.chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.chip-tag {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #25324a;
+  color: #cfd6e4;
+}
+.chip-tag.solve-solved {
+  background: #1c3a2a;
+  color: #9be7b8;
+}
+.chip-tag.solve-failed {
+  background: #5a1a1a;
+  color: #ffd6d6;
+}
+.chip-tag.review {
+  background: #4a3a1a;
+  color: #ffdca8;
+}
+
+.subsection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #222b3d;
+}
+.subsection h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.subsection .muted {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+/* B-class review gate on a feature card */
+.feature-card.needs-review {
+  border-color: #6a531f;
+}
+.review-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: #4a3a1a;
+  color: #ffdca8;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.review-banner button {
+  font-size: 12px;
+  padding: 2px 8px;
 }

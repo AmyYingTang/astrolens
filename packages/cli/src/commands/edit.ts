@@ -9,7 +9,7 @@ export interface EditArgs {
   open: boolean;
 }
 
-/** Open the studio focused on one report.json. The report's directory is the
+/** Open the studio focused on one reading.json. The report's directory is the
  * project (slug = its name), and its parent is the workspace. */
 export async function editReport(args: EditArgs): Promise<void> {
   const reportPath = resolve(args.report);

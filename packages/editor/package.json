@@ -12,10 +12,12 @@
   },
   "files": ["dist"],
   "scripts": {
+    "build": "vite build",
     "build:client": "vite build",
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit"
   },
   "dependencies": {
+    "@astrolens/identify": "workspace:*",
     "@astrolens/reader": "workspace:*",
     "@astrolens/renderer": "workspace:*",
     "@astrolens/schema": "workspace:*",

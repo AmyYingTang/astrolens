@@ -1,0 +1,83 @@
+import type { CatalogClient, CatalogCandidate, RegionQuery } from './types.js';
+import { objectCategory } from './otype.js';
+
+/**
+ * Fan a region query out to several catalog clients (SIMBAD + VizieR) and merge,
+ * collapsing cross-source duplicates of the same object — e.g. the same nebula
+ * catalogued as both "Sh 2-308" and "RCW 11", or a star present in both SIMBAD
+ * and a VizieR table. The survivor keeps the most authoritative name and gains
+ * the others as aliases / catalog ids.
+ */
+
+/** Merge key = the full object category, so an emission nebula is never folded
+ * into a co-located dark cloud or planetary nebula — only true duplicates. */
+function kindOf(c: CatalogCandidate): string {
+  return objectCategory(c.otype) ?? 'other';
+}
+
+/** Approximate angular separation in arcmin (cos-corrected; fine for small fields). */
+function sepArcmin(a: CatalogCandidate, b: CatalogCandidate): number {
+  const dDec = a.dec_deg - b.dec_deg;
+  const dRa = (a.ra_deg - b.ra_deg) * Math.cos((a.dec_deg * Math.PI) / 180);
+  return Math.hypot(dDec, dRa) * 60;
+}
+
+/** Ranking so the survivor of a merge carries the best-known designation. */
+function prestige(c: CatalogCandidate): number {
+  if (c.catalog_ids.messier) return 5;
+  if (c.catalog_ids.ngc || c.catalog_ids.ic) return 4;
+  if (c.catalog_ids.sharpless) return 3.5; // canonical HII name — prefer over a generic SIMBAD id
+  if (c.source.startsWith('SIMBAD')) return 3;
+  return Object.keys(c.catalog_ids).length > 0 ? 2 : 1;
+}
+
+function major(c: CatalogCandidate): number {
+  return c.size_arcmin?.[0] ?? 0;
+}
+
+/** Two same-kind candidates are the same object if their centres are close
+ * relative to their size (generous for extended nebulae, tight for stars). */
+function isDuplicate(a: CatalogCandidate, b: CatalogCandidate): boolean {
+  if (kindOf(a) !== kindOf(b) || kindOf(a) === 'other') return false;
+  const big = Math.max(major(a), major(b));
+  const threshold = Math.max(big > 0 ? 5 : 2, 0.6 * big);
+  return sepArcmin(a, b) <= threshold;
+}
+
+export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[] {
+  const all = lists.flat();
+  // Preferred representative first (prestige, then larger size, then brighter),
+  // so the first kept of a duplicate group is the survivor and later ones fold
+  // into it. The brightness tiebreak matters for close binaries like α Sco A/B:
+  // without it the faint companion can win and then fail the prominence cut.
+  all.sort(
+    (a, b) =>
+      prestige(b) - prestige(a) ||
+      major(b) - major(a) ||
+      (a.mag ?? 99) - (b.mag ?? 99),
+  );
+
+  const kept: CatalogCandidate[] = [];
+  for (const c of all) {
+    const dup = kept.find((o) => isDuplicate(o, c));
+    if (!dup) {
+      kept.push({ ...c, names: [...c.names], catalog_ids: { ...c.catalog_ids } });
+      continue;
+    }
+    for (const n of c.names) if (!dup.names.includes(n)) dup.names.push(n);
+    for (const [k, v] of Object.entries(c.catalog_ids)) if (!dup.catalog_ids[k]) dup.catalog_ids[k] = v;
+    if (major(c) > major(dup)) dup.size_arcmin = c.size_arcmin;
+  }
+  return kept;
+}
+
+export function createCompositeCatalogClient(clients: CatalogClient[]): CatalogClient {
+  return {
+    async region(q: RegionQuery): Promise<CatalogCandidate[]> {
+      const lists = await Promise.all(
+        clients.map((c) => c.region(q).catch(() => [] as CatalogCandidate[])),
+      );
+      return mergeCandidates(lists);
+    },
+  };
+}

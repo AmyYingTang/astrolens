@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { cac } from 'cac';
 import { TOOL_VERSION } from './version.js';
+import { loadEnv } from './env.js';
+import { identifyImage } from './commands/identify.js';
 import { readReport } from './commands/read.js';
 import { renderReport } from './commands/render.js';
 import { editReport } from './commands/edit.js';
@@ -9,13 +11,36 @@ import { studio } from './commands/studio.js';
 const cli = cac('astrolens');
 
 cli
-  .command('read <image>', 'Generate a reading report from a deep-sky image')
+  .command('identify <image>', 'Stage 1: plate-solve + catalog → factsheet.json (no LLM)')
+  .option('--target <name>', 'Target name hint, e.g. "M42" (used on solve failure)')
+  .option('--out <dir>', 'Output directory', { default: '.' })
+  .option('--band <band>', 'broadband | narrowband | unknown', { default: 'unknown' })
+  .option('--starless', 'Mark the image as starless')
+  .option('--top-n <n>', 'Max catalogued objects to keep')
+  .option('--api-key <key>', 'nova API key (defaults to $ASTROMETRY_API_KEY)')
+  .option('--no-cache', 'Force a fresh nova solve (ignore the on-disk solve cache)')
+  .action(async (image: string, options) => {
+    await identifyImage({
+      image,
+      target: options.target,
+      out: options.out,
+      band: options.band,
+      starless: options.starless,
+      topN: options.topN != null ? Number(options.topN) : undefined,
+      apiKey: options.apiKey,
+      cache: options.cache,
+    });
+  });
+
+cli
+  .command('read <image>', 'Full pipeline: identify (factsheet) + reader (reading)')
   .option('--hint <name>', 'Object name hint, e.g. "Sh2-308"')
-  .option('--lang <lang>', 'Output language: zh or en', { default: 'zh' })
+  .option('--lang <lang>', 'Display language: zh or en', { default: 'zh' })
   .option('--out <dir>', 'Output directory', { default: '.' })
   .option('--model <model>', 'Model passed to the claude CLI')
   .option('--style <text>', 'Extra instructions for tone/audience/focus')
-  .option('--no-simbad', 'Skip SIMBAD distance/size enrichment')
+  .option('--api-key <key>', 'nova API key (defaults to $ASTROMETRY_API_KEY)')
+  .option('--no-cache', 'Force a fresh nova solve (ignore the on-disk solve cache)')
   .action(async (image: string, options) => {
     await readReport({
       image,
@@ -24,12 +49,13 @@ cli
       out: options.out,
       model: options.model,
       style: options.style,
-      simbad: options.simbad,
+      apiKey: options.apiKey,
+      cache: options.cache,
     });
   });
 
 cli
-  .command('render <report>', 'Render a report.json to image / embed / poster')
+  .command('render <report>', 'Render a reading.json to image / embed / poster')
   .option('--format <format>', 'annotated | embed | poster | all', { default: 'annotated' })
   .option('--out <dir>', 'Output directory (default: the report directory)')
   .action(async (report: string, options) => {
@@ -37,7 +63,7 @@ cli
   });
 
 cli
-  .command('edit <report>', 'Open the local editor for a report.json')
+  .command('edit <report>', 'Open the local editor for a reading.json')
   .option('--port <port>', 'Port to serve on', { default: 3000 })
   .option('--no-open', 'Do not open the browser automatically')
   .action(async (report: string, options) => {
@@ -58,6 +84,7 @@ cli.version(TOOL_VERSION);
 
 async function main(): Promise<void> {
   try {
+    loadEnv(); // pick up ASTROMETRY_API_KEY etc. from ./.env (shell vars still win)
     cli.parse(process.argv, { run: false });
     await cli.runMatchedCommand();
   } catch (err) {

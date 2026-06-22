@@ -1,9 +1,9 @@
 import type * as React from 'react';
 import { useState } from 'react';
-import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Reading as ReadingData } from '@astrolens/schema';
 
-function paragraphs(f: Feature): string[] {
-  return [f.explanation, f.physics, f.interesting]
+function paragraphs(f: Feature, lang: 'zh' | 'en'): string[] {
+  return [f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
     .filter((s): s is string => !!s)
     .join('\n\n')
     .split(/\n\s*\n+/)
@@ -12,7 +12,7 @@ function paragraphs(f: Feature): string[] {
 }
 
 export interface ReadingProps {
-  report: Report;
+  report: ReadingData;
   imageSrc: string;
   language?: 'zh' | 'en';
   onFeatureClick?: (feature: Feature) => void;
@@ -22,11 +22,12 @@ export interface ReadingProps {
 export function Reading(props: ReadingProps): React.JSX.Element {
   const { report, imageSrc, onFeatureClick, className } = props;
   const [active, setActive] = useState<string | null>(null);
+  const lang = props.language ?? report.display_language;
   const { width, height } = report.image;
   const strokeW = Math.max(2, Math.round(Math.min(width, height) / 300));
   const o = report.object;
 
-  const meta = [o.type, o.stage ? `Stage ${o.stage}` : null, o.constellation]
+  const meta = [o.type[lang], o.stage ? `Stage ${o.stage}` : null, o.constellation]
     .filter(Boolean)
     .join(' · ');
 
@@ -43,8 +44,11 @@ export function Reading(props: ReadingProps): React.JSX.Element {
           {report.features.map((f) => {
             const c = COLOR_PALETTE[f.color_key];
             const { cx, cy, r } = f.circle;
-            const bx = cx + r * 0.7071 + f.badge.offset_x;
-            const by = cy - r * 0.7071 + f.badge.offset_y;
+            const br = f.badge.bubble_r;
+            const clamp = (v: number, lo: number, hi: number): number =>
+              hi < lo ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, v));
+            const bx = clamp(cx + (r + br) * 0.7071 + f.badge.offset_x, br, width - br);
+            const by = clamp(cy - (r + br) * 0.7071 + f.badge.offset_y, br, height - br);
             return (
               <g
                 key={f.id}
@@ -88,9 +92,9 @@ export function Reading(props: ReadingProps): React.JSX.Element {
               }}
             >
               <b>
-                {f.badge.num}. {f.label}
+                {f.badge.num}. {f.label[lang]}
               </b>
-              {paragraphs(f).map((p, i) => (
+              {paragraphs(f, lang).map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
             </div>
@@ -101,7 +105,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
       <div className="ar-panel">
         <h3>{o.name}</h3>
         <div className="ar-meta">{meta}</div>
-        <p className="ar-narr">{report.narrative}</p>
+        <p className="ar-narr">{report.narrative[lang]}</p>
         {report.features.map((f) => (
           <div
             key={f.id}
@@ -112,8 +116,8 @@ export function Reading(props: ReadingProps): React.JSX.Element {
               {f.badge.num}
             </span>
             <div>
-              <b>{f.label}</b>
-              {paragraphs(f).map((p, i) => (
+              <b>{f.label[lang]}</b>
+              {paragraphs(f, lang).map((p, i) => (
                 <p key={i}>{p}</p>
               ))}
             </div>

@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { resolve, dirname, join, basename, extname } from 'node:path';
-import { Report } from '@astrolens/schema';
+import { Reading } from '@astrolens/schema';
 import { renderAnnotated, generateEmbedHtml, renderPoster } from '@astrolens/renderer';
 
 const FORMATS = ['annotated', 'embed', 'poster', 'all'] as const;
@@ -38,7 +38,7 @@ export async function renderReport(args: RenderArgs): Promise<void> {
 
   const reportPath = resolve(args.report);
   const rawReport = await readFile(reportPath, 'utf8');
-  const report = Report.parse(JSON.parse(rawReport));
+  const report = Reading.parse(JSON.parse(rawReport));
   const reportDir = dirname(reportPath);
   const imagePath = resolve(reportDir, report.image.src);
   const outDir = args.out ? resolve(args.out) : reportDir;
@@ -47,7 +47,7 @@ export async function renderReport(args: RenderArgs): Promise<void> {
   const written: string[] = [];
   const slug = slugifyName(report.object.name);
 
-  // Carry the full report.json alongside the rendered image so downstream
+  // Carry the full reading.json alongside the rendered image so downstream
   // consumers (e.g. the gallery site) have the structured metadata — color_key
   // per feature, object info, labels — and don't have to guess from pixels.
   const reportOut = join(outDir, `${slug}.json`);

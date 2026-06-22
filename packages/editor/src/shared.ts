@@ -1,4 +1,4 @@
-import type { Report } from '@astrolens/schema';
+import type { Reading, FactSheet } from '@astrolens/schema';
 
 export interface ProjectSummary {
   slug: string;
@@ -7,10 +7,29 @@ export interface ProjectSummary {
   stage?: number;
   imageName: string;
   features: number;
+  /** Grounding summary from the fact sheet, when present. */
+  solveStatus?: 'solved' | 'user_provided' | 'failed';
+  needsReview?: number;
 }
 
 export interface ProjectsResponse {
   projects: ProjectSummary[];
+}
+
+/** Background create-job lifecycle (POST /api/projects runs async). */
+export type JobState = 'queued' | 'running' | 'done' | 'failed';
+export type JobStage = 'solving' | 'reading' | 'done';
+
+export interface JobStatus {
+  state: JobState;
+  stage?: JobStage;
+  error?: string;
+  warnings?: string[];
+}
+
+/** GET /api/projects/:slug/factsheet */
+export interface FactsheetResponse {
+  factsheet: FactSheet;
 }
 
 /** POST /api/projects — create a new reading from an uploaded image. */
@@ -22,6 +41,8 @@ export interface CreateProjectRequest {
   lang?: 'zh' | 'en';
   /** Extra instructions (tone/audience/focus) appended to the read prompt. */
   style?: string;
+  /** Stage 1 only: identify → factsheet + a stub reading, skipping the LLM. */
+  factsOnly?: boolean;
 }
 
 export interface CreateProjectResponse {
@@ -32,13 +53,13 @@ export interface CreateProjectResponse {
 
 /** GET /api/projects/:slug/report */
 export interface ReportResponse {
-  report: Report;
+  report: Reading;
   imageName: string;
 }
 
 /** POST /api/projects/:slug/report */
 export interface SaveRequest {
-  report: Report;
+  report: Reading;
 }
 
 export interface SaveResponse {

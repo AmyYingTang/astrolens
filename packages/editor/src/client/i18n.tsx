@@ -46,6 +46,32 @@ export interface Strings {
   fmtEmbed: string;
   fmtPoster: string;
   fmtAll: string;
+  stageSolving: string;
+  stageReading: string;
+  reviewSuffix: string;
+  confirmReview: string;
+  needsReviewTitle: string;
+  secIdentify: string;
+  secIdentifyDesc: string;
+  btnIdentify: string;
+  identifying: string;
+  secReading: string;
+  secReadingDesc: string;
+  reidentify: string;
+  reidentifying: string;
+  reidentifyConfirm: string;
+  reidConfirmBtn: string;
+  reidCancel: string;
+  starMagLabel: string;
+  genReading: string;
+  genReadingRunning: string;
+  titleHint: string;
+  gridShow: string;
+  gridHide: string;
+  factsTitle: string;
+  factsSolve: string;
+  factsObjects: string;
+  factsNoneYet: string;
 }
 
 const STRINGS: Record<UiLang, Strings> = {
@@ -92,6 +118,32 @@ const STRINGS: Record<UiLang, Strings> = {
     fmtEmbed: '互动网页 (HTML)',
     fmtPoster: '海报 (PNG)',
     fmtAll: '全部',
+    stageSolving: '正在解像(plate-solve,可能 30 秒到几分钟)…',
+    stageReading: '正在生成双语解读…',
+    reviewSuffix: '待确认',
+    confirmReview: '确认位置',
+    needsReviewTitle: '此标注由识别系统占位(B 类),请拖到正确位置后确认',
+    secIdentify: '① 只识别(看落点)',
+    secIdentifyDesc: '只跑 plate-solve + 查目录,在编辑器里看 factsheet 和 A 类落点;不调用 AI。',
+    btnIdentify: '识别',
+    identifying: '识别中…',
+    secReading: '② AI 解读',
+    secReadingDesc: '在识别基础上让 AI 生成双语解读 + 标注;需要 claude。',
+    reidentify: '重新识别',
+    reidentifying: '识别中…',
+    reidentifyConfirm: '重新识别会覆盖当前标注和已生成的解读文字,不可撤销。',
+    reidConfirmBtn: '确认重新识别',
+    reidCancel: '取消',
+    starMagLabel: '亮星阈值 V <',
+    genReading: '✦ 生成解读',
+    genReadingRunning: '生成解读中…',
+    titleHint: '主题标题(可改),例如改成 Antares 或「天空中的调色盘」',
+    gridShow: '⊞ 显示网格',
+    gridHide: '⊞ 隐藏网格',
+    factsTitle: '事实层 (Facts)',
+    factsSolve: '解像',
+    factsObjects: '目录天体',
+    factsNoneYet: '没有事实层(此项目早于识别阶段)。',
   },
   en: {
     newReading: 'New reading',
@@ -137,6 +189,32 @@ const STRINGS: Record<UiLang, Strings> = {
     fmtEmbed: 'Embed HTML',
     fmtPoster: 'Poster PNG',
     fmtAll: 'All',
+    stageSolving: 'Plate-solving (this can take 30s–a few minutes)…',
+    stageReading: 'Writing the bilingual reading…',
+    reviewSuffix: 'to review',
+    confirmReview: 'Confirm position',
+    needsReviewTitle: 'Placed by the identification stage (B-class); drag to the right spot, then confirm',
+    secIdentify: '① Identify (see placement)',
+    secIdentifyDesc: 'Plate-solve + catalog only — view the fact sheet and A-class placement in the editor. No AI.',
+    btnIdentify: 'Identify',
+    identifying: 'Identifying…',
+    secReading: '② AI reading',
+    secReadingDesc: 'On top of identification, AI writes the bilingual reading + annotations. Needs claude.',
+    reidentify: 'Re-identify',
+    reidentifying: 'Identifying…',
+    reidentifyConfirm: 'Re-identifying overwrites the current annotations and any generated reading text. Cannot be undone.',
+    reidConfirmBtn: 'Re-identify',
+    reidCancel: 'Cancel',
+    starMagLabel: 'Bright-star V <',
+    genReading: '✦ Generate reading',
+    genReadingRunning: 'Writing reading…',
+    titleHint: 'Theme title (editable) — e.g. rename to Antares or "A palette in the sky"',
+    gridShow: '⊞ Show grid',
+    gridHide: '⊞ Hide grid',
+    factsTitle: 'Facts',
+    factsSolve: 'Solve',
+    factsObjects: 'Catalog objects',
+    factsNoneYet: 'No fact sheet (this project predates the identification stage).',
   },
 };
 

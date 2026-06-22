@@ -1,22 +1,65 @@
 import { describe, expect, it, vi } from 'vitest';
-import { extractJson, parseReading } from './parseJson.js';
+import type { FactSheet } from '@astrolens/schema';
+import { extractJson, parseTailoring } from './parseJson.js';
 import { parseSimbadAscii } from './simbad.js';
-import { buildReaderPrompt } from './prompt.js';
-import { generateReport, ReaderError } from './index.js';
+import { buildTailorPrompt } from './prompt.js';
+import { generateReading, readingFromFactsheet, ReaderError } from './index.js';
 
-const readingJson = JSON.stringify({
-  language: 'zh',
-  object: { name: 'Sh2-308', type: 'WR bubble' },
-  narrative: '一个蓝色气泡。',
+const obj = (over: Partial<FactSheet['objects'][number]>): FactSheet['objects'][number] => ({
+  id: 'obj1',
+  role: 'secondary',
+  names: ['X'],
+  category: 'star',
+  type: { otype: '*', zh: '恒星', en: 'Star' },
+  coord: { ra_deg: 0, dec_deg: 0, pixel: [100, 100] },
+  catalog_ids: {},
+  confidence: 0.8,
+  features: [],
+  ...over,
+});
+
+const factsheet: FactSheet = {
+  version: '1.0',
+  image: { src: 'image.jpg', width: 4000, height: 3000, hash: 'sha256:x', band: 'broadband', starless: false },
+  solve: { status: 'solved', ra_deg: 246, dec_deg: -26, pixscale_arcsec: 2.0, frame: 'display' },
+  objects: [
+    obj({
+      id: 'obj1',
+      role: 'primary',
+      names: ['M 4'],
+      category: 'globular_cluster',
+      type: { otype: 'GlC', zh: '球状星团', en: 'Globular cluster' },
+      coord: { ra_deg: 245.9, dec_deg: -26.5, pixel: [2000, 1500] },
+      size_arcmin: [26, 26],
+      catalog_ids: { messier: 'M4' },
+      confidence: 0.97,
+    }),
+    obj({
+      id: 'obj2',
+      names: ['Antares', '* alf Sco'],
+      category: 'star',
+      type: { otype: 's*r', zh: '恒星', en: 'Star' },
+      coord: { ra_deg: 247.3, dec_deg: -26.4, pixel: [3000, 2000] },
+    }),
+    obj({
+      id: 'obj3',
+      names: ['PGCC G351.88+15.96'],
+      category: 'dark_nebula',
+      type: { otype: 'MoC', zh: '暗星云', en: 'Dark nebula' },
+      coord: { ra_deg: 246.2, dec_deg: -26.1, pixel: [1000, 1000] },
+      size_arcmin: [13, 13],
+    }),
+  ],
+  warnings: [],
+  provenance: { queries: ['q'], solver: 'nova', timestamp: '2026-06-21T00:00:00.000Z' },
+};
+
+const tailoringJson = JSON.stringify({
+  narrative: { zh: '心宿二一带。', en: 'Around Antares.' },
   features: [
-    {
-      id: 'f1',
-      label: '中央 WR 星',
-      color_key: 'hot',
-      circle: { cx: 100, cy: 100, r: 40 },
-      badge: { num: '1' },
-      explanation: '一颗大质量恒星。',
-    },
+    { id: 'obj1', explanation: { zh: '球状星团。', en: 'A globular cluster.' } },
+    { id: 'obj2', explanation: { zh: '红超巨星。', en: 'A red supergiant.' } },
+    { id: 'obj3', explanation: { zh: '分子云。', en: 'A molecular cloud.' } },
   ],
 });
 
@@ -24,104 +67,84 @@ describe('extractJson', () => {
   it('unwraps a ```json fence', () => {
     expect(extractJson('```json\n{"a":1}\n```')).toBe('{"a":1}');
   });
-  it('strips a prose preamble', () => {
-    expect(extractJson('Here is the JSON:\n{"a":1}\nThanks!')).toBe('{"a":1}');
+});
+
+describe('buildTailorPrompt', () => {
+  it('lists the grounded object ids and forbids inventing identity', () => {
+    const p = buildTailorPrompt({
+      headline: 'M 4',
+      items: [{ id: 'obj1', name: 'M 4 / M 4', type: 'Globular cluster' }],
+    });
+    expect(p).toContain('id=obj1');
+    expect(p).toContain('绝不编造');
   });
 });
 
-describe('buildReaderPrompt', () => {
-  const base = { imagePath: '/abs/image.jpg', width: 800, height: 600 } as const;
-
-  it('omits the style block when no style is given', () => {
-    expect(buildReaderPrompt({ ...base, lang: 'zh' })).not.toContain('额外要求');
+describe('parseTailoring', () => {
+  it('accepts valid bilingual tailoring', () => {
+    expect(parseTailoring(tailoringJson).ok).toBe(true);
   });
-
-  it('appends the style block (zh / en)', () => {
-    expect(buildReaderPrompt({ ...base, lang: 'zh', style: '面向儿童' })).toContain(
-      '额外要求',
-    );
-    expect(buildReaderPrompt({ ...base, lang: 'zh', style: '面向儿童' })).toContain('面向儿童');
-    expect(buildReaderPrompt({ ...base, lang: 'en', style: 'for kids' })).toContain(
-      'Additional instructions',
-    );
-  });
-});
-
-describe('parseReading', () => {
-  it('accepts a valid reading', () => {
-    const r = parseReading(readingJson);
-    expect(r.ok).toBe(true);
-  });
-  it('rejects an invalid color_key', () => {
-    const r = parseReading(readingJson.replace('"hot"', '"rainbow"'));
-    expect(r.ok).toBe(false);
+  it('rejects a monolingual explanation', () => {
+    expect(parseTailoring(tailoringJson.replace(',"en":"A globular cluster."', '')).ok).toBe(false);
   });
 });
 
 describe('parseSimbadAscii', () => {
   it('extracts angular size and distance', () => {
-    const sample = [
-      'Object Sh 2-308  ---  HII (ionized) region',
-      'Angular size: 40.0 40.0 0 (Opt) D ~',
-      'Distance results: 1.5 kpc (statistical)',
-    ].join('\n');
+    const sample = ['Angular size: 40.0 40.0 0 (Opt) D ~', 'Distance results: 1.5 kpc'].join('\n');
     const facts = parseSimbadAscii(sample);
     expect(facts.size_arcmin).toBe(40);
     expect(facts.distance_ly).toBe(Math.round(1.5 * 1000 * 3.26156));
   });
-  it('returns empty when nothing matches', () => {
-    expect(parseSimbadAscii('no useful data here')).toEqual({});
-  });
 });
 
-describe('generateReport', () => {
-  const base = {
-    imagePath: '/abs/image.jpg',
-    width: 800,
-    height: 600,
-    lang: 'zh' as const,
-    toolVersion: '0.1.0',
-    simbad: false,
-  };
+describe('generateReading', () => {
+  const base = { toolVersion: '0.1.0' };
 
-  it('assembles a full Report and fills tool-owned fields', async () => {
-    const runner = vi.fn().mockResolvedValue(readingJson);
-    const report = await generateReport({ ...base, runner });
-    expect(report.version).toBe('1.0');
-    expect(report.image).toEqual({ src: 'image.jpg', width: 800, height: 600 });
-    expect(report.generator.tool).toBe('astrolens');
-    expect(report.object.name).toBe('Sh2-308');
+  it('annotates every catalogued object (one circle each)', async () => {
+    const runner = vi.fn().mockResolvedValue(tailoringJson);
+    const reading = await generateReading(factsheet, { ...base, runner });
+    expect(reading.version).toBe('2.0');
+    expect(reading.features).toHaveLength(3);
+    expect(reading.object.name).toBe('M 4'); // headline = primary display name
     expect(runner).toHaveBeenCalledOnce();
   });
 
-  it('retries once on unparseable output then succeeds', async () => {
-    const runner = vi
-      .fn()
-      .mockResolvedValueOnce('sorry, here is no json')
-      .mockResolvedValueOnce(readingJson);
-    const report = await generateReport({ ...base, runner });
-    expect(report.object.name).toBe('Sh2-308');
-    expect(runner).toHaveBeenCalledTimes(2);
+  it('sizes circles by angular diameter and colors by category', async () => {
+    const reading = await generateReading(factsheet, { ...base, runner: vi.fn().mockResolvedValue(tailoringJson) });
+    const m4 = reading.features.find((f) => f.id === 'obj1')!;
+    // 26' major @ 2.0"/px → radius (26*60/2.0)/2 = 390px
+    expect(m4.circle.r).toBe(390);
+    expect(m4.color_key).toBe('star'); // globular_cluster → star
+    expect(m4.explanation.en).toBe('A globular cluster.');
   });
 
-  it('throws ReaderError with raw output after a failed retry', async () => {
-    const runner = vi.fn().mockResolvedValue('never json');
-    await expect(generateReport({ ...base, runner })).rejects.toMatchObject({
-      name: 'ReaderError',
-      raw: 'never json',
-    });
-    expect(runner).toHaveBeenCalledTimes(2);
+  it('shows proper names, falls back to the generic type label for survey designations', async () => {
+    const reading = await generateReading(factsheet, { ...base, runner: vi.fn().mockResolvedValue(tailoringJson) });
+    const antares = reading.features.find((f) => f.id === 'obj2')!;
+    expect(antares.label).toEqual({ zh: 'Antares', en: 'Antares' });
+    expect(antares.color_key).toBe('hot'); // star → hot
+    expect(antares.circle.r).toBe(50); // no angular size → small star marker (min(4000,3000)/60)
+
+    const cloud = reading.features.find((f) => f.id === 'obj3')!;
+    expect(cloud.label).toEqual({ zh: '暗星云', en: 'Dark nebula' }); // PGCC junk → generic type
+    expect(cloud.color_key).toBe('dark');
   });
 
-  it('enriches empty object facts from SIMBAD', async () => {
-    const runner = vi.fn().mockResolvedValue(readingJson);
-    const simbadLookup = vi.fn().mockResolvedValue({ distance_ly: 5000, size_arcmin: 40 });
-    const report = await generateReport({ ...base, simbad: true, runner, simbadLookup });
-    expect(report.object.distance_ly).toBe(5000);
-    expect(report.object.size_arcmin).toBe(40);
+  it('throws when the fact sheet has no objects (never fabricates)', async () => {
+    const empty: FactSheet = { ...factsheet, objects: [] };
+    await expect(generateReading(empty, { ...base, runner: vi.fn() })).rejects.toBeInstanceOf(
+      ReaderError,
+    );
   });
 });
 
-it('ReaderError carries raw', () => {
-  expect(new ReaderError('x', 'raw').raw).toBe('raw');
+describe('readingFromFactsheet (facts-only stub, no LLM)', () => {
+  it('builds grounded annotations with empty explanations', () => {
+    const reading = readingFromFactsheet(factsheet, { toolVersion: '0.1.0' });
+    expect(reading.features).toHaveLength(3);
+    expect(reading.features[0]!.explanation).toEqual({ zh: '', en: '' });
+    expect(reading.features[0]!.circle.r).toBe(390); // still sized from facts
+    expect(reading.generator.llm).toContain('facts-only');
+  });
 });

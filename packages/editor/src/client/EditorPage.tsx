@@ -1,12 +1,23 @@
 import type * as React from 'react';
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { Report } from '@astrolens/schema';
+import type { Reading, FactSheet } from '@astrolens/schema';
 import type { ExportFormat } from '../shared.js';
-import { exportProject, fetchReport, imageUrl, saveReport } from './api.js';
+import {
+  exportProject,
+  fetchFactsheet,
+  fetchJob,
+  fetchReport,
+  generateReading,
+  imageUrl,
+  reidentify,
+  saveReport,
+} from './api.js';
 import { initState, reducer } from './state.js';
 import { Canvas } from './Canvas.js';
 import { Sidebar } from './Sidebar.js';
+import { FactsPanel } from './FactsPanel.js';
 import { LangToggle, useUi } from './i18n.js';
+import { PRESETS } from './presets.js';
 
 const EXPORT_ORDER: ExportFormat[] = ['annotated', 'embed', 'poster', 'all'];
 
@@ -40,15 +51,21 @@ function downloadBlob(blob: Blob, name: string): void {
 
 export function EditorPage({ slug }: { slug: string }): React.JSX.Element {
   const { t } = useUi();
-  const [data, setData] = useState<{ report: Report; imageName: string } | null>(null);
+  const [data, setData] = useState<{ report: Reading; imageName: string } | null>(null);
+  const [factsheet, setFactsheet] = useState<FactSheet | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setData(null);
+    setFactsheet(null);
     setError(null);
     fetchReport(slug)
       .then((r) => setData({ report: r.report, imageName: r.imageName }))
       .catch((e: unknown) => setError((e as Error).message));
+    // best-effort: older projects may have no fact sheet
+    fetchFactsheet(slug)
+      .then((r) => setFactsheet(r.factsheet))
+      .catch(() => setFactsheet(null));
   }, [slug]);
 
   if (error)
@@ -58,19 +75,29 @@ export function EditorPage({ slug }: { slug: string }): React.JSX.Element {
       </div>
     );
   if (!data) return <div className="status">{t.loading}</div>;
-  return <Editor key={slug} slug={slug} initial={data.report} imageName={data.imageName} />;
+  return (
+    <Editor
+      key={slug}
+      slug={slug}
+      initial={data.report}
+      imageName={data.imageName}
+      factsheet={factsheet}
+    />
+  );
 }
 
 function Editor({
   slug,
   initial,
   imageName,
+  factsheet,
 }: {
   slug: string;
-  initial: Report;
+  initial: Reading;
   imageName: string;
+  factsheet: FactSheet | null;
 }): React.JSX.Element {
-  const { t } = useUi();
+  const { t, lang: uiLang } = useUi();
   const exportLabels: Record<ExportFormat, string> = {
     annotated: t.fmtAnnotated,
     embed: t.fmtEmbed,
@@ -82,6 +109,68 @@ function Editor({
   stateRef.current = state;
   const [saveError, setSaveError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [factsCollapsed, setFactsCollapsed] = useState(false);
+  const [reidentifying, setReidentifying] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [genMenuOpen, setGenMenuOpen] = useState(false);
+  const [presetIds, setPresetIds] = useState<Set<string>>(new Set());
+  const [styleFree, setStyleFree] = useState('');
+
+  const togglePreset = (id: string): void =>
+    setPresetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const buildTone = (): string | undefined => {
+    const parts = PRESETS.filter((p) => presetIds.has(p.id)).map((p) =>
+      uiLang === 'en' ? p.textEn : p.textZh,
+    );
+    if (styleFree.trim()) parts.push(styleFree.trim());
+    return parts.join('\n') || undefined;
+  };
+  const appRef = useRef<HTMLDivElement>(null);
+  const [canvasW, setCanvasW] = useState<number | null>(null); // null = default proportions
+  const [factsW, setFactsW] = useState<number | null>(null); // null = default 20%
+
+  const factsPx = (rectWidth: number): number =>
+    factsCollapsed ? 36 : (factsW ?? rectWidth * 0.2);
+
+  // Drag the facts | image boundary.
+  const startDragFacts = (e: React.MouseEvent): void => {
+    e.preventDefault();
+    const move = (ev: MouseEvent): void => {
+      const rect = appRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setFactsW(Math.min(rect.width * 0.5, Math.max(160, ev.clientX - rect.left)));
+    };
+    const up = (): void => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  // Drag the image | text boundary.
+  const startDrag = (e: React.MouseEvent): void => {
+    e.preventDefault();
+    const move = (ev: MouseEvent): void => {
+      const rect = appRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const fW = factsPx(rect.width);
+      const w = Math.min(rect.width - fW - 320, Math.max(240, ev.clientX - rect.left - fW));
+      setCanvasW(w);
+    };
+    const up = (): void => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exported, setExported] = useState<{ dir: string; files: string[] } | null>(null);
   const [saveMode, setSaveModeState] = useState<SaveMode>(
@@ -101,6 +190,44 @@ function Editor({
       setSaveError((e as Error).message);
     }
   }, [slug]);
+
+  const doGenerate = async (tone?: string): Promise<void> => {
+    setGenMenuOpen(false);
+    setGenerating(true);
+    setSaveError(null);
+    try {
+      if (stateRef.current.dirty) await doSave(); // persist reviewed annotations first
+      await generateReading(slug, tone);
+      for (;;) {
+        const s = await fetchJob(slug);
+        if (s.state === 'done') break;
+        if (s.state === 'failed') throw new Error(s.error ?? 'reading failed');
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      location.reload(); // reload to show the AI explanations
+    } catch (e) {
+      setSaveError((e as Error).message);
+      setGenerating(false);
+    }
+  };
+
+  const doReidentify = async (opts: { starMagMax?: number }): Promise<void> => {
+    setReidentifying(true);
+    setSaveError(null);
+    try {
+      await reidentify(slug, opts); // re-run Stage 1 on the stored image
+      for (;;) {
+        const s = await fetchJob(slug);
+        if (s.state === 'done') break;
+        if (s.state === 'failed') throw new Error(s.error ?? 'identification failed');
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      location.reload(); // reload to pick up the fresh factsheet + reading
+    } catch (e) {
+      setSaveError((e as Error).message);
+      setReidentifying(false);
+    }
+  };
 
   useEffect(() => {
     if (!state.dirty) return;
@@ -233,51 +360,112 @@ function Editor({
         </a>
         <span className="toolbar-title">{state.report.object.name}</span>
         <LangToggle />
-        <div className="export">
-          <button onClick={() => setMenuOpen((v) => !v)} disabled={exporting !== null}>
-            {exporting ? `${t.exporting} (${exporting})` : `${t.exportLabel} ▾`}
-          </button>
-          {menuOpen && (
-            <div className="export-menu">
-              <div className="mode-row">
-                <button
-                  className={saveMode === 'folder' ? 'active' : ''}
-                  onClick={() => setSaveMode('folder')}
-                >
-                  {t.saveModeFolder}
-                </button>
-                <button
-                  className={saveMode === 'download' ? 'active' : ''}
-                  onClick={() => setSaveMode('download')}
-                >
-                  {t.saveModeDownload}
-                </button>
-              </div>
-              {EXPORT_ORDER.map((format) => (
-                <button key={format} onClick={() => void runExport(format)}>
-                  {exportLabels[format]}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </header>
 
-      <div className="app">
+      <div className="app" ref={appRef}>
+        <FactsPanel
+          reading={state.report}
+          factsheet={factsheet}
+          selectedId={state.selectedId}
+          onSelect={(id) => dispatch({ type: 'select', id })}
+          collapsed={factsCollapsed}
+          onToggleCollapse={() => setFactsCollapsed((v) => !v)}
+          onReidentify={(opts) => void doReidentify(opts)}
+          reidentifying={reidentifying}
+          style={!factsCollapsed && factsW != null ? { flex: `0 0 ${factsW}px` } : undefined}
+        />
+        {!factsCollapsed && <div className="divider" onMouseDown={startDragFacts} title="拖动调整 facts / 图像宽度" />}
         <Canvas
           report={state.report}
           selectedId={state.selectedId}
           dispatch={dispatch}
           imageUrl={imageUrl(slug)}
+          style={canvasW != null ? { flex: `0 0 ${canvasW}px` } : undefined}
+          gridWcs={factsheet?.solve.wcs ?? null}
+          showGrid={showGrid}
+          onToggleGrid={() => setShowGrid((v) => !v)}
         />
-        <Sidebar
-          report={state.report}
-          imageName={imageName}
-          selectedId={state.selectedId}
-          dirty={state.dirty}
-          dispatch={dispatch}
-          onSave={() => void doSave()}
-        />
+        <div className="divider" onMouseDown={startDrag} title="拖动调整图像 / 文字宽度" />
+        <div className="text-col" style={canvasW != null ? { flex: '1 1 0' } : undefined}>
+          <div className="text-actions">
+            <div className="gen">
+              <button
+                className="primary gen-reading"
+                onClick={() => setGenMenuOpen((v) => !v)}
+                disabled={generating}
+              >
+                {generating ? t.genReadingRunning : `${t.genReading} ▾`}
+              </button>
+              {genMenuOpen && (
+                <div className="gen-menu">
+                  <span className="field-label">{t.styleLabel}</span>
+                  {(['audience', 'focus'] as const).map((group) => (
+                    <div className="chip-group" key={group}>
+                      <span className="chip-group-label">
+                        {group === 'audience' ? t.audienceLabel : t.focusLabel}
+                      </span>
+                      {PRESETS.filter((p) => p.group === group).map((p) => (
+                        <button
+                          type="button"
+                          key={p.id}
+                          className={`chip${presetIds.has(p.id) ? ' active' : ''}`}
+                          onClick={() => togglePreset(p.id)}
+                        >
+                          {uiLang === 'zh' ? p.labelZh : p.labelEn}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  <input
+                    className="style-free"
+                    placeholder={t.styleFreePlaceholder}
+                    value={styleFree}
+                    onChange={(e) => setStyleFree(e.target.value)}
+                  />
+                  <button className="primary" onClick={() => void doGenerate(buildTone())}>
+                    {t.genReading}
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="export">
+              <button onClick={() => setMenuOpen((v) => !v)} disabled={exporting !== null}>
+                {exporting ? `${t.exporting} (${exporting})` : `${t.exportLabel} ▾`}
+              </button>
+              {menuOpen && (
+                <div className="export-menu">
+                  <div className="mode-row">
+                    <button
+                      className={saveMode === 'folder' ? 'active' : ''}
+                      onClick={() => setSaveMode('folder')}
+                    >
+                      {t.saveModeFolder}
+                    </button>
+                    <button
+                      className={saveMode === 'download' ? 'active' : ''}
+                      onClick={() => setSaveMode('download')}
+                    >
+                      {t.saveModeDownload}
+                    </button>
+                  </div>
+                  {EXPORT_ORDER.map((format) => (
+                    <button key={format} onClick={() => void runExport(format)}>
+                      {exportLabels[format]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <Sidebar
+            report={state.report}
+            imageName={imageName}
+            selectedId={state.selectedId}
+            dirty={state.dirty}
+            dispatch={dispatch}
+            onSave={() => void doSave()}
+          />
+        </div>
       </div>
 
       {exported && (
@@ -296,6 +484,15 @@ function Editor({
         </div>
       )}
       {saveError && <div className="save-error">{t.errorLabel}: {saveError}</div>}
+
+      {(reidentifying || generating) && (
+        <div className="overlay">
+          <div className="overlay-box">
+            {generating ? t.genReadingRunning : t.reidentifying}
+            <p className="muted">{generating ? t.stageReading : t.stageSolving}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

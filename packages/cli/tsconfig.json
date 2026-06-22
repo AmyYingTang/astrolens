@@ -8,6 +8,7 @@
   "exclude": ["src/**/*.test.ts"],
   "references": [
     { "path": "../schema" },
+    { "path": "../identify" },
     { "path": "../reader" },
     { "path": "../renderer" },
     { "path": "../editor" }

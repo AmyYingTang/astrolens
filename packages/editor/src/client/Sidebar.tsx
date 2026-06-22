@@ -1,15 +1,16 @@
 import type * as React from 'react';
-import { ColorKey, COLOR_PALETTE, type Report } from '@astrolens/schema';
+import { ColorKey, COLOR_PALETTE, type Reading } from '@astrolens/schema';
 import type { Action } from './state.js';
 import { useUi } from './i18n.js';
 
 interface Props {
-  report: Report;
+  report: Reading;
   imageName: string;
   selectedId: string | null;
   dirty: boolean;
   dispatch: React.Dispatch<Action>;
   onSave: () => void;
+  style?: React.CSSProperties;
 }
 
 export function Sidebar({
@@ -19,17 +20,23 @@ export function Sidebar({
   dirty,
   dispatch,
   onSave,
+  style,
 }: Props): React.JSX.Element {
-  const { t } = useUi();
+  const { t, lang } = useUi();
   const obj = report.object;
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" style={style}>
       <header className="sidebar-head">
-        <div>
-          <h1>{obj.name}</h1>
+        <div className="sidebar-title">
+          <input
+            className="title-input"
+            value={obj.name}
+            title={t.titleHint}
+            onFocus={() => dispatch({ type: 'beginChange' })}
+            onChange={(e) => dispatch({ type: 'setObjectName', value: e.target.value, commit: false })}
+          />
           <p className="muted">
-            {obj.type}
-            {obj.stage ? ` · ${t.stagePrefix} ${obj.stage}` : ''} · {imageName}
+            {report.features.length} {t.featuresSuffix} · {imageName}
           </p>
         </div>
         <button className="save" onClick={onSave} disabled={!dirty}>
@@ -41,11 +48,11 @@ export function Sidebar({
         <label className="field-label">{t.narrative}</label>
         <textarea
           className="narrative"
-          value={report.narrative}
+          value={report.narrative[lang]}
           rows={5}
           onFocus={() => dispatch({ type: 'beginChange' })}
           onChange={(e) =>
-            dispatch({ type: 'setNarrative', value: e.target.value, commit: false })
+            dispatch({ type: 'setNarrative', lang, value: e.target.value, commit: false })
           }
         />
       </section>
@@ -63,19 +70,27 @@ export function Sidebar({
           return (
             <div
               key={f.id}
-              className={`feature-card${selected ? ' selected' : ''}`}
+              className={`feature-card${selected ? ' selected' : ''}${f.needs_human_review ? ' needs-review' : ''}`}
               onMouseDown={() => dispatch({ type: 'select', id: f.id })}
             >
+              {f.needs_human_review && (
+                <div className="review-banner" title={t.needsReviewTitle}>
+                  <span>⚠ {t.reviewSuffix}</span>
+                  <button onClick={() => dispatch({ type: 'confirmFeature', id: f.id })}>
+                    {t.confirmReview}
+                  </button>
+                </div>
+              )}
               <div className="feature-row">
                 <span className="badge-dot" style={{ background: COLOR_PALETTE[f.color_key].badge }}>
                   {f.badge.num}
                 </span>
                 <input
                   className="label-input"
-                  value={f.label}
+                  value={f.label[lang]}
                   onFocus={() => dispatch({ type: 'beginChange' })}
                   onChange={(e) =>
-                    dispatch({ type: 'setFeatureText', id: f.id, field: 'label', value: e.target.value, commit: false })
+                    dispatch({ type: 'setLabel', id: f.id, lang, value: e.target.value, commit: false })
                   }
                 />
                 <button
@@ -113,12 +128,14 @@ export function Sidebar({
 
               <textarea
                 className="explanation"
-                value={[f.explanation, f.physics, f.interesting].filter(Boolean).join('\n\n')}
+                value={[f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
+                  .filter(Boolean)
+                  .join('\n\n')}
                 rows={7}
                 placeholder={t.phExplanation}
                 onFocus={() => dispatch({ type: 'beginChange' })}
                 onChange={(e) =>
-                  dispatch({ type: 'setFeatureBody', id: f.id, value: e.target.value, commit: false })
+                  dispatch({ type: 'setFeatureBody', id: f.id, lang, value: e.target.value, commit: false })
                 }
               />
             </div>

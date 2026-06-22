@@ -1,7 +1,7 @@
-import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Reading } from '@astrolens/schema';
 
-function paragraphs(f: Feature): string[] {
-  return [f.explanation, f.physics, f.interesting]
+function paragraphs(f: Feature, lang: 'zh' | 'en'): string[] {
+  return [f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
     .filter((s): s is string => !!s)
     .join('\n\n')
     .split(/\n\s*\n+/)
@@ -23,16 +23,17 @@ function esc(s: string): string {
 }
 
 /** Build a single self-contained, interactive embed.html for a report. */
-export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
+export function generateEmbedHtml(report: Reading, opts: EmbedOptions): string {
   const { width, height } = report.image;
+  const lang = report.display_language;
   const strokeW = Math.max(2, Math.round(Math.min(width, height) / 400));
 
   const overlay = report.features
     .map((f) => {
       const c = COLOR_PALETTE[f.color_key];
       const { cx, cy, r } = f.circle;
-      const bx = cx + r * 0.7071 + f.badge.offset_x;
-      const by = cy - r * 0.7071 + f.badge.offset_y;
+      const bx = cx + (r + f.badge.bubble_r) * 0.7071 + f.badge.offset_x;
+      const by = cy - (r + f.badge.bubble_r) * 0.7071 + f.badge.offset_y;
       const fs = f.badge.bubble_r * 1.1;
       return `<g class="al-feat" data-f="${esc(f.id)}">
   <circle class="al-circle" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.stroke}" stroke-width="${strokeW}"/>
@@ -46,9 +47,9 @@ export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
     .map((f) => {
       const left = ((f.circle.cx / width) * 100).toFixed(2);
       const top = ((f.circle.cy / height) * 100).toFixed(2);
-      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
+      const body = paragraphs(f, lang).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<div class="al-tip" data-f="${esc(f.id)}" style="left:${left}%;top:${top}%">
-  <b>${esc(f.badge.num)}. ${esc(f.label)}</b>${body}
+  <b>${esc(f.badge.num)}. ${esc(f.label[lang])}</b>${body}
 </div>`;
     })
     .join('\n');
@@ -56,23 +57,18 @@ export function generateEmbedHtml(report: Report, opts: EmbedOptions): string {
   const panel = report.features
     .map((f) => {
       const c = COLOR_PALETTE[f.color_key];
-      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
+      const body = paragraphs(f, lang).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<div class="al-feature" data-f="${esc(f.id)}">
   <span class="al-dot" style="background:${c.badge}">${esc(f.badge.num)}</span>
-  <div><b>${esc(f.label)}</b>${body}</div>
+  <div><b>${esc(f.label[lang])}</b>${body}</div>
 </div>`;
     })
     .join('\n');
 
   const o = report.object;
-  const stagePrefix = report.language === 'zh' ? '阶段' : 'Stage';
-  const meta = [o.type, o.stage ? `${stagePrefix} ${o.stage}` : null, o.constellation]
-    .filter(Boolean)
-    .map((x) => esc(x as string))
-    .join(' · ');
 
   return `<!doctype html>
-<html lang="${esc(report.language)}">
+<html lang="${esc(lang)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -118,8 +114,7 @@ ${tips}
   </div>
   <div class="al-panel">
     <h3>${esc(o.name)}</h3>
-    <div class="al-meta">${meta}</div>
-    <p class="al-narr">${esc(report.narrative)}</p>
+    <p class="al-narr">${esc(report.narrative[lang])}</p>
 ${panel}
   </div>
 </div>

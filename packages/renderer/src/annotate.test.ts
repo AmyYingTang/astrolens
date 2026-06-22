@@ -1,35 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import type { Report } from '@astrolens/schema';
+import type { Reading } from '@astrolens/schema';
 import { buildOverlaySvg } from './annotate.js';
 
 const report = {
-  version: '1.0',
+  version: '2.0',
   image: { src: 'image.jpg', width: 1000, height: 800 },
-  language: 'zh',
-  object: { name: 'Sh2-308', aliases: [], type: 'WR bubble' },
-  narrative: 'test',
+  display_language: 'zh',
+  object: { name: 'Sh2-308', aliases: [], type: { zh: 'WR 气泡', en: 'WR bubble' } },
+  narrative: { zh: '测试', en: 'test' },
   features: [
     {
       id: 'f1',
-      label: 'a',
+      fact_ref: null,
+      label: { zh: 'a', en: 'a' },
       color_key: 'hot',
       circle: { cx: 500, cy: 400, r: 100 },
       badge: { num: '1', offset_x: 0, offset_y: 0, bubble_r: 30 },
-      explanation: 'x',
+      explanation: { zh: 'x', en: 'x' },
+      needs_human_review: false,
     },
     {
       id: 'f2',
-      label: 'b',
+      fact_ref: null,
+      label: { zh: 'b', en: 'b' },
       color_key: 'shock',
       circle: { cx: 200, cy: 200, r: 50 },
       badge: { num: '2', offset_x: 10, offset_y: -10, bubble_r: 30 },
-      explanation: 'y',
+      explanation: { zh: 'y', en: 'y' },
+      needs_human_review: false,
     },
   ],
   extra_facts: [],
   created_at: '2026-05-27T00:00:00.000Z',
   generator: { tool: 'astrolens', tool_version: '0.1.0', llm: 'claude' },
-} satisfies Report;
+} satisfies Reading;
 
 describe('buildOverlaySvg', () => {
   it('sizes the svg to the image', () => {

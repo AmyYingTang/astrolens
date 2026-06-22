@@ -1,9 +1,9 @@
 import { join } from 'node:path';
-import { COLOR_PALETTE, type Feature, type Report } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Reading } from '@astrolens/schema';
 import { buildOverlaySvg } from './annotate.js';
 
-function paragraphs(f: Feature): string[] {
-  return [f.explanation, f.physics, f.interesting]
+function paragraphs(f: Feature, lang: 'zh' | 'en'): string[] {
+  return [f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
     .filter((s): s is string => !!s)
     .join('\n\n')
     .split(/\n\s*\n+/)
@@ -40,33 +40,23 @@ const POSTER_STRINGS = {
 
 /** Static poster HTML: image + overlay + reading text. Responsive layout — the
  * viewport width chosen at screenshot time selects portrait vs landscape. */
-export function buildPosterHtml(report: Report, imageDataUri: string): string {
+export function buildPosterHtml(report: Reading, imageDataUri: string): string {
   const o = report.object;
-  const s = POSTER_STRINGS[report.language];
-  const meta = [
-    o.type,
-    o.stage ? s.stage(o.stage) : null,
-    o.constellation,
-    o.distance_ly ? s.distance(o.distance_ly) : null,
-    o.size_arcmin ? s.size(o.size_arcmin) : null,
-  ]
-    .filter(Boolean)
-    .map((x) => esc(x as string))
-    .join('  ·  ');
+  const lang = report.display_language;
+  const s = POSTER_STRINGS[lang];
 
   const features = report.features
     .map((f) => {
       const c = COLOR_PALETTE[f.color_key];
-      const body = paragraphs(f).map((p) => `<p>${esc(p)}</p>`).join('');
+      const body = paragraphs(f, lang).map((p) => `<p>${esc(p)}</p>`).join('');
       return `<li><span class="dot" style="background:${c.badge}">${esc(f.badge.num)}</span>
-        <div><b>${esc(f.label)}</b>${body}</div></li>`;
+        <div><b>${esc(f.label[lang])}</b>${body}</div></li>`;
     })
     .join('');
 
-  const facts = report.extra_facts.map((x) => `<li>${esc(x)}</li>`).join('');
-  const aliases = o.aliases.length ? `<div class="aliases">${o.aliases.map(esc).join(' · ')}</div>` : '';
+  const facts = report.extra_facts.map((x) => `<li>${esc(x[lang])}</li>`).join('');
 
-  return `<!doctype html><html lang="${esc(report.language)}"><head><meta charset="utf-8">
+  return `<!doctype html><html lang="${esc(lang)}"><head><meta charset="utf-8">
 <style>
   :root{--bg:#070a10;--text:#e6e9f0;--muted:#8a93a8;--line:#222b3d;}
   *{box-sizing:border-box;}
@@ -97,11 +87,11 @@ export function buildPosterHtml(report: Report, imageDataUri: string): string {
     .stage,.panel{flex:1 1 100%;width:100%;}.panel{margin-top:8px;}}
 </style></head><body>
 <div class="root">
-  <header><h1>${esc(o.name)}</h1><div class="meta">${meta}</div>${aliases}</header>
+  <header><h1>${esc(o.name)}</h1></header>
   <div class="poster">
     <div class="stage"><img src="${imageDataUri}" alt="${esc(o.name)}">${buildOverlaySvg(report)}</div>
     <div class="panel">
-      <p class="label">${s.overview}</p><p class="narrative">${esc(report.narrative)}</p>
+      <p class="label">${s.overview}</p><p class="narrative">${esc(report.narrative[lang])}</p>
       <p class="label">${s.features}</p><ul class="features">${features}</ul>
       ${facts ? `<p class="label">${s.facts}</p><ul class="facts">${facts}</ul>` : ''}
     </div>
@@ -121,7 +111,7 @@ export interface PosterBuffer {
 
 /** Render the poster PNG bytes per layout via Puppeteer. */
 export async function renderPosterBuffers(opts: {
-  report: Report;
+  report: Reading;
   imageDataUri: string;
   layouts?: PosterLayout[];
 }): Promise<PosterBuffer[]> {
@@ -149,7 +139,7 @@ export async function renderPosterBuffers(opts: {
 }
 
 export interface RenderPosterOptions {
-  report: Report;
+  report: Reading;
   imageDataUri: string;
   outDir: string;
   layouts?: PosterLayout[];

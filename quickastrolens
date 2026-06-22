@@ -2,25 +2,35 @@
 #
 # astrolens 便捷运行脚本
 #
-#   ./quickastrolens                             打开 studio(首页:新读图 / 打开已有)
-#   ./quickastrolens setup                       安装依赖并构建所有包(首次使用)
-#   ./quickastrolens build                       重新构建
-#   ./quickastrolens read <图片> [对象名] [语言]   读图 + 渲染,一步到位
-#   ./quickastrolens render <report.json> [格式]  渲染 annotated|embed|poster|all
-#   ./quickastrolens edit <report.json> [端口]    打开本地编辑器,浏览器里微调圈和文字
-#   ./quickastrolens help                        显示帮助
-#
-# 示例:
-#   ./quickastrolens setup
-#   ./quickastrolens read testimage/SH2-308.jpg "Sh2-308"
-#   ./quickastrolens edit out/SH2-308/report.json
-#
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLI="$ROOT/packages/cli/dist/index.js"
 
 cd "$ROOT"
+
+usage() {
+  cat <<'EOF'
+astrolens 便捷运行脚本
+
+  ./quickastrolens                              打开 studio(首页:新建 / 打开已有)
+  ./quickastrolens setup                        安装依赖并构建所有包(首次使用)
+  ./quickastrolens build                        重新构建
+  ./quickastrolens identify <图片> [对象名]       只识别(plate-solve+查目录)→ factsheet.json
+  ./quickastrolens read <图片> [对象名] [语言]    识别 + AI 解读 + 渲染,一步到位
+  ./quickastrolens render <reading.json> [格式]  渲染 annotated|embed|poster|all
+  ./quickastrolens edit <reading.json> [端口]    打开本地编辑器,浏览器里微调圈和文字
+  ./quickastrolens help                         显示帮助
+
+提示:把 ASTROMETRY_API_KEY 放进仓库根的 .env(identify / read / studio 都会自动读)。
+
+示例:
+  ./quickastrolens setup
+  ./quickastrolens identify new/NGC3372_annotated.jpg "NGC 3372"
+  ./quickastrolens read new/NGC3372_annotated.jpg "NGC 3372"
+  ./quickastrolens edit out/NGC3372_annotated/reading.json
+EOF
+}
 
 ensure_pnpm() {
   if ! command -v pnpm >/dev/null 2>&1; then
@@ -37,10 +47,6 @@ ensure_built() {
   fi
 }
 
-usage() {
-  sed -n '3,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
-}
-
 cmd="${1:-studio}"
 case "$cmd" in
   studio)
@@ -54,12 +60,32 @@ case "$cmd" in
     pnpm install
     echo "==> pnpm build"
     pnpm build
-    echo "==> 完成。试试: ./quickastrolens read testimage/SH2-308.jpg \"Sh2-308\""
+    echo "==> 完成。把 key 放进 .env,然后试试: ./quickastrolens identify new/NGC3372_annotated.jpg"
     ;;
 
   build)
     ensure_pnpm
     pnpm build
+    ;;
+
+  identify)
+    shift
+    if [ $# -lt 1 ]; then
+      echo "用法: ./quickastrolens identify <图片> [对象名]" >&2
+      exit 1
+    fi
+    ensure_built
+    image="$1"
+    hint="${2:-}"
+    base="$(basename "$image")"
+    name="${base%.*}"
+    out="$ROOT/out/$name"
+    args=(identify "$image" --out "$out")
+    if [ -n "$hint" ]; then
+      args+=(--target "$hint")
+    fi
+    echo "==> 识别: $image -> $out/factsheet.json"
+    node "$CLI" "${args[@]}"
     ;;
 
   read)
@@ -81,17 +107,21 @@ case "$cmd" in
       args+=(--hint "$hint")
     fi
 
-    echo "==> 读图: $image -> $out/report.json"
+    echo "==> 读图: $image -> $out/reading.json"
     node "$CLI" "${args[@]}"
-    echo "==> 渲染标注图"
-    node "$CLI" render "$out/report.json"
-    echo "==> 完成: $out/annotated.jpg"
+    if [ -f "$out/reading.json" ]; then
+      echo "==> 渲染标注图"
+      node "$CLI" render "$out/reading.json"
+      echo "==> 完成: $out"
+    else
+      echo "==> 未生成 reading(无接地天体);见 $out/factsheet.json"
+    fi
     ;;
 
   render)
     shift
     if [ $# -lt 1 ]; then
-      echo "用法: ./quickastrolens render <report.json> [格式 annotated|embed|poster|all]" >&2
+      echo "用法: ./quickastrolens render <reading.json> [格式 annotated|embed|poster|all]" >&2
       exit 1
     fi
     ensure_built
@@ -103,7 +133,7 @@ case "$cmd" in
   edit)
     shift
     if [ $# -lt 1 ]; then
-      echo "用法: ./quickastrolens edit <report.json> [端口]" >&2
+      echo "用法: ./quickastrolens edit <reading.json> [端口]" >&2
       exit 1
     fi
     ensure_built

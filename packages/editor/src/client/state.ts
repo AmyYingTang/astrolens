@@ -1,14 +1,14 @@
-import type { Circle, ColorKey, Feature, Report } from '@astrolens/schema';
+import type { Circle, ColorKey, Feature, Reading } from '@astrolens/schema';
 
 export interface EditorState {
-  report: Report;
+  report: Reading;
   selectedId: string | null;
-  past: Report[];
-  future: Report[];
+  past: Reading[];
+  future: Reading[];
   dirty: boolean;
 }
 
-type TextField = 'label' | 'explanation' | 'physics' | 'interesting';
+type Lang = 'zh' | 'en';
 
 export type Action =
   | { type: 'select'; id: string | null }
@@ -16,27 +16,29 @@ export type Action =
   | { type: 'setCircle'; id: string; circle: Circle; commit?: boolean }
   | { type: 'setBadgeOffset'; id: string; offset_x: number; offset_y: number; commit?: boolean }
   | { type: 'nudge'; id: string; dx: number; dy: number }
-  | { type: 'setFeatureText'; id: string; field: TextField; value: string; commit?: boolean }
-  | { type: 'setFeatureBody'; id: string; value: string; commit?: boolean }
+  | { type: 'setLabel'; id: string; lang: Lang; value: string; commit?: boolean }
+  | { type: 'setFeatureBody'; id: string; lang: Lang; value: string; commit?: boolean }
   | { type: 'setColor'; id: string; color: ColorKey }
   | { type: 'setBadgeNum'; id: string; num: string; commit?: boolean }
-  | { type: 'setNarrative'; value: string; commit?: boolean }
+  | { type: 'confirmFeature'; id: string }
+  | { type: 'setObjectName'; value: string; commit?: boolean }
+  | { type: 'setNarrative'; lang: Lang; value: string; commit?: boolean }
   | { type: 'addFeature' }
   | { type: 'deleteFeature'; id: string }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'markSaved' };
 
-export function initState(report: Report): EditorState {
+export function initState(report: Reading): EditorState {
   return { report, selectedId: report.features[0]?.id ?? null, past: [], future: [], dirty: false };
 }
 
-function mapFeature(report: Report, id: string, fn: (f: Feature) => Feature): Report {
+function mapFeature(report: Reading, id: string, fn: (f: Feature) => Feature): Reading {
   return { ...report, features: report.features.map((f) => (f.id === id ? fn(f) : f)) };
 }
 
 /** Apply a report mutation; when commit, snapshot the previous report for undo. */
-function change(state: EditorState, next: Report, commit: boolean): EditorState {
+function change(state: EditorState, next: Reading, commit: boolean): EditorState {
   return {
     ...state,
     report: next,
@@ -46,7 +48,7 @@ function change(state: EditorState, next: Report, commit: boolean): EditorState 
   };
 }
 
-function nextFeatureId(report: Report): string {
+function nextFeatureId(report: Reading): string {
   let n = report.features.length + 1;
   const ids = new Set(report.features.map((f) => f.id));
   while (ids.has(`f${n}`)) n += 1;
@@ -88,19 +90,24 @@ export function reducer(state: EditorState, action: Action): EditorState {
         true,
       );
 
-    case 'setFeatureText':
-      return change(
-        state,
-        mapFeature(state.report, action.id, (f) => ({ ...f, [action.field]: action.value })),
-        action.commit ?? true,
-      );
-
-    case 'setFeatureBody':
+    case 'setLabel':
       return change(
         state,
         mapFeature(state.report, action.id, (f) => ({
           ...f,
-          explanation: action.value,
+          label: { ...f.label, [action.lang]: action.value },
+        })),
+        action.commit ?? true,
+      );
+
+    case 'setFeatureBody':
+      // The editor edits one body field per language; physics/interesting are
+      // folded into explanation on edit (cleared for both languages).
+      return change(
+        state,
+        mapFeature(state.report, action.id, (f) => ({
+          ...f,
+          explanation: { ...f.explanation, [action.lang]: action.value },
           physics: undefined,
           interesting: undefined,
         })),
@@ -124,19 +131,39 @@ export function reducer(state: EditorState, action: Action): EditorState {
         action.commit ?? true,
       );
 
+    case 'confirmFeature':
+      return change(
+        state,
+        mapFeature(state.report, action.id, (f) => ({ ...f, needs_human_review: false })),
+        true,
+      );
+
+    case 'setObjectName':
+      return change(
+        state,
+        { ...state.report, object: { ...state.report.object, name: action.value } },
+        action.commit ?? true,
+      );
+
     case 'setNarrative':
-      return change(state, { ...state.report, narrative: action.value }, action.commit ?? true);
+      return change(
+        state,
+        { ...state.report, narrative: { ...state.report.narrative, [action.lang]: action.value } },
+        action.commit ?? true,
+      );
 
     case 'addFeature': {
       const { width, height } = state.report.image;
       const id = nextFeatureId(state.report);
       const feature: Feature = {
         id,
-        label: '新标注',
+        fact_ref: null,
+        label: { zh: '新标注', en: 'New label' },
         color_key: 'star',
         circle: { cx: Math.round(width / 2), cy: Math.round(height / 2), r: Math.round(Math.min(width, height) / 8) },
         badge: { num: String(state.report.features.length + 1), offset_x: 0, offset_y: 0, bubble_r: 30 },
-        explanation: '',
+        explanation: { zh: '', en: '' },
+        needs_human_review: false,
       };
       return {
         ...change(state, { ...state.report, features: [...state.report.features, feature] }, true),
