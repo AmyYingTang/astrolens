@@ -102,7 +102,7 @@ function spreadBadges(features: Spreadable[], width: number, height: number): vo
         let dx = b.x - a.x;
         let dy = b.y - a.y;
         let d = Math.hypot(dx, dy);
-        const min = (a.r + b.r) * 1.2;
+        const min = (a.r + b.r) * 1.35;
         if (d < min) {
           if (d < 1) {
             dx = Math.cos(i + j);

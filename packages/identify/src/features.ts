@@ -82,20 +82,20 @@ export interface DeriveOpts {
   sampler?: LuminanceSampler;
 }
 
-/** Mean luminance in a small window around (x,y). */
-function localMean(s: LuminanceSampler, x: number, y: number, win: number): number {
-  let sum = 0;
-  let nn = 0;
-  for (let i = -2; i <= 2; i++) {
-    for (let j = -2; j <= 2; j++) {
-      const v = s(x + (i * win) / 2, y + (j * win) / 2);
-      if (Number.isFinite(v)) {
-        sum += v;
-        nn += 1;
-      }
+/** Median luminance in a window around (x,y). Median (not mean) so a bright
+ * point star can't win — we want diffuse nebula brightness, not a stellar spike. */
+function localMedian(s: LuminanceSampler, x: number, y: number, win: number): number {
+  const vals: number[] = [];
+  const step = win / 3;
+  for (let i = -3; i <= 3; i++) {
+    for (let j = -3; j <= 3; j++) {
+      const v = s(x + i * step, y + j * step);
+      if (Number.isFinite(v)) vals.push(v);
     }
   }
-  return nn ? sum / nn : NaN;
+  if (!vals.length) return NaN;
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length / 2)]!;
 }
 
 /** A point on the shell rim toward the frame centre (so it stays on-frame). */
@@ -114,7 +114,9 @@ function rimTowardCentre(sp: [number, number], R: number, w: number, h: number):
 
 /** Brightest point in the shell annulus, so the marker lands on the actual
  * (bright) shell material — the catalog radius often overestimates the visible
- * bubble, so we search a range of radii, not just the nominal rim. */
+ * bubble, so we search a range of radii, not just the nominal rim. Candidates
+ * too close to another labeled object (a bright star, cloud …) are skipped so
+ * the shell marker doesn't pile onto an existing badge. */
 function rimBrightest(
   sp: [number, number],
   R: number,
@@ -122,11 +124,15 @@ function rimBrightest(
   w: number,
   h: number,
   win: number,
+  avoid: [number, number][],
 ): [number, number] | null {
   let best: [number, number] | null = null;
   let bestScore = -Infinity;
   const N = 48;
   const fracs = [0.55, 0.65, 0.75, 0.85, 0.95, 1.0];
+  const avoidR = win * 1.6;
+  const near = (x: number, y: number): boolean =>
+    avoid.some((p) => Math.hypot(p[0] - x, p[1] - y) < avoidR);
   for (let k = 0; k < N; k++) {
     const ca = Math.cos((k / N) * 2 * Math.PI);
     const sa = Math.sin((k / N) * 2 * Math.PI);
@@ -134,7 +140,8 @@ function rimBrightest(
       const x = sp[0] + R * fr * ca;
       const y = sp[1] + R * fr * sa;
       if (x < 0 || y < 0 || x >= w || y >= h) continue;
-      const m = localMean(s, x, y, win);
+      if (near(x, y)) continue;
+      const m = localMedian(s, x, y, win);
       if (Number.isFinite(m) && m > bestScore) {
         bestScore = m;
         best = [Math.round(x), Math.round(y)];
@@ -150,6 +157,7 @@ function shellRimCoord(
   star: DerivableObject,
   host: DerivableObject,
   opts: DeriveOpts,
+  avoid: [number, number][],
 ): DerivableObject['coord'] {
   const sp = star.coord.pixel;
   const wcs = opts.wcs;
@@ -158,7 +166,7 @@ function shellRimCoord(
   const R = (host.size_arcmin[0] * 60) / pixscale / 2; // rim radius, px
   const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
   const rim =
-    (opts.sampler && rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win)) ||
+    (opts.sampler && rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win, avoid)) ||
     rimTowardCentre(sp, R, wcs.width, wcs.height);
   const world = pixelToWorld(wcs, rim[0], rim[1]);
   return {
@@ -237,6 +245,11 @@ export function deriveBClassFeatures(
   const clouds = objects.filter((o) => o.category === 'dark_nebula');
   const out: DerivedFeature[] = [];
   let n = 0;
+  // Pixels of all labeled objects — the shell marker steers clear of these so
+  // it doesn't land on an existing badge (e.g. a bright star on the rim).
+  const avoid = objects
+    .map((o) => o.coord.pixel)
+    .filter((p): p is [number, number] => p != null);
 
   // 1. wind-blown shell — a WR star inside an emission nebula. Marked with a
   //    small sample point on the (brightest) rim, not a ring around the whole.
@@ -245,7 +258,7 @@ export function deriveBClassFeatures(
     if (!host) continue;
     out.push(
       make(`bshell${++n}`, 'bubble_shell', host, star, {
-        coord: shellRimCoord(star, host, opts),
+        coord: shellRimCoord(star, host, opts, avoid),
         size: host.size_arcmin,
         confidence: 0.5,
         direction: `centred on the exciting star ${label(star)}`,
