@@ -128,10 +128,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
         try {
           const fs = await loadFactsheet(e.name);
           summary.solveStatus = fs.solve.status;
-          summary.needsReview = fs.objects.reduce(
-            (n, o) => n + o.features.filter((f) => f.needs_human_review).length,
-            0,
-          );
+          summary.needsReview = fs.objects.filter((o) => o.needs_human_review).length;
         } catch {
           // pre-Stage-1 project without a fact sheet — leave chips unset
         }

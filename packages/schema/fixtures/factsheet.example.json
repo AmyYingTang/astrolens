@@ -29,37 +29,27 @@
       "size_arcmin": [85, 60],
       "distance": { "value": 412, "unit": "pc", "source": "NED" },
       "catalog_ids": { "messier": "M42", "ngc": "NGC 1976" },
-      "confidence": 0.98,
-      "features": [
-        {
-          "id": "f1",
-          "name": { "zh": "猎户四边形星团", "en": "Trapezium cluster" },
-          "feature_type": "embedded_cluster",
-          "class": "A",
-          "source": "SIMBAD",
-          "localization": {
-            "method": "world_to_pixel",
-            "pixel": [3040, 2010],
-            "confidence": 0.97
-          },
-          "needs_human_review": false
-        },
-        {
-          "id": "f2",
-          "name": { "zh": "电离锋面", "en": "Ionization front" },
-          "feature_type": "ionization_front",
-          "class": "B-anchor",
-          "source": "taxonomy",
-          "localization": {
-            "method": "anchor",
-            "anchor_ref": "Trapezium",
-            "direction": "朝向激发星团一侧",
-            "pixel": null,
-            "confidence": 0.5
-          },
-          "needs_human_review": true
-        }
-      ]
+      "confidence": 0.98
+    },
+    {
+      "id": "obj2",
+      "role": "context",
+      "tier": "B",
+      "parent_object_id": "obj1",
+      "feature_type": "ionization_front",
+      "feature_class": "B-anchor",
+      "names": ["电离锋面 / Ionization front"],
+      "category": "emission_nebula",
+      "type": { "otype": "", "zh": "电离锋面", "en": "Ionization front" },
+      "coord": { "ra_deg": 83.8, "dec_deg": -5.38, "pixel": null },
+      "confidence": 0.5,
+      "localization": {
+        "method": "anchor",
+        "anchor_ref": "obj1",
+        "direction": "朝向激发星团一侧 / toward the Trapezium",
+        "confidence": 0.5
+      },
+      "needs_human_review": true
     }
   ],
   "warnings": [],

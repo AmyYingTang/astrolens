@@ -53,9 +53,15 @@ export type LocalizedString = z.infer<typeof LocalizedString>;
 export const SolveStatus = z.enum(['solved', 'user_provided', 'failed']);
 export const FeatureClass = z.enum(['A', 'A+', 'B-anchor', 'B-visual']);
 
+// 扁平列表,无嵌套(2026-06 改:原嵌套 features[] 已退役,改方案 B 变体)。tier 标来源:
+//   A = 查目录得到的确定对象(MVP 只产这种);B = 形态推断特征,顶层条目 + parent_object_id 指回宿主。
 export const FactObject = z.object({
   id: z.string(),
   role: z.enum(['primary', 'secondary', 'context']),
+  tier: z.enum(['A', 'B']).default('A'),
+  parent_object_id: z.string().nullable().default(null), // B 类→宿主 object id;A 类→null
+  feature_type: FeatureType.optional(),                   // B 类:受控词表(§3)
+  feature_class: FeatureClass.optional(),                 // B 类实例级别:A+ / B-anchor / B-visual
   names: z.array(z.string()),
   category: ObjectCategory,                            // 广义类别,选哪套 feature 适用,见 §3
   type: LocalizedString.extend({ otype: z.string() }), // SIMBAD otype + 双语科普名
@@ -68,23 +74,15 @@ export const FactObject = z.object({
   distance: z.object({ value: z.number(), unit: z.string(), source: z.string() }).optional(),
   catalog_ids: z.record(z.string(), z.string()).default({}), // { messier:'M42', ngc:'NGC 1976' }
   confidence: z.number().min(0).max(1),
-  features: z.array(
-    z.object({
-      id: z.string(),
-      name: LocalizedString,
-      feature_type: FeatureType,          // 受控词表(闭合 enum),见 §3,取代旧的自由字符串 taxonomy_key
-      class: FeatureClass,                // 本实例实际定位级别(可能 ≠ taxonomy 默认级别)
-      source: z.string(),                 // 'SIMBAD' | 'taxonomy' | 'BRC' | ...
-      localization: z.object({
-        method: z.enum(['world_to_pixel', 'anchor', 'none']),
-        pixel: z.tuple([z.number(), z.number()]).nullable().default(null),
-        anchor_ref: z.string().optional(),
-        direction: z.string().optional(),
-        confidence: z.number().min(0).max(1),
-      }),
-      needs_human_review: z.boolean(),
-    }),
-  ),
+  localization: z                                         // B 类:如何落点;A 类用 coord.pixel
+    .object({
+      method: z.enum(['world_to_pixel', 'anchor', 'none']),
+      anchor_ref: z.string().optional(),
+      direction: z.string().optional(),
+      confidence: z.number().min(0).max(1),
+    })
+    .optional(),
+  needs_human_review: z.boolean().default(false),        // B 类不确定项→true
 });
 
 export const FactSheet = z.object({
@@ -326,9 +324,15 @@ GET  /api/projects/:slug/job    → { state, stage, warnings }   ← Home 轮询
      state: queued | running | done | failed
      stage: solving | querying | gating | reading   (映射 pipeline 阶段, 可显示 "Plate-solving…")
 job 完成 → factsheet.json + reading.json 落盘 → Home 跳 Editor
+
+POST /api/projects/:slug/reidentify   在已存图上重跑识别(见下「re-identify」)
+  → 经 solve cache 跳过 plate-solve;可带 body { starMagMax }
+  → 覆盖 factsheet.json + reading.json
 ```
 
 job 状态持久化成项目目录里的 `job.json`(本地单用户,重启可恢复)。
+
+**re-identify(独立触发,已实现)**:`POST /:slug/reidentify` 复用缓存的 WCS(**跳过 plate-solve**),只重跑 pipeline 的 3–6 步(目录查询 → gate → select → 组装;Class-A 现在、Class-B 以后),可带更新的参数(如 `starMagMax`),然后覆盖 factsheet/reading。它**有意绕开 §4 step 0 的 factsheet 整表缓存**——目的就是在同一次解像上重跑识别、让用户调「要标什么」(如亮星阈值)而不必再解一次像。底层靠 `createCachedSolveClient` 命中缓存来省掉 nova。
 
 **factsheet 查看 — 不用手开 json:**
 

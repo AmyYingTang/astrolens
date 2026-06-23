@@ -7,26 +7,37 @@ import { Wcs } from './wcs.js';
 export const SolveStatus = z.enum(['solved', 'user_provided', 'failed']);
 export type SolveStatus = z.infer<typeof SolveStatus>;
 
-export const FactFeature = z.object({
-  id: z.string(),
-  name: LocalizedString,
-  feature_type: FeatureType, // controlled vocabulary, see taxonomy.ts
-  class: FeatureClass, // this instance's real tier (may differ from taxonomy default)
-  source: z.string(), // 'SIMBAD' | 'taxonomy' | 'BRC' | ...
-  localization: z.object({
-    method: z.enum(['world_to_pixel', 'anchor', 'none']),
-    pixel: z.tuple([z.number(), z.number()]).nullable().default(null),
-    anchor_ref: z.string().optional(),
-    direction: z.string().optional(),
-    confidence: z.number().min(0).max(1),
-  }),
-  needs_human_review: z.boolean(),
+/**
+ * How a feature is placed on the image. A-class objects use `coord.pixel`
+ * directly; B-class (anchored / morphological) features record their method —
+ * either a precise pixel, an anchor + direction, or none (human places it).
+ */
+export const FactLocalization = z.object({
+  method: z.enum(['world_to_pixel', 'anchor', 'none']),
+  anchor_ref: z.string().optional(), // B-anchor: id of the object/star it's positioned from
+  direction: z.string().optional(), // B-anchor: e.g. 'NW rim, toward the exciting star'
+  confidence: z.number().min(0).max(1),
 });
-export type FactFeature = z.infer<typeof FactFeature>;
+export type FactLocalization = z.infer<typeof FactLocalization>;
 
+/**
+ * One entry in the fact sheet. A flat list — no nesting. The `tier` field marks
+ * provenance:
+ *  - **A** = catalog-grounded object (deterministic: plate-solve + catalog
+ *    query). The wide-field MVP only emits these. `parent_object_id` is null.
+ *  - **B** = morphological feature inferred from the image (ionization front,
+ *    shell, pillar …) — uncertain, from CV/geometry/human, not a catalog.
+ *    "Plan-B variant": B-class entries live here at top level (not nested),
+ *    linked to their host A-object via `parent_object_id`, typed by
+ *    `feature_type` (taxonomy), and flagged `needs_human_review`.
+ */
 export const FactObject = z.object({
   id: z.string(),
   role: z.enum(['primary', 'secondary', 'context']),
+  tier: z.enum(['A', 'B']).default('A'),
+  parent_object_id: z.string().nullable().default(null), // B-class → host object id; A-class → null
+  feature_type: FeatureType.optional(), // B-class: controlled vocabulary (taxonomy.ts)
+  feature_class: FeatureClass.optional(), // B-class instance tier: A+ / B-anchor / B-visual
   names: z.array(z.string()),
   category: ObjectCategory, // which feature set applies
   type: LocalizedString.extend({ otype: z.string() }), // SIMBAD otype + bilingual name
@@ -39,7 +50,8 @@ export const FactObject = z.object({
   distance: z.object({ value: z.number(), unit: z.string(), source: z.string() }).optional(),
   catalog_ids: z.record(z.string(), z.string()).default({}), // { messier:'M42', ngc:'NGC 1976' }
   confidence: z.number().min(0).max(1),
-  features: z.array(FactFeature),
+  localization: FactLocalization.optional(), // B-class: how it's placed; A-class uses coord.pixel
+  needs_human_review: z.boolean().default(false), // B-class uncertain ones → true
 });
 export type FactObject = z.infer<typeof FactObject>;
 

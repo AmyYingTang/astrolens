@@ -73,10 +73,10 @@ export async function identifyImage(args: IdentifyArgs): Promise<void> {
   console.log(`Solve: ${factsheet.solve.status} (frame=${factsheet.solve.frame})`);
   console.log(`Objects: ${factsheet.objects.length}`);
   for (const o of factsheet.objects) {
-    const needsReview = o.features.filter((f) => f.needs_human_review).length;
-    console.log(
-      `  [${o.role}] ${o.names[0]} — ${o.type.en} · ${o.features.length} features (${needsReview} need review)`,
-    );
+    const flags = [o.tier === 'B' ? 'B-class' : null, o.needs_human_review ? 'needs review' : null]
+      .filter(Boolean)
+      .join(', ');
+    console.log(`  [${o.role}] ${o.names[0]} — ${o.type.en}${flags ? ` · ${flags}` : ''}`);
   }
   for (const w of factsheet.warnings) console.log(`  ⚠ ${w}`);
 }

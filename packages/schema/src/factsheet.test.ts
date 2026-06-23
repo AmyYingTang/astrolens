@@ -15,10 +15,14 @@ const example = JSON.parse(
 );
 
 describe('FactSheet schema', () => {
-  it('parses the example fixture', () => {
+  it('parses the example fixture (A-class object + B-class feature)', () => {
     const fs = FactSheet.parse(example);
     expect(fs.objects[0]!.names).toContain('M42');
-    expect(fs.objects[0]!.features[0]!.feature_type).toBe('embedded_cluster');
+    expect(fs.objects[0]!.tier).toBe('A');
+    const b = fs.objects[1]!;
+    expect(b.tier).toBe('B');
+    expect(b.feature_type).toBe('ionization_front');
+    expect(b.parent_object_id).toBe('obj1');
     expect(fs.solve.frame).toBe('display');
   });
 
@@ -28,20 +32,22 @@ describe('FactSheet schema', () => {
     expect(reparsed).toEqual(parsed);
   });
 
-  it('applies defaults for optional fields', () => {
+  it('applies defaults for optional fields (tier / parent / review)', () => {
     const bare = structuredClone(example);
     delete bare.warnings;
     delete bare.objects[0].catalog_ids;
-    delete bare.objects[0].features[0].localization.pixel;
+    delete bare.objects[0].tier;
     const fs = FactSheet.parse(bare);
     expect(fs.warnings).toEqual([]);
     expect(fs.objects[0]!.catalog_ids).toEqual({});
-    expect(fs.objects[0]!.features[0]!.localization.pixel).toBeNull();
+    expect(fs.objects[0]!.tier).toBe('A'); // default
+    expect(fs.objects[0]!.parent_object_id).toBeNull(); // default
+    expect(fs.objects[0]!.needs_human_review).toBe(false); // default
   });
 
   it('rejects an unknown feature_type', () => {
     const bad = structuredClone(example);
-    bad.objects[0].features[0].feature_type = 'not_a_feature';
+    bad.objects[1].feature_type = 'not_a_feature';
     expect(() => FactSheet.parse(bad)).toThrow();
   });
 

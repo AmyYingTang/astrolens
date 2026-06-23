@@ -55,7 +55,9 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       ...(c.size_arcmin ? { size_arcmin: c.size_arcmin } : {}),
       catalog_ids: c.catalog_ids,
       confidence: objConfidence(c),
-      features: [],
+      // tier 'A' (catalog-grounded), parent_object_id null, needs_human_review
+      // false all come from schema defaults. Class-B features are not produced
+      // by the wide-field MVP (see IDENTIFICATION_REDESIGN.md §4 step 5).
     };
   });
 

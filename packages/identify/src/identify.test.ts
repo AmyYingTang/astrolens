@@ -78,7 +78,8 @@ describe('identify (solved path, prominence selection)', () => {
     const antares = fs.objects.find((o) => o.names[0] === 'Antares')!;
     expect(antares.category).toBe('star');
     expect(antares.coord.pixel![0]).toBeCloseTo(3000, 2);
-    expect(antares.features).toEqual([]); // no sub-features in the wide-field MVP
+    expect(antares.tier).toBe('A'); // catalog-grounded; no Class-B in the wide-field MVP
+    expect(antares.parent_object_id).toBeNull();
   });
 
   it('warns when nothing prominent is found', async () => {
