@@ -30,6 +30,14 @@ export const Feature = z.object({
   label: LocalizedString, // short name, bilingual
   color_key: ColorKey,
   circle: Circle,
+  /**
+   * How to draw it. 'circle' = solid ring (A-class catalog object); 'shell' =
+   * dashed ring (a wind/PN shell, soft); 'arrow' = an anchored direction from
+   * circle.{cx,cy} toward `arrow_to` (e.g. an ionization front's bright-rim
+   * side). The latter two are Class-B (inferred) annotations.
+   */
+  shape: z.enum(['circle', 'shell', 'arrow']).default('circle'),
+  arrow_to: z.tuple([z.number(), z.number()]).optional(), // target point for shape 'arrow'
   badge: Badge,
   explanation: LocalizedString, // 2-3 sentences, plain language
   physics: LocalizedString.optional(), // mechanism / formation

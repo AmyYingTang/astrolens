@@ -1,4 +1,4 @@
-import { Reading, categoryColorKey, otypeLabel } from '@astrolens/schema';
+import { Reading, categoryColorKey, featureColorKey, otypeLabel } from '@astrolens/schema';
 import type { FactSheet, FactObject, LocalizedString } from '@astrolens/schema';
 import { buildTailorPrompt } from './prompt.js';
 import { runClaude, type RunClaudeOptions } from './claudeCli.js';
@@ -106,25 +106,51 @@ function buildReading(
     return starR;
   };
 
-  // Only A-class (catalog-grounded) objects become rendered circles for now;
-  // Class-B morphological features live in the factsheet + Facts panel but are
-  // not drawn on the canvas yet (anchor/arrow rendering is a later slice).
+  // A-class objects → solid circles; Class-B features → a dashed shell ring or a
+  // direction arrow (toward the A anchor). Primary summary uses the first A.
+  const maxArrow = Math.min(width, height) * 0.15;
+  const byObjId = new Map(factsheet.objects.map((o) => [o.id, o]));
   const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
   const primary = aObjects[0]!;
-  const features = aObjects.map((obj, i) => {
+
+  const features = factsheet.objects.map((obj, i) => {
     const t = byId.get(obj.id);
     const center = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
+    const cx = center[0]!;
+    const cy = center[1]!;
+    const isB = obj.tier === 'B';
+    const shape: 'circle' | 'shell' | 'arrow' = !isB
+      ? 'circle'
+      : obj.feature_type === 'bubble_shell'
+        ? 'shell'
+        : 'arrow';
+    // Arrow: a capped step from the anchor point toward the anchored A object.
+    let arrow_to: [number, number] | undefined;
+    if (shape === 'arrow') {
+      const ap = obj.localization?.anchor_ref
+        ? byObjId.get(obj.localization.anchor_ref)?.coord.pixel
+        : null;
+      if (ap) {
+        const dx = ap[0] - cx;
+        const dy = ap[1] - cy;
+        const d = Math.hypot(dx, dy) || 1;
+        const len = Math.min(d, maxArrow);
+        arrow_to = [Math.round(cx + (dx / d) * len), Math.round(cy + (dy / d) * len)];
+      }
+    }
     return {
       id: obj.id,
       fact_ref: { object_id: obj.id, feature_id: obj.id },
-      label: displayLabel(obj),
-      color_key: categoryColorKey(obj.category),
-      circle: { cx: center[0]!, cy: center[1]!, r: radiusFor(obj) },
+      label: isB ? { zh: obj.type.zh, en: obj.type.en } : displayLabel(obj),
+      color_key: obj.feature_type ? featureColorKey(obj.feature_type) : categoryColorKey(obj.category),
+      circle: { cx, cy, r: shape === 'arrow' ? starR : radiusFor(obj) },
+      shape,
+      ...(arrow_to ? { arrow_to } : {}),
       badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },
       explanation: t?.explanation ?? { zh: '', en: '' },
       physics: t?.physics,
       interesting: t?.interesting,
-      needs_human_review: obj.coord.pixel == null,
+      needs_human_review: isB ? obj.needs_human_review : obj.coord.pixel == null,
     };
   });
 

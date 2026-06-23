@@ -18,9 +18,24 @@ export function buildOverlaySvg(report: Reading): string {
   for (const f of report.features) {
     const color = COLOR_PALETTE[f.color_key];
     const { cx, cy, r } = f.circle;
-    parts.push(
-      `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
-    );
+    if (f.shape === 'arrow' && f.arrow_to) {
+      // Class-B direction arrow (line + arrowhead).
+      const [ax, ay] = f.arrow_to;
+      const ang = Math.atan2(ay - cy, ax - cx);
+      const hl = strokeW * 6;
+      const p2 = `${(ax - hl * Math.cos(ang - 0.4)).toFixed(1)},${(ay - hl * Math.sin(ang - 0.4)).toFixed(1)}`;
+      const p3 = `${(ax - hl * Math.cos(ang + 0.4)).toFixed(1)},${(ay - hl * Math.sin(ang + 0.4)).toFixed(1)}`;
+      parts.push(
+        `<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
+        `<polygon points="${ax},${ay} ${p2} ${p3}" fill="${color.stroke}"/>`,
+      );
+    } else {
+      // A-class solid ring, or a Class-B dashed shell ring.
+      const dash = f.shape === 'shell' ? ` stroke-dasharray="${strokeW * 5} ${strokeW * 3}"` : '';
+      parts.push(
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}"${dash}/>`,
+      );
+    }
 
     // Badge anchored fully outside the circle (offset by r + bubble radius) so
     // it never covers small circles, then nudged by the user offset — but kept

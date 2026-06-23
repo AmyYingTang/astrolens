@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KImage, Circle as KCircle, Group, Text, Line } from 'react-konva';
+import { Stage, Layer, Image as KImage, Circle as KCircle, Group, Text, Line, Arrow } from 'react-konva';
 import type Konva from 'konva';
 import { COLOR_PALETTE, fieldRadiusDeg, worldToPixel, type Reading, type Wcs } from '@astrolens/schema';
 import type { Action } from './state.js';
@@ -220,31 +220,49 @@ export function Canvas({
 
             return (
               <Group key={f.id}>
-                <KCircle
-                  x={cx}
-                  y={cy}
-                  radius={r}
-                  stroke={color.stroke}
-                  strokeWidth={px(selected ? 3 : 2)}
-                  opacity={selected ? 1 : 0.75}
-                  draggable
-                  onClick={() => dispatch({ type: 'select', id: f.id })}
-                  onTap={() => dispatch({ type: 'select', id: f.id })}
-                  onDragStart={() => {
-                    dispatch({ type: 'select', id: f.id });
-                    dispatch({ type: 'beginChange' });
-                  }}
-                  onDragMove={(e) =>
-                    dispatch({
-                      type: 'setCircle',
-                      id: f.id,
-                      circle: { cx: e.target.x(), cy: e.target.y(), r },
-                      commit: false,
-                    })
-                  }
-                />
+                {f.shape === 'arrow' && f.arrow_to ? (
+                  // Class-B direction arrow (e.g. ionization front: bright rim
+                  // faces this way). Non-draggable for now; the badge moves.
+                  <Arrow
+                    points={[cx, cy, f.arrow_to[0], f.arrow_to[1]]}
+                    stroke={color.stroke}
+                    fill={color.stroke}
+                    strokeWidth={px(selected ? 4 : 3)}
+                    pointerLength={px(16)}
+                    pointerWidth={px(13)}
+                    opacity={selected ? 1 : 0.85}
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                  />
+                ) : (
+                  // A-class solid ring, or a Class-B dashed shell ring.
+                  <KCircle
+                    x={cx}
+                    y={cy}
+                    radius={r}
+                    stroke={color.stroke}
+                    strokeWidth={px(selected ? 3 : 2)}
+                    opacity={selected ? 1 : 0.75}
+                    dash={f.shape === 'shell' ? [px(14), px(9)] : undefined}
+                    draggable
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                    onDragStart={() => {
+                      dispatch({ type: 'select', id: f.id });
+                      dispatch({ type: 'beginChange' });
+                    }}
+                    onDragMove={(e) =>
+                      dispatch({
+                        type: 'setCircle',
+                        id: f.id,
+                        circle: { cx: e.target.x(), cy: e.target.y(), r },
+                        commit: false,
+                      })
+                    }
+                  />
+                )}
 
-                {selected && (
+                {selected && f.shape !== 'arrow' && (
                   <KCircle
                     x={cx + r}
                     y={cy}

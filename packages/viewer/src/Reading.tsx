@@ -11,6 +11,28 @@ function paragraphs(f: Feature, lang: 'zh' | 'en'): string[] {
     .filter(Boolean);
 }
 
+/** Class-B direction arrow: a line from (cx,cy) toward `to` with an arrowhead. */
+function ArrowShape(props: {
+  cx: number;
+  cy: number;
+  to: [number, number];
+  stroke: string;
+  strokeW: number;
+}): React.JSX.Element {
+  const { cx, cy, to, stroke, strokeW } = props;
+  const [ax, ay] = to;
+  const ang = Math.atan2(ay - cy, ax - cx);
+  const hl = strokeW * 6;
+  const p2 = `${ax - hl * Math.cos(ang - 0.4)},${ay - hl * Math.sin(ang - 0.4)}`;
+  const p3 = `${ax - hl * Math.cos(ang + 0.4)},${ay - hl * Math.sin(ang + 0.4)}`;
+  return (
+    <g className="ar-arrow">
+      <line x1={cx} y1={cy} x2={ax} y2={ay} stroke={stroke} strokeWidth={strokeW} />
+      <polygon points={`${ax},${ay} ${p2} ${p3}`} fill={stroke} />
+    </g>
+  );
+}
+
 export interface ReadingProps {
   report: ReadingData;
   imageSrc: string;
@@ -56,15 +78,20 @@ export function Reading(props: ReadingProps): React.JSX.Element {
                 onMouseEnter={() => setActive(f.id)}
                 onClick={() => select(f)}
               >
-                <circle
-                  className="ar-circle"
-                  cx={cx}
-                  cy={cy}
-                  r={r}
-                  fill="none"
-                  stroke={c.stroke}
-                  strokeWidth={strokeW}
-                />
+                {f.shape === 'arrow' && f.arrow_to ? (
+                  <ArrowShape cx={cx} cy={cy} to={f.arrow_to} stroke={c.stroke} strokeW={strokeW} />
+                ) : (
+                  <circle
+                    className="ar-circle"
+                    cx={cx}
+                    cy={cy}
+                    r={r}
+                    fill="none"
+                    stroke={c.stroke}
+                    strokeWidth={strokeW}
+                    strokeDasharray={f.shape === 'shell' ? `${strokeW * 5} ${strokeW * 3}` : undefined}
+                  />
+                )}
                 <circle cx={bx} cy={by} r={f.badge.bubble_r} fill={c.badge} stroke="#0b0e14" strokeWidth={strokeW / 2} />
                 <text
                   x={bx}

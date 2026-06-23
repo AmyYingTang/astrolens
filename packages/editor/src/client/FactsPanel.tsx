@@ -41,16 +41,16 @@ function typeName(o: FactObject, lang: 'zh' | 'en'): string {
   return o.type[lang];
 }
 
-/** Detail line for a Class-B feature: anchor direction + parent + confidence. */
-function bFeatureDetail(
-  o: FactObject,
-  byId: Map<string, FactObject>,
-  lang: 'zh' | 'en',
-): string {
-  const parent = o.parent_object_id ? byId.get(o.parent_object_id) : undefined;
+type RFeature = Reading['features'][number];
+
+/** Detail line for a Class-B feature: anchor direction + parent + confidence,
+ * resolved from the grounding fact object. */
+function bFeatureDetail(f: RFeature, byId: Map<string, FactObject>, lang: 'zh' | 'en'): string {
+  const o = f.fact_ref ? byId.get(f.fact_ref.object_id) : undefined;
+  const parent = o?.parent_object_id ? byId.get(o.parent_object_id) : undefined;
   const parts = [
-    `conf ${o.confidence.toFixed(2)}`,
-    o.localization?.direction,
+    o ? `conf ${o.confidence.toFixed(2)}` : undefined,
+    o?.localization?.direction,
     parent ? `↳ ${parent.names[0] ?? parent.type[lang]}` : undefined,
   ].filter(Boolean);
   return parts.join(' · ');
@@ -75,7 +75,10 @@ export function FactsPanel({
 }: Props): React.JSX.Element {
   const { t, lang } = useUi();
   const objById = new Map((factsheet?.objects ?? []).map((o) => [o.id, o]));
-  const bFeatures = (factsheet?.objects ?? []).filter((o) => o.tier === 'B');
+  // A-class (catalog) circles vs Class-B (inferred) shells/arrows — split so the
+  // uncertain morphology stays visually separate from the grounded facts.
+  const aFeatures = reading.features.filter((f) => f.shape === 'circle');
+  const bFeatures = reading.features.filter((f) => f.shape !== 'circle');
   const s = factsheet?.solve;
   const [reidOpen, setReidOpen] = useState(false);
   const [starMag, setStarMag] = useState(4);
@@ -159,10 +162,10 @@ export function FactsPanel({
       ))}
 
       <h3>
-        {t.factsObjects} ({reading.features.length})
+        {t.factsObjects} ({aFeatures.length})
       </h3>
       <ul className="legend">
-        {reading.features.map((f) => {
+        {aFeatures.map((f) => {
           const o = f.fact_ref ? objById.get(f.fact_ref.object_id) : undefined;
           return (
             <li
@@ -192,14 +195,21 @@ export function FactsPanel({
             {t.factsFeaturesB} ({bFeatures.length})
           </h3>
           <ul className="legend">
-            {bFeatures.map((o) => (
-              <li key={o.id} className="legend-row b-feature">
+            {bFeatures.map((f) => (
+              <li
+                key={f.id}
+                className={`legend-row b-feature${selectedId === f.id ? ' sel' : ''}`}
+                onClick={() => onSelect(f.id)}
+              >
+                <span className="legend-dot" style={{ background: COLOR_PALETTE[f.color_key].badge }}>
+                  {f.badge.num}
+                </span>
                 <span className="legend-text">
                   <span className="legend-name">
-                    {o.type[lang]}
-                    {o.needs_human_review ? ' ⚠' : ''}
+                    {f.label[lang]}
+                    {f.needs_human_review ? ' ⚠' : ''}
                   </span>
-                  <span className="muted">{bFeatureDetail(o, objById, lang)}</span>
+                  <span className="muted">{bFeatureDetail(f, objById, lang)}</span>
                 </span>
               </li>
             ))}
