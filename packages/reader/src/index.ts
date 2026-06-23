@@ -106,27 +106,46 @@ function buildReading(
     return starR;
   };
 
-  // A-class objects → solid circles; Class-B features → a dashed shell ring or a
-  // direction arrow (toward the A anchor). Primary summary uses the first A.
+  // A-class objects → solid circles. Class-B: a *shell* is marked with a small
+  // dashed sample circle placed on a point of its rim (not a ring around the
+  // whole thing); a *front* is a direction arrow toward the A anchor.
   const maxArrow = Math.min(width, height) * 0.15;
+  const sampleR = Math.max(starR, Math.round(Math.min(width, height) / 30));
   const byObjId = new Map(factsheet.objects.map((o) => [o.id, o]));
   const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
   const primary = aObjects[0]!;
 
   const features = factsheet.objects.map((obj, i) => {
     const t = byId.get(obj.id);
-    const center = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
-    const cx = center[0]!;
-    const cy = center[1]!;
+    const base = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const isB = obj.tier === 'B';
     const shape: 'circle' | 'shell' | 'arrow' = !isB
       ? 'circle'
       : obj.feature_type === 'bubble_shell'
         ? 'shell'
         : 'arrow';
-    // Arrow: a capped step from the anchor point toward the anchored A object.
+    let cx = base[0]!;
+    let cy = base[1]!;
+    let r = radiusFor(obj);
     let arrow_to: [number, number] | undefined;
-    if (shape === 'arrow') {
+    if (shape === 'shell') {
+      // Place a small sample circle on the shell's rim, toward the frame centre
+      // (so it lands on the visible structure, not off-frame).
+      const R = radiusFor(obj);
+      let ux = 0;
+      let uy = -1;
+      const dx = width / 2 - cx;
+      const dy = height / 2 - cy;
+      const m = Math.hypot(dx, dy);
+      if (m >= 1) {
+        ux = dx / m;
+        uy = dy / m;
+      }
+      cx = Math.round(cx + R * ux);
+      cy = Math.round(cy + R * uy);
+      r = sampleR;
+    } else if (shape === 'arrow') {
+      r = starR;
       const ap = obj.localization?.anchor_ref
         ? byObjId.get(obj.localization.anchor_ref)?.coord.pixel
         : null;
@@ -143,7 +162,7 @@ function buildReading(
       fact_ref: { object_id: obj.id, feature_id: obj.id },
       label: isB ? { zh: obj.type.zh, en: obj.type.en } : displayLabel(obj),
       color_key: obj.feature_type ? featureColorKey(obj.feature_type) : categoryColorKey(obj.category),
-      circle: { cx, cy, r: shape === 'arrow' ? starR : radiusFor(obj) },
+      circle: { cx, cy, r },
       shape,
       ...(arrow_to ? { arrow_to } : {}),
       badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },

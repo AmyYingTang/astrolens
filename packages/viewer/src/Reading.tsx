@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { useState } from 'react';
-import { COLOR_PALETTE, arcPath, type Feature, type Reading as ReadingData } from '@astrolens/schema';
+import { COLOR_PALETTE, type Feature, type Reading as ReadingData } from '@astrolens/schema';
 
 function paragraphs(f: Feature, lang: 'zh' | 'en'): string[] {
   return [f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
@@ -81,15 +81,6 @@ export function Reading(props: ReadingProps): React.JSX.Element {
               >
                 {f.shape === 'arrow' && f.arrow_to ? (
                   <ArrowShape cx={cx} cy={cy} to={f.arrow_to} stroke={c.stroke} strokeW={strokeW} />
-                ) : f.shape === 'shell' ? (
-                  <path
-                    className="ar-circle"
-                    d={arcPath(cx, cy, r)}
-                    fill="none"
-                    stroke={c.stroke}
-                    strokeWidth={strokeW}
-                    strokeDasharray={`${strokeW * 5} ${strokeW * 3}`}
-                  />
                 ) : (
                   <circle
                     className="ar-circle"
@@ -99,6 +90,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
                     fill="none"
                     stroke={c.stroke}
                     strokeWidth={strokeW}
+                    strokeDasharray={f.shape === 'shell' ? `${strokeW * 5} ${strokeW * 3}` : undefined}
                   />
                 )}
                 <circle cx={bx} cy={by} r={f.badge.bubble_r} fill={c.badge} stroke="#0b0e14" strokeWidth={strokeW / 2} />

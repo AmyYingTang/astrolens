@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { COLOR_PALETTE, arcPath, type Reading } from '@astrolens/schema';
+import { COLOR_PALETTE, type Reading } from '@astrolens/schema';
 
 function escapeXml(s: string): string {
   return s
@@ -30,15 +30,11 @@ export function buildOverlaySvg(report: Reading): string {
         `<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
         `<polygon points="${ax},${ay} ${p2} ${p3}" fill="${color.stroke}"/>`,
       );
-    } else if (f.shape === 'shell') {
-      // Class-B shell — a dashed partial arc (not a full duplicate ring).
-      parts.push(
-        `<path d="${arcPath(cx, cy, r)}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}" stroke-dasharray="${strokeW * 5} ${strokeW * 3}"/>`,
-      );
     } else {
-      // A-class solid ring.
+      // A-class solid ring, or a Class-B shell sample (small dashed circle).
+      const dash = f.shape === 'shell' ? ` stroke-dasharray="${strokeW * 5} ${strokeW * 3}"` : '';
       parts.push(
-        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
+        `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}"${dash}/>`,
       );
     }
 
