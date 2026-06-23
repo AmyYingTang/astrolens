@@ -64,6 +64,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
         <img src={imageSrc} alt={o.name} onClick={() => setActive(null)} />
         <svg className="ar-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           {report.features.map((f) => {
+            if (f.draw === false) return null; // not drawn (e.g. coincident shell)
             const c = COLOR_PALETTE[f.color_key];
             const { cx, cy, r } = f.circle;
             const br = f.badge.bubble_r;
@@ -109,7 +110,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
           })}
         </svg>
         {report.features.map((f) =>
-          active === f.id ? (
+          active === f.id && f.draw !== false ? (
             <div
               key={f.id}
               className="ar-tip"
@@ -133,7 +134,8 @@ export function Reading(props: ReadingProps): React.JSX.Element {
         <h3>{o.name}</h3>
         <div className="ar-meta">{meta}</div>
         <p className="ar-narr">{report.narrative[lang]}</p>
-        {report.features.map((f) => (
+        {report.features.map((f) =>
+          f.draw === false ? null : (
           <div
             key={f.id}
             className={`ar-feature${active === f.id ? ' active' : ''}`}

@@ -38,6 +38,9 @@ export const Feature = z.object({
    */
   shape: z.enum(['circle', 'shell', 'arrow']).default('circle'),
   arrow_to: z.tuple([z.number(), z.number()]).optional(), // target point for shape 'arrow'
+  /** false → listed in the Facts panel but not drawn on the image (e.g. a shell
+   * coincident with its parent nebula — drawing a duplicate ring is clutter). */
+  draw: z.boolean().default(true),
   badge: Badge,
   explanation: LocalizedString, // 2-3 sentences, plain language
   physics: LocalizedString.optional(), // mechanism / formation

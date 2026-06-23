@@ -202,6 +202,7 @@ export function Canvas({
         )}
         <Layer>
           {report.features.map((f) => {
+            if (f.draw === false) return null; // listed in Facts, not drawn (e.g. coincident shell)
             const color = COLOR_PALETTE[f.color_key];
             const { cx, cy, r } = f.circle;
             const selected = f.id === selectedId;

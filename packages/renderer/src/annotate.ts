@@ -16,6 +16,7 @@ export function buildOverlaySvg(report: Reading): string {
   const parts: string[] = [];
 
   for (const f of report.features) {
+    if (f.draw === false) continue; // listed in the Facts panel but not drawn
     const color = COLOR_PALETTE[f.color_key];
     const { cx, cy, r } = f.circle;
     if (f.shape === 'arrow' && f.arrow_to) {
