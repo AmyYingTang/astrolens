@@ -113,7 +113,25 @@ function buildReading(
   const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
   const primary = aObjects[0]!;
 
-  const features = factsheet.objects.map((obj, i) => {
+  // Drop a wind-blown shell that's near-coincident with its parent nebula's
+  // circle — a second ring on top of it is redundant clutter. It stays in the
+  // factsheet (provenance); the reader just doesn't render a duplicate.
+  const coincidentShell = (obj: FactObject): boolean => {
+    if (obj.feature_type !== 'bubble_shell') return false;
+    const parent = obj.parent_object_id ? byObjId.get(obj.parent_object_id) : null;
+    if (!parent?.coord.pixel || !obj.coord.pixel) return false;
+    const rP = radiusFor(parent);
+    const rS = radiusFor(obj);
+    const big = Math.max(rP, rS);
+    const d = Math.hypot(
+      parent.coord.pixel[0] - obj.coord.pixel[0],
+      parent.coord.pixel[1] - obj.coord.pixel[1],
+    );
+    return d < 0.3 * big && Math.abs(rP - rS) < 0.35 * big;
+  };
+  const drawable = factsheet.objects.filter((o) => !coincidentShell(o));
+
+  const features = drawable.map((obj, i) => {
     const t = byId.get(obj.id);
     const center = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const cx = center[0]!;

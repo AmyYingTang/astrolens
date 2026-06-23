@@ -9,6 +9,8 @@ export const ColorKey = z.enum([
   // Hot stars / ionizing sources
   'hot', // bright stars, WR, OB
   'star', // generic star/cluster
+  // Whole emission body (distinct from the 'front' feature color)
+  'emission', // emission nebula / HII region body
   // Front matter
   'front', // ionization front
   'shock', // shock wave (SNR)
@@ -34,6 +36,7 @@ export interface PaletteEntry {
 export const COLOR_PALETTE: Record<ColorKey, PaletteEntry> = {
   hot: { stroke: '#ffd84a', badge: '#ffd84a' }, // gold
   star: { stroke: '#ffb84a', badge: '#ffb84a' }, // orange
+  emission: { stroke: '#ff5277', badge: '#ff5277' }, // rose-red (Hα body)
   front: { stroke: '#ff8a65', badge: '#ff8a65' }, // coral
   shock: { stroke: '#4ec3e0', badge: '#4ec3e0' }, // cyan
   shell: { stroke: '#c5cbdb', badge: '#c5cbdb' }, // light grey

@@ -112,7 +112,7 @@ export function featureColorKey(ft: FeatureType): ColorKey {
 }
 
 const CATEGORY_COLOR: Record<ObjectCategory, ColorKey> = {
-  emission_nebula: 'front',
+  emission_nebula: 'emission',
   planetary_nebula: 'shell',
   supernova_remnant: 'shock',
   reflection_nebula: 'bg',
