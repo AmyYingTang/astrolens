@@ -106,8 +106,12 @@ function buildReading(
     return starR;
   };
 
-  const primary = factsheet.objects[0]!;
-  const features = factsheet.objects.map((obj, i) => {
+  // Only A-class (catalog-grounded) objects become rendered circles for now;
+  // Class-B morphological features live in the factsheet + Facts panel but are
+  // not drawn on the canvas yet (anchor/arrow rendering is a later slice).
+  const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
+  const primary = aObjects[0]!;
+  const features = aObjects.map((obj, i) => {
     const t = byId.get(obj.id);
     const center = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     return {
@@ -154,7 +158,7 @@ export function readingFromFactsheet(
   factsheet: FactSheet,
   opts: { toolVersion: string; displayLanguage?: 'zh' | 'en'; imageSrc?: string },
 ): Reading {
-  if (!factsheet.objects[0]) {
+  if (!factsheet.objects.some((o) => o.tier !== 'B')) {
     throw new ReaderError(
       `FactSheet has no grounded objects (solve=${factsheet.solve.status}); nothing to show.`,
     );
@@ -244,7 +248,10 @@ export async function generateReading(
   factsheet: FactSheet,
   opts: GenerateReadingOptions,
 ): Promise<Reading> {
-  const primary = factsheet.objects[0];
+  // Only A-class objects are tailored/rendered for now; Class-B features are
+  // surfaced in the Facts panel but not yet explained or drawn.
+  const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
+  const primary = aObjects[0];
   if (!primary) {
     throw new ReaderError(
       `FactSheet has no grounded objects (solve=${factsheet.solve.status}); nothing to tailor.`,
@@ -254,7 +261,7 @@ export async function generateReading(
   const runner = opts.runner ?? runClaude;
   const prompt = buildTailorPrompt({
     headline: displayLabel(primary).zh,
-    items: factsheet.objects.map((obj) => {
+    items: aObjects.map((obj) => {
       const l = displayLabel(obj);
       return { id: obj.id, name: `${l.zh} / ${l.en}`, type: obj.type.en };
     }),

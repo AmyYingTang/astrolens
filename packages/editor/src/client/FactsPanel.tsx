@@ -41,6 +41,21 @@ function typeName(o: FactObject, lang: 'zh' | 'en'): string {
   return o.type[lang];
 }
 
+/** Detail line for a Class-B feature: anchor direction + parent + confidence. */
+function bFeatureDetail(
+  o: FactObject,
+  byId: Map<string, FactObject>,
+  lang: 'zh' | 'en',
+): string {
+  const parent = o.parent_object_id ? byId.get(o.parent_object_id) : undefined;
+  const parts = [
+    `conf ${o.confidence.toFixed(2)}`,
+    o.localization?.direction,
+    parent ? `↳ ${parent.names[0] ?? parent.type[lang]}` : undefined,
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
 /**
  * Left panel: the full grounding fact sheet — solve geometry + a numbered legend
  * mapping each badge on the image to its object (color · number · name · type ·
@@ -60,6 +75,7 @@ export function FactsPanel({
 }: Props): React.JSX.Element {
   const { t, lang } = useUi();
   const objById = new Map((factsheet?.objects ?? []).map((o) => [o.id, o]));
+  const bFeatures = (factsheet?.objects ?? []).filter((o) => o.tier === 'B');
   const s = factsheet?.solve;
   const [reidOpen, setReidOpen] = useState(false);
   const [starMag, setStarMag] = useState(4);
@@ -169,6 +185,27 @@ export function FactsPanel({
           );
         })}
       </ul>
+
+      {bFeatures.length > 0 && (
+        <>
+          <h3>
+            {t.factsFeaturesB} ({bFeatures.length})
+          </h3>
+          <ul className="legend">
+            {bFeatures.map((o) => (
+              <li key={o.id} className="legend-row b-feature">
+                <span className="legend-text">
+                  <span className="legend-name">
+                    {o.type[lang]}
+                    {o.needs_human_review ? ' ⚠' : ''}
+                  </span>
+                  <span className="muted">{bFeatureDetail(o, objById, lang)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       </div>
     </aside>
   );

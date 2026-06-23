@@ -2,6 +2,7 @@ import { FactSheet } from '@astrolens/schema';
 import type { CatalogCandidate, Wcs } from './types.js';
 import type { GatedCandidate } from './select.js';
 import { objectTypeLabel } from './otype.js';
+import { deriveBClassFeatures } from './features.js';
 import { fieldRadiusDeg } from './wcs.js';
 
 function objConfidence(c: CatalogCandidate): number {
@@ -56,10 +57,13 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       catalog_ids: c.catalog_ids,
       confidence: objConfidence(c),
       // tier 'A' (catalog-grounded), parent_object_id null, needs_human_review
-      // false all come from schema defaults. Class-B features are not produced
-      // by the wide-field MVP (see IDENTIFICATION_REDESIGN.md §4 step 5).
+      // false all come from schema defaults.
     };
   });
+
+  // Class-B morphological features (geometric priors, deterministic). Appended
+  // after the A-class objects so the primary stays objects[0]. See features.ts.
+  const bFeatures = deriveBClassFeatures(objects);
 
   return FactSheet.parse({
     version: '1.0',
@@ -75,7 +79,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       wcs,
       frame: 'display',
     },
-    objects,
+    objects: [...objects, ...bFeatures],
     warnings,
     provenance: {
       queries: args.queries,
