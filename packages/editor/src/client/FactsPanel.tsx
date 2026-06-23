@@ -49,7 +49,6 @@ function bFeatureDetail(f: RFeature, byId: Map<string, FactObject>, lang: 'zh' |
   const o = f.fact_ref ? byId.get(f.fact_ref.object_id) : undefined;
   const parent = o?.parent_object_id ? byId.get(o.parent_object_id) : undefined;
   const parts = [
-    f.draw === false ? (lang === 'en' ? 'not drawn (coincident)' : '重合母体·未单独绘制') : undefined,
     o ? `conf ${o.confidence.toFixed(2)}` : undefined,
     o?.localization?.direction,
     parent ? `↳ ${parent.names[0] ?? parent.type[lang]}` : undefined,
@@ -202,10 +201,7 @@ export function FactsPanel({
                 className={`legend-row b-feature${selectedId === f.id ? ' sel' : ''}`}
                 onClick={() => onSelect(f.id)}
               >
-                <span
-                  className="legend-dot"
-                  style={{ background: COLOR_PALETTE[f.color_key].badge, opacity: f.draw === false ? 0.4 : 1 }}
-                >
+                <span className="legend-dot" style={{ background: COLOR_PALETTE[f.color_key].badge }}>
                   {f.badge.num}
                 </span>
                 <span className="legend-text">

@@ -1,8 +1,25 @@
 import type * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KImage, Circle as KCircle, Group, Text, Line, Arrow } from 'react-konva';
+import {
+  Stage,
+  Layer,
+  Image as KImage,
+  Circle as KCircle,
+  Group,
+  Text,
+  Line,
+  Arrow,
+  Path,
+} from 'react-konva';
 import type Konva from 'konva';
-import { COLOR_PALETTE, fieldRadiusDeg, worldToPixel, type Reading, type Wcs } from '@astrolens/schema';
+import {
+  COLOR_PALETTE,
+  arcPath,
+  fieldRadiusDeg,
+  worldToPixel,
+  type Reading,
+  type Wcs,
+} from '@astrolens/schema';
 import type { Action } from './state.js';
 import { useUi } from './i18n.js';
 
@@ -235,8 +252,20 @@ export function Canvas({
                     onClick={() => dispatch({ type: 'select', id: f.id })}
                     onTap={() => dispatch({ type: 'select', id: f.id })}
                   />
+                ) : f.shape === 'shell' ? (
+                  // Class-B shell — a dashed partial arc, so it reads as the
+                  // shell without duplicating the parent nebula's full ring.
+                  <Path
+                    data={arcPath(cx, cy, r)}
+                    stroke={color.stroke}
+                    strokeWidth={px(selected ? 4 : 3)}
+                    opacity={selected ? 1 : 0.8}
+                    dash={[px(16), px(10)]}
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                  />
                 ) : (
-                  // A-class solid ring, or a Class-B dashed shell ring.
+                  // A-class solid ring.
                   <KCircle
                     x={cx}
                     y={cy}
@@ -244,7 +273,6 @@ export function Canvas({
                     stroke={color.stroke}
                     strokeWidth={px(selected ? 3 : 2)}
                     opacity={selected ? 1 : 0.75}
-                    dash={f.shape === 'shell' ? [px(14), px(9)] : undefined}
                     draggable
                     onClick={() => dispatch({ type: 'select', id: f.id })}
                     onTap={() => dispatch({ type: 'select', id: f.id })}
@@ -263,7 +291,7 @@ export function Canvas({
                   />
                 )}
 
-                {selected && f.shape !== 'arrow' && (
+                {selected && f.shape === 'circle' && (
                   <KCircle
                     x={cx + r}
                     y={cy}

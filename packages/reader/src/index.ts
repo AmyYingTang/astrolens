@@ -113,25 +113,7 @@ function buildReading(
   const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
   const primary = aObjects[0]!;
 
-  // A wind-blown shell near-coincident with its parent nebula's circle is kept
-  // (still a real feature, listed in the Facts panel) but NOT drawn — a second
-  // ring on top of the nebula is redundant clutter. draw=false marks it.
-  const coincidentShell = (obj: FactObject): boolean => {
-    if (obj.feature_type !== 'bubble_shell') return false;
-    const parent = obj.parent_object_id ? byObjId.get(obj.parent_object_id) : null;
-    if (!parent?.coord.pixel || !obj.coord.pixel) return false;
-    const rP = radiusFor(parent);
-    const rS = radiusFor(obj);
-    const big = Math.max(rP, rS);
-    const d = Math.hypot(
-      parent.coord.pixel[0] - obj.coord.pixel[0],
-      parent.coord.pixel[1] - obj.coord.pixel[1],
-    );
-    return d < 0.3 * big && Math.abs(rP - rS) < 0.35 * big;
-  };
-
-  let badgeNum = 0; // numbered over DRAWN features only, so canvas badges stay contiguous
-  const features = factsheet.objects.map((obj) => {
+  const features = factsheet.objects.map((obj, i) => {
     const t = byId.get(obj.id);
     const center = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const cx = center[0]!;
@@ -142,7 +124,6 @@ function buildReading(
       : obj.feature_type === 'bubble_shell'
         ? 'shell'
         : 'arrow';
-    const draw = !coincidentShell(obj);
     // Arrow: a capped step from the anchor point toward the anchored A object.
     let arrow_to: [number, number] | undefined;
     if (shape === 'arrow') {
@@ -164,9 +145,8 @@ function buildReading(
       color_key: obj.feature_type ? featureColorKey(obj.feature_type) : categoryColorKey(obj.category),
       circle: { cx, cy, r: shape === 'arrow' ? starR : radiusFor(obj) },
       shape,
-      draw,
       ...(arrow_to ? { arrow_to } : {}),
-      badge: { num: draw ? String(++badgeNum) : '', offset_x: 0, offset_y: 0, bubble_r: bubbleR },
+      badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },
       explanation: t?.explanation ?? { zh: '', en: '' },
       physics: t?.physics,
       interesting: t?.interesting,
