@@ -6,6 +6,7 @@ import type { IdentifyInput, IdentifyDeps } from './types.js';
 import { fieldRadiusDeg } from './wcs.js';
 import { gateCandidates, selectObjects } from './select.js';
 import { assembleFactSheet } from './assemble.js';
+import { createLuminanceSampler, type LuminanceSampler } from './luminance.js';
 
 async function fileHash(path: string): Promise<string> {
   const buf = await readFile(path);
@@ -82,6 +83,15 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
   ];
 
+  // Image luminance, so Class-B markers can snap onto bright structure. Best
+  // effort — never fail identification if the image can't be read (e.g. tests).
+  let sampler: LuminanceSampler | undefined;
+  try {
+    sampler = await createLuminanceSampler(input.imagePath, input.width, input.height);
+  } catch {
+    sampler = undefined;
+  }
+
   return assembleFactSheet({
     image,
     wcs,
@@ -89,5 +99,6 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     selected,
     queries,
     timestamp,
+    sampler,
   });
 }

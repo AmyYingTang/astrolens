@@ -1,4 +1,5 @@
-import { FEATURE_TAXONOMY, type ObjectCategory } from '@astrolens/schema';
+import { FEATURE_TAXONOMY, pixelToWorld, type ObjectCategory, type Wcs } from '@astrolens/schema';
+import type { LuminanceSampler } from './luminance.js';
 
 /**
  * Class-B geometric priors — deterministic, no CV/AI. Derives morphological
@@ -74,6 +75,99 @@ function label(o: DerivableObject): string {
   return o.names[0] ?? o.type.en;
 }
 
+export interface DeriveOpts {
+  /** WCS of the solved frame — needed to size the shell rim + project back to sky. */
+  wcs?: Wcs;
+  /** Image luminance, so a marker can be snapped onto the bright structure. */
+  sampler?: LuminanceSampler;
+}
+
+/** Mean luminance in a small window around (x,y). */
+function localMean(s: LuminanceSampler, x: number, y: number, win: number): number {
+  let sum = 0;
+  let nn = 0;
+  for (let i = -2; i <= 2; i++) {
+    for (let j = -2; j <= 2; j++) {
+      const v = s(x + (i * win) / 2, y + (j * win) / 2);
+      if (Number.isFinite(v)) {
+        sum += v;
+        nn += 1;
+      }
+    }
+  }
+  return nn ? sum / nn : NaN;
+}
+
+/** A point on the shell rim toward the frame centre (so it stays on-frame). */
+function rimTowardCentre(sp: [number, number], R: number, w: number, h: number): [number, number] {
+  let ux = 0;
+  let uy = -1;
+  const dx = w / 2 - sp[0];
+  const dy = h / 2 - sp[1];
+  const m = Math.hypot(dx, dy);
+  if (m >= 1) {
+    ux = dx / m;
+    uy = dy / m;
+  }
+  return [Math.round(sp[0] + R * ux), Math.round(sp[1] + R * uy)];
+}
+
+/** Brightest point in the shell annulus, so the marker lands on the actual
+ * (bright) shell material — the catalog radius often overestimates the visible
+ * bubble, so we search a range of radii, not just the nominal rim. */
+function rimBrightest(
+  sp: [number, number],
+  R: number,
+  s: LuminanceSampler,
+  w: number,
+  h: number,
+  win: number,
+): [number, number] | null {
+  let best: [number, number] | null = null;
+  let bestScore = -Infinity;
+  const N = 48;
+  const fracs = [0.55, 0.65, 0.75, 0.85, 0.95, 1.0];
+  for (let k = 0; k < N; k++) {
+    const ca = Math.cos((k / N) * 2 * Math.PI);
+    const sa = Math.sin((k / N) * 2 * Math.PI);
+    for (const fr of fracs) {
+      const x = sp[0] + R * fr * ca;
+      const y = sp[1] + R * fr * sa;
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const m = localMean(s, x, y, win);
+      if (Number.isFinite(m) && m > bestScore) {
+        bestScore = m;
+        best = [Math.round(x), Math.round(y)];
+      }
+    }
+  }
+  return best;
+}
+
+/** Mark a wind shell with a small sample point on its rim — snapped to the
+ * brightest part (verified against the image) when a sampler is available. */
+function shellRimCoord(
+  star: DerivableObject,
+  host: DerivableObject,
+  opts: DeriveOpts,
+): DerivableObject['coord'] {
+  const sp = star.coord.pixel;
+  const wcs = opts.wcs;
+  if (!sp || !wcs || !host.size_arcmin) return star.coord;
+  const pixscale = wcs.scale_deg * 3600; // arcsec/px
+  const R = (host.size_arcmin[0] * 60) / pixscale / 2; // rim radius, px
+  const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
+  const rim =
+    (opts.sampler && rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win)) ||
+    rimTowardCentre(sp, R, wcs.width, wcs.height);
+  const world = pixelToWorld(wcs, rim[0], rim[1]);
+  return {
+    ra_deg: world ? world[0] : star.coord.ra_deg,
+    dec_deg: world ? world[1] : star.coord.dec_deg,
+    pixel: rim,
+  };
+}
+
 export type FeatureTypeB = 'bubble_shell' | 'ionization_front';
 
 /** A derived B-class feature, in the FactObject literal shape (pre-parse). */
@@ -134,20 +228,24 @@ function make(
   };
 }
 
-export function deriveBClassFeatures(objects: DerivableObject[]): DerivedFeature[] {
+export function deriveBClassFeatures(
+  objects: DerivableObject[],
+  opts: DeriveOpts = {},
+): DerivedFeature[] {
   const nebulae = objects.filter((o) => o.category === 'emission_nebula');
   const stars = objects.filter(isExcitingStar);
   const clouds = objects.filter((o) => o.category === 'dark_nebula');
   const out: DerivedFeature[] = [];
   let n = 0;
 
-  // 1. wind-blown shell — a WR star inside an emission nebula.
+  // 1. wind-blown shell — a WR star inside an emission nebula. Marked with a
+  //    small sample point on the (brightest) rim, not a ring around the whole.
   for (const star of stars) {
     const host = containingNebula(nebulae, star);
     if (!host) continue;
     out.push(
       make(`bshell${++n}`, 'bubble_shell', host, star, {
-        coord: star.coord, // the shell is centred on the wind source
+        coord: shellRimCoord(star, host, opts),
         size: host.size_arcmin,
         confidence: 0.5,
         direction: `centred on the exciting star ${label(star)}`,

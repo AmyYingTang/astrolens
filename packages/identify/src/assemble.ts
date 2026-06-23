@@ -3,6 +3,7 @@ import type { CatalogCandidate, Wcs } from './types.js';
 import type { GatedCandidate } from './select.js';
 import { objectTypeLabel } from './otype.js';
 import { deriveBClassFeatures } from './features.js';
+import type { LuminanceSampler } from './luminance.js';
 import { fieldRadiusDeg } from './wcs.js';
 
 function objConfidence(c: CatalogCandidate): number {
@@ -28,6 +29,8 @@ export interface AssembleArgs {
   selected: GatedCandidate[];
   queries: string[];
   timestamp: string;
+  /** Image luminance, for snapping Class-B markers onto bright structure. */
+  sampler?: LuminanceSampler;
 }
 
 /**
@@ -63,7 +66,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
 
   // Class-B morphological features (geometric priors, deterministic). Appended
   // after the A-class objects so the primary stays objects[0]. See features.ts.
-  const bFeatures = deriveBClassFeatures(objects);
+  const bFeatures = deriveBClassFeatures(objects, { wcs, sampler: args.sampler });
 
   return FactSheet.parse({
     version: '1.0',

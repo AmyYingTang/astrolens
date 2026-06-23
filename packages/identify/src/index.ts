@@ -19,6 +19,7 @@ export {
 } from './vizier.js';
 export { createCompositeCatalogClient, mergeCandidates } from './composite.js';
 export { deriveBClassFeatures, type DerivableObject, type DerivedFeature } from './features.js';
+export { createLuminanceSampler, type LuminanceSampler } from './luminance.js';
 export { createCachedSolveClient, defaultSolveCacheDir } from './cache.js';
 export type {
   Wcs,

@@ -79,6 +79,54 @@ interface BuildOptions {
   llm: string;
 }
 
+const BADGE_ANCHOR = 0.7071;
+
+interface Spreadable {
+  circle: { cx: number; cy: number; r: number };
+  badge: { offset_x: number; offset_y: number; bubble_r: number };
+}
+
+/** Push overlapping badge anchors apart (so labels don't pile up), writing the
+ * delta into each badge's offset. The badge anchor mirrors the renderer's. */
+function spreadBadges(features: Spreadable[], width: number, height: number): void {
+  const pts = features.map((f) => {
+    const ax = f.circle.cx + (f.circle.r + f.badge.bubble_r) * BADGE_ANCHOR;
+    const ay = f.circle.cy - (f.circle.r + f.badge.bubble_r) * BADGE_ANCHOR;
+    return { x: ax, y: ay, r: f.badge.bubble_r, ax, ay };
+  });
+  for (let it = 0; it < 60; it++) {
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const a = pts[i]!;
+        const b = pts[j]!;
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        const min = (a.r + b.r) * 1.2;
+        if (d < min) {
+          if (d < 1) {
+            dx = Math.cos(i + j);
+            dy = Math.sin(i + j);
+            d = 1;
+          }
+          const push = (min - d) / 2;
+          a.x -= (dx / d) * push;
+          a.y -= (dy / d) * push;
+          b.x += (dx / d) * push;
+          b.y += (dy / d) * push;
+        }
+      }
+    }
+  }
+  features.forEach((f, i) => {
+    const p = pts[i]!;
+    const bx = Math.max(p.r, Math.min(width - p.r, p.x));
+    const by = Math.max(p.r, Math.min(height - p.r, p.y));
+    f.badge.offset_x = Math.round(bx - p.ax);
+    f.badge.offset_y = Math.round(by - p.ay);
+  });
+}
+
 /**
  * Deterministic factsheet → Reading. Each catalogued object becomes one
  * annotation: a circle sized by its angular diameter (stars get a small fixed
@@ -124,27 +172,13 @@ function buildReading(
       : obj.feature_type === 'bubble_shell'
         ? 'shell'
         : 'arrow';
-    let cx = base[0]!;
-    let cy = base[1]!;
-    let r = radiusFor(obj);
+    const cx = base[0]!;
+    const cy = base[1]!;
+    // A shell is a small sample circle; its coord.pixel was already snapped onto
+    // the (bright) rim in Stage 1, so just draw a small circle there.
+    let r = shape === 'shell' ? sampleR : radiusFor(obj);
     let arrow_to: [number, number] | undefined;
-    if (shape === 'shell') {
-      // Place a small sample circle on the shell's rim, toward the frame centre
-      // (so it lands on the visible structure, not off-frame).
-      const R = radiusFor(obj);
-      let ux = 0;
-      let uy = -1;
-      const dx = width / 2 - cx;
-      const dy = height / 2 - cy;
-      const m = Math.hypot(dx, dy);
-      if (m >= 1) {
-        ux = dx / m;
-        uy = dy / m;
-      }
-      cx = Math.round(cx + R * ux);
-      cy = Math.round(cy + R * uy);
-      r = sampleR;
-    } else if (shape === 'arrow') {
+    if (shape === 'arrow') {
       r = starR;
       const ap = obj.localization?.anchor_ref
         ? byObjId.get(obj.localization.anchor_ref)?.coord.pixel
@@ -172,6 +206,11 @@ function buildReading(
       needs_human_review: isB ? obj.needs_human_review : obj.coord.pixel == null,
     };
   });
+
+  // Spread badges so they don't pile up when objects cluster near frame centre.
+  // Each badge starts just outside its circle (up-right); push overlapping ones
+  // apart, then store the delta as the badge offset (the user can still nudge).
+  spreadBadges(features, width, height);
 
   return Reading.parse({
     version: '2.0',
