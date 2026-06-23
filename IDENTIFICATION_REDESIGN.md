@@ -3,7 +3,7 @@
 > 本文是对 `astrolens-identification-spec.md` 的修订版，已并入 PO 的三项定调：
 > ① 双语必做（可大改）；② 两段式 workflow，事实层与表现层**分两个 schema / 两个文件**，不挤在一起；③ 实现语言由 cc 定 → 纯 TS。
 >
-> 状态：**设计 + 计划，待 sign-off。代码未动。**
+> 状态：**已基本实现（Phase 0–2，见 §8）。** 本文是设计基准；A 类识别主链路已跑通，B 类形态识别 + 名称 fallback + co-registration + eval 包未做。实现过程中 §4/§5 有几处偏离最初设计，已就地标注「← 为什么」+ ✅/❌。
 
 ---
 
@@ -178,12 +178,16 @@ reader 拿到 `FactSheet`，对每个 **A / A+** 类 feature：
 
 **B-anchor / B-visual**：进表现层时 `needs_human_review=true`、`circle` 用占位（anchor 的方向中心或图心），等 editor 人工放圈。
 
+> **实现现状注（2026-06）**：上面是 feature 粒度的接缝设计。实际 reader 走的是**对象级**——`buildReading` 直接 map `factsheet.objects`（不是 `object.features[]`），`color_key` 来自 `categoryColorKey(category)`（而非 `featureColorKey(feature_type)`），`label` 来自对象的友好名（专名 → M/NGC/IC → 恒星 designation → 类型词）。原因见 §4 step 5：当前每个目录对象 = 一个圈，`features[]` 恒空。等做 B 类（方案 B 变体）时，这条 feature 粒度接缝才会真正启用。
+
 ---
 
 ## 3 · 特征 taxonomy（`feature_type` enum + 注册表）
 
 > 取代原先的自由字符串 `taxonomy_key`。**source of truth = Notion**[可识别特征清单 + B 类提准方法](https://app.notion.com/p/386040fe94c881baa377ff1a2f473697)（Part 3 按星体类型的特征表）；代码这边镜像成一张注册表，enum 由其 key 派生，避免漂移。
 > ⚠ 下表是**候选池**，级别判断需 Amy 逐类核对（Notion 页 Part 1 注：分级是工程判断，最终她拍板）；MVP 先吃满 A/A⁺，B 类占位。
+>
+> **实现现状注（2026-06）**：这张注册表已建（`schema/src/taxonomy.ts`），但当前**对象级**路径未用它——A 类对象的颜色走 `categoryColorKey(category)`、类型词走 `objectTypeLabel(otype)`（见 §4 step 5）。`FEATURE_TAXONOMY`/`feature_type`/`featureColorKey` 是**留给 B 类**的：方案 B 变体下，B 类条目用 `feature_type` 定颜色/分级、用 `parent_object_id` 记宿主。届时这张表才正式上线。
 
 ### 3.1 两个 enum
 
@@ -259,13 +263,29 @@ export const FeatureType = z.enum([ /* §3.2 第一列全部 key */ ]);
 
 新 package `@astrolens/identify`（纯 TS，后台 service / job，不入前端）：
 
-0. **缓存检查（前置）**：按 image hash 查缓存，命中则直接返回 factsheet，短路下面 1–6。
-1. **Plate-solve（nova.astrometry.net REST）→ WCS**。异步 `submit → poll → results`；nova 慢(30s–几分钟) → 后台 job + 轮询，不阻塞。
-2. **视场几何**：WCS → center RA/Dec、radius、pixscale、orientation。
-3. **查目录**：SIMBAD TAP（ADQL，按 RA/Dec 半径 region query）→ 视场内候选；必要时补 VizieR / NED。
-4. **标注门 + 选择/排序**：drop 无可见光学对应物的 / 低于本图深度的；按目录显著度(Messier/NGC > 暗 PGC) + 角尺寸 + 亮度排序，`cap top N`(可配)，其余 `role=context` 或丢。
-5. **特征映射 + A/B 分流**：otype → taxonomy；A 类 `world_to_pixel` 落点，B 类 anchor / visual 占位。
-6. **组装 `FactSheet`** + 缓存(按 image hash)。
+> **实现现状注（2026-06 更新）**：下列步骤已落地，但 3/4/5 与最初设计有出入——做的过程中按真实数据调整了，每条偏离后附一句「← 为什么」。状态：✅ 已做 / ❌ 未做。
+
+0. **缓存检查（前置）** ✅：按 image hash 查缓存，命中则直接返回 factsheet，短路 1–6。
+1. **Plate-solve（nova.astrometry.net REST）→ WCS** ✅。异步 `submit → poll → results`；nova 慢(30s–几分钟) → 后台 job + 轮询，不阻塞。
+2. **视场几何** ✅：WCS → center RA/Dec、radius、pixscale、orientation。
+3. **查目录（多源并行 + 合并去重）** ✅ — 较原设计扩写：
+   - **SIMBAD TAP** 三条 region query 合并：① 有角尺寸的扩展天体（按 size 排序）② 亮星（V<阈值）③ **激发星（otype `WR*`，不设星等上限）**。
+     - ← *为什么单独查激发星*：气泡/HII 区的中心激发星（如 SH2-308 的 WR 星 HD 50896）是关键天体，但它是点源（无 `galdim` → 被①漏）、又常比亮星阈值暗（V≈6.9 > 6 → 被②漏），所以必须按 otype 专门捞、且不卡星等。
+   - **VizieR ASU**（原文档写"必要时补"，实测必须常备）：六个命名星云目录（Sharpless / RCW / vdB / Cederblad / Barnard / LDN）。
+     - ← *为什么 VizieR 升为一等公民*：SIMBAD `basic` 表**不带弥散星云的角直径**——Sh2-308 的所有别名在 SIMBAD 里都解析到中心 WR 星、`galdim` 为空，星云本体查不出尺寸；命名星云的 extent 只能来自 VizieR 专门目录。用 ASU 服务是因为它替我们算好 J2000（`_RAJ2000`）并服务端做 cone search，省去自行 precess 老历元。
+   - **合并去重 `composite`**：多源候选按 **ObjectCategory 同类**去重。
+     - ← *为什么去重、为什么按类别*：同一星云常被多目录收录（Sh2-308≡RCW11）、近距双星会重（α Sco A/B），不去重会画两个圈；按**完整 category**（而非粗略"星云"一档）去重，才不会把同位置但不同性质的暗云 `MoC` 和发射星云 `HII` 错并。同组留 prestige 最高/更亮者为代表（故 α Sco A 胜过暗弱的 B——否则 B 会因 V=5.2 过不了显著度阈值而让 Antares 整个消失）。
+4. **标注门 gate + 选择 select** ✅ — 较原设计多几条规则：
+   - **门**：必须有可见光学对应物（drop radio / X 射线 / IR-only）；外加**边缘覆盖率剔除**——中心在画面外、绝大部分落到框外的大目标直接丢。
+     - ← *为什么加覆盖率剔除*：中心刚好在画面外的大天体会画出一个绝大部分在图外的巨圈，没意义；但中心在框内、比视场还大的合法主角豁免。
+   - **选择**：按 category 分别设**配额**（maxStars / Clusters / Nebulae / Galaxies），组内按显著度/亮度排序后各取前 N；**激发星（WR）无视星等一律保留**。
+     - ← *为什么用分类配额而非单一 top-N*：单一显著度 top-N 会让大星云把亮星、星团全挤光；分类配额保证每类的"主体 + 主要结构"都留得下，得到一组均衡的标注。
+5. **A 类落点 + 组装** ✅（对象级）/ **B 类形态识别 ❌（未做）**：
+   - 现状：**每个 catalogued 对象 = 一个顶层 `FactObject` = 一个圈**（`world_to_pixel` 落点）；`FactObject.features[]` 暂时恒为空。
+     - ← *为什么是对象级、而非原设计的"DSO 本体 + 内嵌 features[]"*：宽场 MVP 下，中心星/嵌入星团这类在画面里本就是独立可见的点，做成并列的顶层对象比物理嵌套更直观，也让 Stage 1 保持简单确定。原 §2.4/§3 的 feature 粒度 A/B 分流因此**当前未走**（`FEATURE_TAXONOMY`/`feature_type` 已建好但旁路，留给 B 类）。
+   - **B 类挂载方案（已定：方案 B 变体）**：B 类形态特征（电离锋面 / 壳层 / 柱状 / 球状体…）也做成**顶层条目**，但带 `parent_object_id` 指回宿主对象，并复用 `feature_type`/taxonomy（颜色、分级走词表）。Facts 面板里单列一节，各自 `needs_human_review`。
+     - ← *为什么这样挂*：B 类是"不确定"的形态推断层，不该跟 A 类确定的目录事实混在一张清单里；但它又**有根源、有归属**（只有发射星云周围才有电离锋面这类结构），所以用 `parent_object_id` + taxonomy 记住"属于谁、是什么类型"，而不强行物理嵌套——既不大改现有扁平结构，又没浪费 taxonomy。
+6. **组装 `FactSheet`** + 缓存(按 image hash) ✅。
 
 **复用而非重写**：现有 [reader/src/simbad.ts](packages/reader/src/simbad.ts) 是**按名查**(sim-id + ASCII)，新模块要**按区域查**(TAP/ADQL)。查询不同、`ofetch`/超时/绝不抛错/`pc→ly` 换算等模式可复用。识别模块建好后，reader 里的 by-name 富集要么并入 identify，要么留作 fallback。
 
@@ -277,10 +297,10 @@ export const FeatureType = z.enum([ /* §3.2 第一列全部 key */ ]);
 - **A/B 定位**：`A`/`A+`→精确 pixel；`B-anchor`→`anchor_ref`+`direction`，无 bbox；`B-visual`→`method=none`+`needs_human_review`。
 - **每个 object/feature 带 `confidence` + `source`**。
 - **Plate-solve 失败**：
-  1. 有 `star_bearing_image` → 用它解，`frame='co-registered'`（见 §6）。
-  2. 否则有 `target_name` → 按名查目录，`solve.status='user_provided'`、`frame='none'`、无 pixel、全部 `needs_human_review`。
-  3. 都没有 → `status='failed'`、`objects=[]`、加 warning。**绝不编造身份。**
-- **无目录匹配**：`objects=[]` + warning。
+  1. 有 `star_bearing_image` → 用它解，`frame='co-registered'`（见 §6）。**❌ 未实现（Phase 3）。**
+  2. 否则有 `target_name` → 按名查目录，`solve.status='user_provided'`、`frame='none'`、无 pixel、全部 `needs_human_review`。**❌ 未实现**：现状是 solve 失败即返回空 factsheet + 一条 warning（identify.ts 里明写 "name-only catalog resolution is not yet implemented"），并不按名兜底。
+  3. 都没有 → `status='failed'`、`objects=[]`、加 warning。**绝不编造身份。** ✅
+- **无目录匹配**：`objects=[]` + warning。 ✅
 
 ---
 
