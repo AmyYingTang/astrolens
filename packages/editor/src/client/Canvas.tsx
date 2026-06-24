@@ -2,7 +2,15 @@ import type * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Stage, Layer, Image as KImage, Circle as KCircle, Group, Text, Line, Arrow } from 'react-konva';
 import type Konva from 'konva';
-import { COLOR_PALETTE, fieldRadiusDeg, worldToPixel, type Reading, type Wcs } from '@astrolens/schema';
+import {
+  COLOR_PALETTE,
+  fieldRadiusDeg,
+  formatRaHms,
+  formatDecDms,
+  worldToPixel,
+  type Reading,
+  type Wcs,
+} from '@astrolens/schema';
 import type { Action } from './state.js';
 import { useUi } from './i18n.js';
 
@@ -37,7 +45,6 @@ function buildGrid(w: Wcs): { lines: number[][]; labels: GridLabel[] } {
   const inFrame = (p: [number, number]): boolean =>
     p[0] >= 0 && p[0] <= w.width && p[1] >= 0 && p[1] <= w.height;
   const N = 48;
-  const decimals = step < 0.1 ? 2 : 1;
 
   // Dec lines (constant δ): label at the left edge (min-x in-frame point).
   for (let dec = Math.ceil(decMin / step) * step; dec <= decMax + 1e-9; dec += step) {
@@ -52,7 +59,7 @@ function buildGrid(w: Wcs): { lines: number[][]; labels: GridLabel[] } {
     }
     if (pts.length >= 4) {
       lines.push(pts);
-      if (label) labels.push({ x: label[0], y: label[1], text: `Dec ${dec.toFixed(decimals)}°`, center: false, top: true });
+      if (label) labels.push({ x: label[0], y: label[1], text: `Dec ${formatDecDms(dec)}`, center: false, top: true });
     }
   }
   // RA lines (constant α): label alternately at the top / bottom edge so the
@@ -77,7 +84,7 @@ function buildGrid(w: Wcs): { lines: number[][]; labels: GridLabel[] } {
       const useTop = raIdx % 2 === 0;
       const lp = useTop ? top : bottom;
       if (lp) {
-        labels.push({ x: lp[0], y: lp[1], text: `RA ${ra.toFixed(decimals)}°`, center: true, top: useTop });
+        labels.push({ x: lp[0], y: lp[1], text: `RA ${formatRaHms(ra)}`, center: true, top: useTop });
       }
       raIdx += 1;
     }
