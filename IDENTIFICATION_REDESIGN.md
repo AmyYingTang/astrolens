@@ -273,16 +273,25 @@ export const FeatureType = z.enum([ /* §3.2 第一列全部 key */ ]);
      - ← *为什么 VizieR 升为一等公民*：SIMBAD `basic` 表**不带弥散星云的角直径**——Sh2-308 的所有别名在 SIMBAD 里都解析到中心 WR 星、`galdim` 为空，星云本体查不出尺寸；命名星云的 extent 只能来自 VizieR 专门目录。用 ASU 服务是因为它替我们算好 J2000（`_RAJ2000`）并服务端做 cone search，省去自行 precess 老历元。
    - **合并去重 `composite`**：多源候选按 **ObjectCategory 同类**去重。
      - ← *为什么去重、为什么按类别*：同一星云常被多目录收录（Sh2-308≡RCW11）、近距双星会重（α Sco A/B），不去重会画两个圈；按**完整 category**（而非粗略"星云"一档）去重，才不会把同位置但不同性质的暗云 `MoC` 和发射星云 `HII` 错并。同组留 prestige 最高/更亮者为代表（故 α Sco A 胜过暗弱的 B——否则 B 会因 V=5.2 过不了显著度阈值而让 Antares 整个消失）。
-4. **标注门 gate + 选择 select** ✅ — 较原设计多几条规则：
-   - **门**：必须有可见光学对应物（drop radio / X 射线 / IR-only）；外加**边缘覆盖率剔除**——中心在画面外、绝大部分落到框外的大目标直接丢。
-     - ← *为什么加覆盖率剔除*：中心刚好在画面外的大天体会画出一个绝大部分在图外的巨圈，没意义；但中心在框内、比视场还大的合法主角豁免。
-   - **选择**：按 category 分别设**配额**（maxStars / Clusters / Nebulae / Galaxies），组内按显著度/亮度排序后各取前 N；**激发星（WR）无视星等一律保留**。
-     - ← *为什么用分类配额而非单一 top-N*：单一显著度 top-N 会让大星云把亮星、星团全挤光；分类配额保证每类的"主体 + 主要结构"都留得下，得到一组均衡的标注。
-5. **A 类落点 + 组装** ✅（对象级）/ **B 类形态识别 ❌（未做）**：
-   - 现状：**每个 catalogued 对象 = 一个顶层 `FactObject` = 一个圈**（`world_to_pixel` 落点）；`FactObject.features[]` 暂时恒为空。
-     - ← *为什么是对象级、而非原设计的"DSO 本体 + 内嵌 features[]"*：宽场 MVP 下，中心星/嵌入星团这类在画面里本就是独立可见的点，做成并列的顶层对象比物理嵌套更直观，也让 Stage 1 保持简单确定。原 §2.4/§3 的 feature 粒度 A/B 分流因此**当前未走**（`FEATURE_TAXONOMY`/`feature_type` 已建好但旁路，留给 B 类）。
-   - **B 类挂载方案（已定：方案 B 变体）**：B 类形态特征（电离锋面 / 壳层 / 柱状 / 球状体…）也做成**顶层条目**，但带 `parent_object_id` 指回宿主对象，并复用 `feature_type`/taxonomy（颜色、分级走词表）。Facts 面板里单列一节，各自 `needs_human_review`。
-     - ← *为什么这样挂*：B 类是"不确定"的形态推断层，不该跟 A 类确定的目录事实混在一张清单里；但它又**有根源、有归属**（只有发射星云周围才有电离锋面这类结构），所以用 `parent_object_id` + taxonomy 记住"属于谁、是什么类型"，而不强行物理嵌套——既不大改现有扁平结构，又没浪费 taxonomy。
+4. **标注门 gate + 选择 select（"只标主目标"）** ✅ — 较原设计大改（2026-06 定稿）：
+   - **门**：可见光学对应物（drop radio / X / IR-only）+ **边缘覆盖率剔除**（中心在框外、大部分落框外的大目标丢；比视场大的居中主角豁免）+ **图像可见性闸**（亮度采样器核实"真在这张图里"：发射/反射/团/系比背景亮、暗星云比背景暗；恒星按星等）。
+     - ← *为什么加可见性闸*：catalog 返回大量光学上看不见的东西（如 PGCC 普朗克冷云核），用图像本身核实再标。
+   - **命名闸**：二级 DSO 必须有可辨识名号（Messier/NGC/IC/Sharpless/RCW/vdB/Cederblad/Barnard/LDN，或非巡天专名）→ 丢 survey-only（PGCC/LEDA/2MASX/匿名）。
+     - ← *为什么*：聚焦主目标 + 标志性陪体，不标一地鸡毛的巡天源。
+   - **构图先验（centeredness）**：摄影者一般把主体放画面中部、不贴边——离中心越近分越高，外侧 ~25% 边带轻罚；用于挑 primary，避免把贴边的目录大物当主体。
+   - **显著度（重定标）**：Messier 1000 > NGC/IC 500 > **命名星云目录 300** > 其他目录 100；+ 角尺寸；**亮星按星等陡增**（裸眼亮星如 Antares ≈330 与显著 DSO 同级，免得被星云挤掉；V≈3 的普通亮星 ≈210 仍低于命名星云，主体仍是星云不是前景星）。
+   - **分类自适应配额**（取代单一 top-N）：每类 ≤2 星 / 2 团 / 2 星云 / 1 星系（topN=6 仅安全上限）。单目标场 ~3-4；多目标场（Antares 区：双团 + 双亮星 + 双星云）展开到真正的几个主体。
+     - ← *为什么不用单一 top-N*：硬 top-N=4 反复把标志性亮星（Antares、σ Sco）挤掉。
+   - **WR / 激发星**：不再无视星等一律保留；只保留**选中发射星云中心最近的那 1 颗 WR**（供能星）或本身够亮的，其余暗 WR 丢。
+     - ← *为什么*：用户反馈识别出很多既非主体、又暗到图上看不见的 WR 星。
+5. **A 类落点 + 组装 + B 类形态（几何先验，无 AI）** ✅ 首切已落地：
+   - **A 类**：每个目录对象 = 一个顶层 `FactObject` = 一个实心圈（`world_to_pixel` 落点）。原设计把子特征嵌进 `FactObject.features[]`；实际走**方案 B 变体**（顶层条目 + `parent_object_id` + `feature_type`/taxonomy），嵌套 `features[]` 已退役。
+   - **B 类（确定性几何先验，配套清单 method 1）**：从已识别 A 锚点推导，`tier:'B'` + 指回宿主 + `needs_human_review`：
+     · **bubble_shell**：发射星云内有 WR → 风泡壳；用**亮度采样器**在壳层环带上挑"真在结构上"的亮点（中值亮度、避开其他已标对象），落一个**小取样圈**，不画整圈（免得与母体星云的圈重叠）。
+     · **ionization_front**：HII 区内的暗云 → 电离锋面，画一支**指向激发星**的箭头（亮缘朝向）。
+   - **渲染**：A=实线圈、shell=小虚线取样圈、front=箭头；reader `spreadBadges` 防 badge 堆叠；`draw=false` 可让某条只列在 Facts 不画（如与母体重合的壳）。Facts 面板「形态特征(B 类)」单列一节。
+     - ← *为什么这样挂*：B 类是"不确定"的形态推断层，不与 A 类目录事实混列；但它有归属（只有发射星云周围才有电离锋面），用 `parent_object_id` + taxonomy 记"属于谁/是什么"，不强行物理嵌套。
+   - **未做**：更多 B 类先验（潮汐尾 / dust lane / 旋臂 / pillar）、CV 检测（Frangi 等）、多目标构图自动判别。
 6. **组装 `FactSheet`** + 缓存(按 image hash) ✅。
 
 **复用而非重写**：现有 [reader/src/simbad.ts](packages/reader/src/simbad.ts) 是**按名查**(sim-id + ASCII)，新模块要**按区域查**(TAP/ADQL)。查询不同、`ofetch`/超时/绝不抛错/`pc→ly` 换算等模式可复用。识别模块建好后，reader 里的 by-name 富集要么并入 identify，要么留作 fallback。
@@ -365,7 +374,8 @@ job 状态持久化成项目目录里的 `job.json`(本地单用户,重启可恢
 - **Phase 1 — MVP / A 类跑通 🟡 核心已落地**：`@astrolens/identify`(TAN `world_to_pixel`、otype→taxonomy gate、significance 排序、`assembleFactSheet`、注入式 nova/SIMBAD client)+ 离线测试(WCS round-trip / gate / A 类落点 / fallback);reader 改成 `generateReading(factsheet)`(LLM 只 tailor 双语,不再找身份);`astrolens identify`(只出 factsheet)与 `astrolens read`(全流程)命令;editor `POST /api/projects` 改 identify→reader(**仍阻塞,job+轮询见下 §6.5 待做**)。全 tsc/test/lint/bundle 绿。**未在本环境验证**:nova/SIMBAD HTTP(需 key+网络)、nova orientation/parity→WCS 约定(待 identify-eval star self-check)、LLM tailoring 质量。剩余:`POST /api/projects` 的 job+轮询(§6.5)、Editor Facts 面板、`identify-eval`(§9.5)。
 - **Phase 1d — job+轮询 + Facts 查看 ✅ 已完成**：`POST /api/projects` 改后台 job(`job.json` 持久化)+ `GET .../job`、`GET .../factsheet`;Home 轮询 + stage 文案 + 项目卡 solve/needs_review chip;Editor 只读 **Facts 面板**(toolbar 切换)。全 tsc/test/eslint/client-bundle/client-typecheck 绿。
 - **Phase 2 — 人机闸门 + 渲染双语 ✅ 基本完成**：editor 双语 ✅ + renderer/viewer 双语 ✅(0c);Facts 面板 ✅(1d);**B 类 review gate ✅**(feature card 上 `confirmFeature` 清除 `needs_human_review`)。**剩**:`identify-eval` golden set + scorecard(档 2,需真实 nova 数据)。
-- **Phase 3 — 以后**：starless 的 co-registration、click-to-anchor 灌 `user_anchors`、B 类提准；`identify-eval` 出 instrumentation 指标喂论文 Results。
+- **Phase 2.5 — 选择策略 + B 类首切 ✅（2026-06）**：选择改「只标主目标」(命名闸 + 图像可见性闸 + 构图先验 + 分类自适应配额 + 亮星显著度重定标 + WR 只留中心激发星，见 §4 step 4)；VizieR 命名星云目录接线 + composite 去重 (§4 step 3)；B 类几何先验首切落地 (bubble_shell 取样圈 / ionization_front 箭头，亮度采样器贴到结构上，§4 step 5)；schema 走方案 B 变体 (FactObject 加 tier/parent_object_id/feature_type，退役嵌套 features[])。
+- **Phase 3 — 以后**：starless 的 co-registration、click-to-anchor 灌 `user_anchors`、更多 B 类先验 + CV 检测、多目标构图自动判别、名称偏好(俗名 vs 官方名)；`identify-eval` 出 instrumentation 指标喂论文 Results。
 
 ---
 
