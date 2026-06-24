@@ -271,8 +271,12 @@ export const FeatureType = z.enum([ /* §3.2 第一列全部 key */ ]);
      - ← *为什么单独查激发星*：气泡/HII 区的中心激发星（如 SH2-308 的 WR 星 HD 50896）是关键天体，但它是点源（无 `galdim` → 被①漏）、又常比亮星阈值暗（V≈6.9 > 6 → 被②漏），所以必须按 otype 专门捞、且不卡星等。
    - **VizieR ASU**（原文档写"必要时补"，实测必须常备）：六个命名星云目录（Sharpless / RCW / vdB / Cederblad / Barnard / LDN）。
      - ← *为什么 VizieR 升为一等公民*：SIMBAD `basic` 表**不带弥散星云的角直径**——Sh2-308 的所有别名在 SIMBAD 里都解析到中心 WR 星、`galdim` 为空，星云本体查不出尺寸；命名星云的 extent 只能来自 VizieR 专门目录。用 ASU 服务是因为它替我们算好 J2000（`_RAJ2000`）并服务端做 cone search，省去自行 precess 老历元。
+   - **OpenNGC**（社区 NGC/IC 数据库，2026-06 接线）：CSV 一次性下载 + 落盘缓存，本地 cone 过滤。
+     - ← *为什么补 OpenNGC*：SIMBAD 连 **NGC/IC 天体本身也常缺角尺寸**（NGC 3576 在 SIMBAD 是 `HII` 但 `galdim` 为空 → 过不了星云尺寸闸 → 整张图退化成只认外围的 RCW 大复合体）。OpenNGC 提供这些缺失的尺寸，同时给 ~130 个最知名天体带 common name（再喂给下面的 Wikidata 取中文名）。
    - **合并去重 `composite`**：多源候选按 **ObjectCategory 同类**去重。
      - ← *为什么去重、为什么按类别*：同一星云常被多目录收录（Sh2-308≡RCW11）、近距双星会重（α Sco A/B），不去重会画两个圈；按**完整 category**（而非粗略"星云"一档）去重，才不会把同位置但不同性质的暗云 `MoC` 和发射星云 `HII` 错并。同组留 prestige 最高/更亮者为代表（故 α Sco A 胜过暗弱的 B——否则 B 会因 V=5.2 过不了显著度阈值而让 Antares 整个消失）。
+     - ← *并名时优先"人类起过外号的成员"*：一个复合体常被拆成多个 NGC 号（RCW 57 里有 NGC 3576/3579/3581/…），并名时让有外号的成员（NGC 3576）当代表，保住规范名而不是随便落到 NGC 3579。
+   - **common name 三层来源**：SIMBAD `NAME` 伪目录 + OpenNGC common-names 列 + **人工外号叠加层** `nicknames.ts`（任何结构化库都没有的业余外号，如 NGC 3576 = Statue of Liberty Nebula / 自由女神星云——已核实 SIMBAD/Wikidata/Wikipedia/OpenNGC 全无）。外号层在 select 后、Wikidata 前应用，对名字权威；之后 Wikidata 补中文名（见 §11.1 Tier 1）。
 4. **标注门 gate + 选择 select（"只标主目标"）** ✅ — 较原设计大改（2026-06 定稿）：
    - **门**：可见光学对应物（drop radio / X / IR-only）+ **边缘覆盖率剔除**（中心在框外、大部分落框外的大目标丢；比视场大的居中主角豁免）+ **图像可见性闸**（亮度采样器核实"真在这张图里"：发射/反射/团/系比背景亮、暗星云比背景暗；恒星按星等）。
      - ← *为什么加可见性闸*：catalog 返回大量光学上看不见的东西（如 PGCC 普朗克冷云核），用图像本身核实再标。
@@ -375,7 +379,8 @@ job 状态持久化成项目目录里的 `job.json`(本地单用户,重启可恢
 - **Phase 1d — job+轮询 + Facts 查看 ✅ 已完成**：`POST /api/projects` 改后台 job(`job.json` 持久化)+ `GET .../job`、`GET .../factsheet`;Home 轮询 + stage 文案 + 项目卡 solve/needs_review chip;Editor 只读 **Facts 面板**(toolbar 切换)。全 tsc/test/eslint/client-bundle/client-typecheck 绿。
 - **Phase 2 — 人机闸门 + 渲染双语 ✅ 基本完成**：editor 双语 ✅ + renderer/viewer 双语 ✅(0c);Facts 面板 ✅(1d);**B 类 review gate ✅**(feature card 上 `confirmFeature` 清除 `needs_human_review`)。**剩**:`identify-eval` golden set + scorecard(档 2,需真实 nova 数据)。
 - **Phase 2.5 — 选择策略 + B 类首切 ✅（2026-06）**：选择改「只标主目标」(命名闸 + 图像可见性闸 + 构图先验 + 分类自适应配额 + 亮星显著度重定标 + WR 只留中心激发星，见 §4 step 4)；VizieR 命名星云目录接线 + composite 去重 (§4 step 3)；B 类几何先验首切落地 (bubble_shell 取样圈 / ionization_front 箭头，亮度采样器贴到结构上，§4 step 5)；schema 走方案 B 变体 (FactObject 加 tier/parent_object_id/feature_type，退役嵌套 features[])。
-- **Phase 3 — 以后**：starless 的 co-registration、click-to-anchor 灌 `user_anchors`、更多 B 类先验 + CV 检测、多目标构图自动判别、名称偏好(俗名 vs 官方名)；`identify-eval` 出 instrumentation 指标喂论文 Results。
+- **Phase 2.6 — 跨 ID 显示层 + OpenNGC + 俗名 ✅（2026-06）**：六分仪坐标显示 (HMS/DMS，内部仍十进制)；cross-ID「俗名优先 + 全部 designation + 分隔度」；type 可信度拆分 (identity vs type) + 弱发射源 hedge + Wikidata P31 机制覆盖 (Tier 1)；**OpenNGC 第三目录源**（补 SIMBAD 缺失的 NGC/IC 角尺寸——解决 NGC 3576 整类「无尺寸→漏识别」；带 ~130 个知名天体 common name）；**人工外号叠加层** `nicknames.ts`（NGC 3576 = Statue of Liberty / 自由女神星云，结构化库全无）；并名优先有外号的成员当代表 (§4 step 3)。
+- **Phase 3 — 以后**：starless 的 co-registration、click-to-anchor 灌 `user_anchors`、更多 B 类先验 + CV 检测、多目标构图自动判别；Tier 2 机制目录 (Green SNR / WISE HII / HASH PN + 位置归属)；`identify-eval` 出 instrumentation 指标喂论文 Results。
 
 ---
 
