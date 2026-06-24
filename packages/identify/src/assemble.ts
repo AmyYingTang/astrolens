@@ -8,6 +8,10 @@ import { detectCvFeatures } from './cv.js';
 import { estimateBackground, type LuminanceSampler } from './luminance.js';
 import { fieldRadiusDeg } from './wcs.js';
 
+/** Drop Class-B inferences weaker than this — a low-confidence morphological
+ * guess (e.g. the geometric ionization front at 0.4) is noise, not signal. */
+const MIN_B_CONFIDENCE = 0.5;
+
 /** Identity confidence — *which* catalogue object this is. */
 function objConfidence(c: CatalogCandidate): number {
   if (c.catalog_ids.messier) return 0.97;
@@ -130,7 +134,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
   const bFeatures = [
     ...deriveBClassFeatures(objects, { wcs, sampler: args.sampler, backgroundLum: bg }),
     ...detectCvFeatures(objects, { wcs, sampler: args.sampler, backgroundLum: bg }),
-  ];
+  ].filter((f) => f.confidence >= MIN_B_CONFIDENCE);
 
   return FactSheet.parse({
     version: '1.0',
