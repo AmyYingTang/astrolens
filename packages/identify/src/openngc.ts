@@ -49,7 +49,8 @@ const TYPE_OTYPE: Record<string, string> = {
   RfN: 'RNe', // reflection
   OCl: 'OpC',
   GCl: 'GlC',
-  'Cl+N': 'OpC', // cluster + nebulosity → treat as the cluster
+  'Cl+N': 'EmO', // cluster + nebulosity → the nebula is the photographic subject
+  // (e.g. NGC 6357 = War and Peace Nebula), so type it as emission, not a cluster
   '*': '*',
   '**': '**',
   '*Ass': '*',
@@ -127,7 +128,10 @@ export function parseOpenNgc(text: string): CatalogCandidate[] {
       maj && maj > 0 ? [maj, min && min > 0 ? min : maj] : undefined;
     const mag = numOr(f[iV]) ?? numOr(f[iB]);
 
-    const commonEn = (f[iCommon] ?? '').split(',')[0]?.trim();
+    const commonEn = (f[iCommon] ?? '')
+      .split(',')[0]
+      ?.trim()
+      .replace(/^the\s+/i, ''); // "the War and Peace Nebula" → "War and Peace Nebula"
 
     const display = catalog_ids.messier ?? named.name;
     out.push({

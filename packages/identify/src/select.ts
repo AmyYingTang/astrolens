@@ -103,7 +103,12 @@ export function significance(c: CatalogCandidate): number {
   else if (c.catalog_ids.ngc || c.catalog_ids.ic) score += 500;
   else if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) score += 300; // Sharpless/RCW/vdB/…
   else if (Object.keys(c.catalog_ids).length > 0) score += 100;
-  if (c.size_arcmin) score += c.size_arcmin[0]; // angular size (major axis, arcmin)
+  // Angular size, capped: a giant background cloud (e.g. B 258 at 433′, larger
+  // than the field) shouldn't out-rank the framed subject on size alone.
+  if (c.size_arcmin) score += Math.min(c.size_arcmin[0], 300);
+  // Fame: a common name ⇒ a famous object ⇒ it's almost certainly the subject —
+  // so the named nebula (War and Peace) becomes primary over an unnamed cloud.
+  if (c.common_name?.en || c.common_name?.zh) score += 500;
   // Brightness: a naked-eye-bright star (Antares V≈1 → ~330) ranks with a notable
   // DSO so it survives the focused set; a moderate star (V≈3 → ~210) stays below a
   // named nebula so the nebula remains the subject.
