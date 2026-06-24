@@ -80,6 +80,55 @@ export interface DeriveOpts {
   wcs?: Wcs;
   /** Image luminance, so a marker can be snapped onto the bright structure. */
   sampler?: LuminanceSampler;
+  /** Median background luminance — lets us measure the *visible* glow extent. */
+  backgroundLum?: number;
+}
+
+/**
+ * Image-derived radius (px) of a nebula's *visible* glow around `center`. The
+ * catalog size is unreliable here — a merged complex (NGC 3576 ≡ RCW 57) carries
+ * the whole 170′ extent, so placing markers at that radius flings them far off
+ * the actual nebula. We ray-cast outward and take a high percentile of the
+ * per-ray "still bright" radius. Returns 0 if the centre isn't on bright
+ * structure (catalog position off the glow) or the glow isn't coherent.
+ */
+export function visibleRadiusPx(
+  center: [number, number],
+  maxR: number,
+  s: LuminanceSampler,
+  bg: number,
+  w: number,
+  h: number,
+  win: number,
+): number {
+  const thr = bg * 1.15;
+  if (!(localMedian(s, center[0], center[1], win) > thr)) return 0; // centre not on glow
+  const N = 24;
+  const steps = 40;
+  const radii: number[] = [];
+  for (let k = 0; k < N; k++) {
+    const ca = Math.cos((k / N) * 2 * Math.PI);
+    const sa = Math.sin((k / N) * 2 * Math.PI);
+    let edge = 0;
+    let gap = 0;
+    for (let i = 1; i <= steps; i++) {
+      const r = (maxR * i) / steps;
+      const x = center[0] + r * ca;
+      const y = center[1] + r * sa;
+      if (x < 0 || y < 0 || x >= w || y >= h) break;
+      const m = localMedian(s, x, y, win);
+      if (Number.isFinite(m) && m > thr) {
+        edge = r;
+        gap = 0;
+      } else if (++gap >= 4) {
+        break; // sustained dark stretch → past the glow edge on this ray
+      }
+    }
+    if (edge > 0) radii.push(edge);
+  }
+  if (radii.length < N / 2) return 0; // glow not coherent around the centre
+  radii.sort((a, b) => a - b);
+  return radii[Math.floor(radii.length * 0.7)]!;
 }
 
 /** Median luminance in a window around (x,y). Median (not mean) so a bright
@@ -158,12 +207,15 @@ function shellRimCoord(
   host: DerivableObject,
   opts: DeriveOpts,
   avoid: [number, number][],
+  rimRadiusPx?: number,
 ): DerivableObject['coord'] {
   const sp = star.coord.pixel;
   const wcs = opts.wcs;
-  if (!sp || !wcs || !host.size_arcmin) return star.coord;
+  if (!sp || !wcs) return star.coord;
   const pixscale = wcs.scale_deg * 3600; // arcsec/px
-  const R = (host.size_arcmin[0] * 60) / pixscale / 2; // rim radius, px
+  const catR = host.size_arcmin ? (host.size_arcmin[0] * 60) / pixscale / 2 : 0;
+  const R = rimRadiusPx && rimRadiusPx > 0 ? rimRadiusPx : catR; // prefer visible glow
+  if (!(R > 0)) return star.coord;
   const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
   const hit = opts.sampler ? rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win, avoid) : null;
   const rim = hit ? hit.pixel : rimTowardCentre(sp, R, wcs.width, wcs.height);
@@ -262,9 +314,29 @@ export function deriveBClassFeatures(
   for (const star of stars) {
     const host = containingNebula(nebulae, star);
     if (!host) continue;
+    // With an image, only assert a shell when the WR sits near the *visible*
+    // glow centre — a clean wind bubble has a central exciting star (e.g.
+    // SH2-308). An off-centre WR in a big star-forming complex isn't powering
+    // one, so we don't claim it. The marker uses the visible radius, not the
+    // (possibly inflated, merged) catalog size, so it lands on the real rim.
+    let rimR: number | undefined;
+    if (opts.wcs && opts.sampler && opts.backgroundLum != null && host.coord.pixel && star.coord.pixel) {
+      const wcs = opts.wcs;
+      const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
+      const catR = host.size_arcmin
+        ? (host.size_arcmin[0] * 60) / (wcs.scale_deg * 3600) / 2
+        : Math.min(wcs.width, wcs.height) / 2;
+      const Rvis = visibleRadiusPx(host.coord.pixel, catR, opts.sampler, opts.backgroundLum, wcs.width, wcs.height, win);
+      const dist = Math.hypot(
+        star.coord.pixel[0] - host.coord.pixel[0],
+        star.coord.pixel[1] - host.coord.pixel[1],
+      );
+      if (!(Rvis > win) || dist > 0.5 * Rvis) continue; // not a central-star bubble
+      rimR = Rvis;
+    }
     out.push(
       make(`bshell${++n}`, 'bubble_shell', host, star, {
-        coord: shellRimCoord(star, host, opts, avoid),
+        coord: shellRimCoord(star, host, opts, avoid, rimR),
         size: host.size_arcmin,
         confidence: 0.5,
         direction: `centred on the exciting star ${label(star)}`,

@@ -25,15 +25,21 @@ const nebula: DerivableObject = {
   names: ['NGC 3576'],
 };
 
-// A bright knot on the rim to the right of centre; dim everywhere else.
-const brightAt = (bx: number, by: number, bg: number): LuminanceSampler =>
-  (x, y) => (Math.hypot(x - bx, y - by) < 200 ? 220 : bg);
+// A coherent glow around the nebula centre (so the visible-radius estimate
+// works), with an extra-bright knot on the rim to the right of centre.
+const glow =
+  (cx: number, cy: number, R: number, knotX: number, knotY: number, bg: number): LuminanceSampler =>
+  (x, y) => {
+    if (Math.hypot(x - knotX, y - knotY) < 150) return 240; // bright rim knot
+    if (Math.hypot(x - cx, y - cy) < R) return 120; // diffuse glow
+    return bg;
+  };
 
 describe('detectCvFeatures (bright rim)', () => {
   it('detects an ionization front on the brightest part of the nebula rim', () => {
     const feats = detectCvFeatures([nebula], {
       wcs,
-      sampler: brightAt(3300, 1500, 20),
+      sampler: glow(2000, 1500, 600, 2400, 1500, 20),
       backgroundLum: 20,
     });
     expect(feats).toHaveLength(1);

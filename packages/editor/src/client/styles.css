@@ -735,6 +735,13 @@ textarea.explanation {
 .legend-text .muted {
   font-size: 11px;
 }
+.legend-text details.xmatch > summary {
+  cursor: pointer;
+  list-style-position: inside;
+}
+.legend-text details.xmatch > div {
+  padding-left: 12px;
+}
 .gen-reading {
   padding: 6px 14px;
 }

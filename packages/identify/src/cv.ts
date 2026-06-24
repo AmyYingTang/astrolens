@@ -1,6 +1,11 @@
 import { FEATURE_TAXONOMY, pixelToWorld, type Wcs } from '@astrolens/schema';
 import type { LuminanceSampler } from './luminance.js';
-import { rimBrightest, type DerivableObject, type DerivedFeature } from './features.js';
+import {
+  rimBrightest,
+  visibleRadiusPx,
+  type DerivableObject,
+  type DerivedFeature,
+} from './features.js';
 
 /**
  * Class-B CV detectors — image-content features that have *no* catalog anchor, so
@@ -42,8 +47,15 @@ export function detectCvFeatures(objects: DerivableObject[], opts: CvOpts = {}):
 
   for (const neb of nebulae) {
     const center = neb.coord.pixel!;
-    const R = (neb.size_arcmin![0] * 60) / pixscale / 2; // radius, px
-    if (!(R > win)) continue; // too small to have a resolvable rim
+    const catR = (neb.size_arcmin![0] * 60) / pixscale / 2; // catalog radius, px
+    // Confine the rim search to the *visible* glow, not the (possibly inflated,
+    // merged) catalog extent — otherwise the brightest point in a 170′ annulus
+    // lands on unrelated nebulosity far from this nebula.
+    const R =
+      backgroundLum != null && Number.isFinite(backgroundLum)
+        ? visibleRadiusPx(center, catR, sampler, backgroundLum, wcs.width, wcs.height, win)
+        : catR;
+    if (!(R > win)) continue; // no coherent glow at the catalog centre → skip
     const hit = rimBrightest(center, R, sampler, wcs.width, wcs.height, win, avoid);
     if (!hit) continue;
     // A genuine bright rim is clearly above background; otherwise it's just the
@@ -53,7 +65,8 @@ export function detectCvFeatures(objects: DerivableObject[], opts: CvOpts = {}):
     }
     const world = pixelToWorld(wcs, hit.pixel[0], hit.pixel[1]);
     avoid.push(hit.pixel); // don't stack a second rim on the same spot
-    const contrast = backgroundLum ? Math.min(1, hit.lum / (backgroundLum * 2)) : 0.5;
+    // Cap at 0.7: a CV inference is a hint to confirm, never catalog-certain.
+    const contrast = backgroundLum ? Math.min(0.7, hit.lum / (backgroundLum * 2)) : 0.5;
     out.push({
       id: `bcv${++n}`,
       role: 'context',

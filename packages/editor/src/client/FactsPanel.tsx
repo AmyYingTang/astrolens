@@ -52,14 +52,21 @@ function designationsLine(o: FactObject, label: string): string {
   return o.designations.filter((d) => d && d !== label).join(' / ');
 }
 
-/** Cross-ID separation: "NGC 2736 ↔ RCW 37 · Δ 2.1′ · same object". */
-function separationLine(o: FactObject, lang: 'zh' | 'en'): string {
-  if (!o.cross_match?.length) return '';
+/** Cross-ID separation, structured: a one-line summary + the per-match lines, so
+ * a long list ("same object" catalogued under many numbers) can collapse. */
+function separationInfo(
+  o: FactObject,
+  lang: 'zh' | 'en',
+): { summary: string; verdict: string; items: string[] } | null {
+  if (!o.cross_match?.length) return null;
   const me = o.designations[0] ?? o.names[0] ?? '';
   const thr = o.size_arcmin ? o.size_arcmin[0] : 5;
   const same = o.cross_match.every((m) => m.sep_arcmin <= thr);
   const verdict = same ? (lang === 'en' ? ' · same object' : ' · 同一天体') : '';
-  return o.cross_match.map((m) => `${me} ↔ ${m.id} · Δ ${m.sep_arcmin}′`).join('; ') + verdict;
+  const items = o.cross_match.map((m) => `${me} ↔ ${m.id} · Δ ${m.sep_arcmin}′`);
+  const n = items.length;
+  const head = lang === 'en' ? `${n} cross-ID${n > 1 ? 's' : ''}` : `${n} 个交叉证认`;
+  return { summary: head + verdict, verdict, items };
 }
 
 /** Title type label: stars get the specific gloss (s*r → 红超巨星) since their
@@ -222,9 +229,30 @@ export function FactsPanel({
                     {objectDetail(o, lang)}
                   </span>
                 )}
-                {o && separationLine(o, lang) && (
-                  <span className="muted">{separationLine(o, lang)}</span>
-                )}
+                {(() => {
+                  const sep = o && separationInfo(o, lang);
+                  if (!sep) return null;
+                  // Short lists stay inline; a long "same object" list collapses.
+                  if (sep.items.length <= 2) {
+                    return (
+                      <span className="muted">
+                        {sep.items.join('; ')}
+                        {sep.verdict}
+                      </span>
+                    );
+                  }
+                  return (
+                    <details
+                      className="muted xmatch"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <summary>{sep.summary}</summary>
+                      {sep.items.map((x, i) => (
+                        <div key={i}>{x}</div>
+                      ))}
+                    </details>
+                  );
+                })()}
               </span>
             </li>
           );

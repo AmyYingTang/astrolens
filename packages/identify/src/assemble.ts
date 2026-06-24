@@ -128,7 +128,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
   // + image CV detectors with no catalog anchor (cv.ts, e.g. a bright rim).
   const bg = args.sampler ? estimateBackground(args.sampler, wcs.width, wcs.height) : undefined;
   const bFeatures = [
-    ...deriveBClassFeatures(objects, { wcs, sampler: args.sampler }),
+    ...deriveBClassFeatures(objects, { wcs, sampler: args.sampler, backgroundLum: bg }),
     ...detectCvFeatures(objects, { wcs, sampler: args.sampler, backgroundLum: bg }),
   ];
 
