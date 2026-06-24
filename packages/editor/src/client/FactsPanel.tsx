@@ -1,6 +1,13 @@
 import type * as React from 'react';
 import { useState } from 'react';
-import { COLOR_PALETTE, otypeLabel, type FactSheet, type Reading } from '@astrolens/schema';
+import {
+  COLOR_PALETTE,
+  otypeLabel,
+  formatRaHms,
+  formatDecDms,
+  type FactSheet,
+  type Reading,
+} from '@astrolens/schema';
 import { useUi } from './i18n.js';
 
 export interface ReidentifyOptions {
@@ -26,7 +33,7 @@ function objectDetail(o: FactObject, lang: 'zh' | 'en'): string {
   const gloss = otypeLabel(o.type.otype);
   const code = gloss ? `${o.type.otype} (${gloss[lang]})` : o.type.otype;
   const parts: string[] = [code, `conf ${o.confidence.toFixed(2)}`];
-  parts.push(`RA ${o.coord.ra_deg.toFixed(3)}° Dec ${o.coord.dec_deg.toFixed(3)}°`);
+  parts.push(`${formatRaHms(o.coord.ra_deg)} ${formatDecDms(o.coord.dec_deg)}`);
   if (o.size_arcmin) parts.push(`${o.size_arcmin[0]}′`);
   if (o.distance) parts.push(`${o.distance.value} ${o.distance.unit}`);
   const ids = Object.values(o.catalog_ids);
@@ -140,8 +147,8 @@ export function FactsPanel({
             {t.factsSolve}: <b>{s.status}</b> · frame={s.frame}
           </div>
           {s.ra_deg != null && s.dec_deg != null && (
-            <div>
-              中心 / center: RA {s.ra_deg.toFixed(4)}° · Dec {s.dec_deg.toFixed(4)}°
+            <div title={`RA ${s.ra_deg.toFixed(4)}° · Dec ${s.dec_deg.toFixed(4)}°`}>
+              中心 / center: RA {formatRaHms(s.ra_deg)} · Dec {formatDecDms(s.dec_deg)}
             </div>
           )}
           <div>
@@ -182,7 +189,14 @@ export function FactsPanel({
                   {o && typeName(o, lang) !== f.label[lang] ? ` — ${typeName(o, lang)}` : ''}
                   {f.needs_human_review ? ' ⚠' : ''}
                 </span>
-                {o && <span className="muted">{objectDetail(o, lang)}</span>}
+                {o && (
+                  <span
+                    className="muted"
+                    title={`RA ${o.coord.ra_deg.toFixed(4)}° Dec ${o.coord.dec_deg.toFixed(4)}°`}
+                  >
+                    {objectDetail(o, lang)}
+                  </span>
+                )}
               </span>
             </li>
           );

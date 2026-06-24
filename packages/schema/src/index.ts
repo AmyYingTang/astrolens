@@ -11,4 +11,5 @@ export * from './i18n.js';
 export * from './taxonomy.js';
 export * from './otypes.js';
 export * from './wcs.js';
+export * from './coords.js';
 export * from './factsheet.js';
