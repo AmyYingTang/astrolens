@@ -27,6 +27,42 @@ export interface SelectOptions {
   sampler?: LuminanceSampler;
   backgroundLum?: number;
   visWindow?: number;
+  /** Frame size — enables a composition prior (the subject is framed away from
+   * the edges), used to rank/pick the primary. */
+  imageW?: number;
+  imageH?: number;
+}
+
+const DEG = Math.PI / 180;
+
+function angSepDeg(ra1: number, dec1: number, ra2: number, dec2: number): number {
+  const d1 = dec1 * DEG;
+  const d2 = dec2 * DEG;
+  const c =
+    Math.sin(d1) * Math.sin(d2) + Math.cos(d1) * Math.cos(d2) * Math.cos((ra1 - ra2) * DEG);
+  return Math.acos(Math.min(1, Math.max(-1, c))) / DEG;
+}
+
+const isWR = (c: CatalogCandidate): boolean => c.otype === 'WR*' || c.otype === 'WR?';
+
+/**
+ * Composition prior: photographers frame the subject away from the edges. A
+ * candidate centred in the frame scores ~1; one whose centre is in the outer
+ * ~25% edge band is gently penalised (down to 0.6). Used to bias primary
+ * selection toward the actual subject.
+ */
+function centerFactor(g: GatedCandidate, opts: SelectOptions): number {
+  if (!opts.imageW || !opts.imageH) return 1;
+  const nx = Math.abs(g.pixel[0] - opts.imageW / 2) / (opts.imageW / 2);
+  const ny = Math.abs(g.pixel[1] - opts.imageH / 2) / (opts.imageH / 2);
+  const edge = Math.max(nx, ny); // 0 = centre, 1 = frame edge
+  const pen = Math.max(0, (edge - 0.5) / 0.5); // 0 until the outer 25% band, →1 at the edge
+  return 1 - 0.4 * pen;
+}
+
+/** Catalogue significance weighted by composition (centeredness). */
+function composedScore(g: GatedCandidate, opts: SelectOptions): number {
+  return significance(g.candidate) * centerFactor(g, opts);
 }
 
 /** Catalogs whose membership counts as a "recognizable" DSO designation. */
@@ -113,12 +149,11 @@ function isProminent(g: GatedCandidate, opts: SelectOptions): boolean {
   const major = c.size_arcmin?.[0] ?? 0;
   const hasPrestige = !!(c.catalog_ids.messier || c.catalog_ids.ngc || c.catalog_ids.ic);
   switch (g.category) {
-    case 'star': {
-      // Exciting stars (Wolf–Rayet) are the source of a bubble/HII region — keep
-      // them even when fainter than the naked-eye cutoff.
-      const exciting = c.otype === 'WR*' || c.otype === 'WR?';
-      return exciting || (typeof c.mag === 'number' && c.mag < opts.starMagMax);
-    }
+    case 'star':
+      // Bright (naked-eye-ish) stars only. A WR star is NOT auto-kept here — a
+      // field can hold many faint WR stars that aren't the subject; the exciting
+      // star of the *selected* main nebula is added back separately (see below).
+      return typeof c.mag === 'number' && c.mag < opts.starMagMax;
     case 'globular_cluster':
     case 'open_cluster':
       return hasPrestige; // named clusters only (M / NGC / IC)
@@ -167,22 +202,46 @@ export function selectObjects(gated: GatedCandidate[], opts: SelectOptions): Gat
 
   const kept: GatedCandidate[] = [];
   for (const kind of ['star', 'cluster', 'nebula', 'galaxy'] as Kind[]) {
-    const exciting = (g: GatedCandidate): number =>
-      g.candidate.otype === 'WR*' || g.candidate.otype === 'WR?' ? 0 : 1;
     const list = groups[kind].sort((a, b) =>
       kind === 'star'
-        ? exciting(a) - exciting(b) || // exciting stars first, then brightest
-          (a.candidate.mag ?? 99) - (b.candidate.mag ?? 99)
-        : significance(b.candidate) - significance(a.candidate),
+        ? (a.candidate.mag ?? 99) - (b.candidate.mag ?? 99) // brightest stars first
+        : composedScore(b, opts) - composedScore(a, opts),
     );
     kept.push(...list.slice(0, caps[kind]));
   }
 
-  // Always keep the single most-significant gated object — the image's subject
-  // is shown even if it somehow failed the named/visible filters.
-  const top = [...gated].sort((a, b) => significance(b.candidate) - significance(a.candidate))[0];
+  // Always keep the best-composed gated object — the subject is shown even if it
+  // somehow failed the named/visible filters.
+  const top = [...gated].sort((a, b) => composedScore(b, opts) - composedScore(a, opts))[0];
   if (top && !kept.includes(top)) kept.push(top);
 
-  kept.sort((a, b) => significance(b.candidate) - significance(a.candidate));
-  return opts.topN ? kept.slice(0, opts.topN) : kept;
+  kept.sort((a, b) => composedScore(b, opts) - composedScore(a, opts));
+  const result = opts.topN ? kept.slice(0, opts.topN) : kept;
+
+  // Exciting star of the subject: for each selected emission nebula, add the one
+  // WR star nearest its centre (its powering star) — even if faint / beyond the
+  // cap. Other (faint, off-subject) WR stars stay dropped.
+  const nebulae = result.filter((g) => g.category === 'emission_nebula' && g.candidate.size_arcmin);
+  for (const neb of nebulae) {
+    const r = neb.candidate.size_arcmin![0] / 2 / 60; // deg
+    const inside = gated
+      .filter(
+        (g) =>
+          isWR(g.candidate) &&
+          !result.includes(g) &&
+          angSepDeg(
+            neb.candidate.ra_deg,
+            neb.candidate.dec_deg,
+            g.candidate.ra_deg,
+            g.candidate.dec_deg,
+          ) < r,
+      )
+      .sort(
+        (a, b) =>
+          angSepDeg(neb.candidate.ra_deg, neb.candidate.dec_deg, a.candidate.ra_deg, a.candidate.dec_deg) -
+          angSepDeg(neb.candidate.ra_deg, neb.candidate.dec_deg, b.candidate.ra_deg, b.candidate.dec_deg),
+      );
+    if (inside[0]) result.push(inside[0]);
+  }
+  return result;
 }

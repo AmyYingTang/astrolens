@@ -90,7 +90,14 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   const backgroundLum = sampler ? estimateBackground(sampler, wcs.width, wcs.height) : undefined;
   const visWindow = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 50));
 
-  const selected = selectObjects(gated, { ...selectOpts, sampler, backgroundLum, visWindow });
+  const selected = selectObjects(gated, {
+    ...selectOpts,
+    sampler,
+    backgroundLum,
+    visWindow,
+    imageW: wcs.width,
+    imageH: wcs.height,
+  });
   console.error(
     `[identify] candidates=${candidates.length} → in-frame/known=${gated.length} → selected=${selected.length} (prominence filter, cap ${selectOpts.topN}): ${selected.map((g) => g.candidate.names[0] ?? g.candidate.main_id).join(', ')}`,
   );
