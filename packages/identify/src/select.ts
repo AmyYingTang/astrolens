@@ -101,9 +101,13 @@ export function significance(c: CatalogCandidate): number {
   let score = 0;
   if (c.catalog_ids.messier) score += 1000;
   else if (c.catalog_ids.ngc || c.catalog_ids.ic) score += 500;
+  else if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) score += 300; // Sharpless/RCW/vdB/…
   else if (Object.keys(c.catalog_ids).length > 0) score += 100;
   if (c.size_arcmin) score += c.size_arcmin[0]; // angular size (major axis, arcmin)
-  if (typeof c.mag === 'number') score += Math.max(0, 15 - c.mag); // brighter → larger bonus
+  // Brightness: a naked-eye-bright star (Antares V≈1 → ~330) ranks with a notable
+  // DSO so it survives the focused set; a moderate star (V≈3 → ~210) stays below a
+  // named nebula so the nebula remains the subject.
+  if (typeof c.mag === 'number') score += Math.max(0, 6.5 - c.mag) * 60;
   return score;
 }
 

@@ -29,18 +29,20 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     band: input.band ?? ('unknown' as const),
     starless: input.starless ?? false,
   };
-  // "Main objects only" — focus on the subject + a few standout companions, not
-  // every catalogued thing (see selection policy). Tight per-category caps.
+  // "Main objects only" — focus on the subject + the standout companions of each
+  // type, not every catalogued thing. Per-type caps adapt: a single-target field
+  // stays at ~3-4; a genuine multi-target field (e.g. the Antares region: two
+  // clusters + bright stars + nebulae) shows its handful of real main objects. A
+  // single hard cap was dropping iconic objects (Antares), so it's only a safety.
   const selectOpts = {
     starMagMax: input.starMagMax ?? 4,
     nebulaMinArcmin: input.nebulaMinArcmin ?? 8,
     galaxyMinArcmin: input.galaxyMinArcmin ?? 3,
-    maxStars: 3,
+    maxStars: 2,
     maxClusters: 2,
     maxNebulae: 2,
-    maxGalaxies: 2,
-    // Very focused: the subject + a few standout companions. Hard overall cap.
-    topN: input.topN ?? 4,
+    maxGalaxies: 1,
+    topN: input.topN ?? 6, // safety ceiling only; per-type caps do the focusing
   };
 
   const solveRes = await deps.solve.solve({
