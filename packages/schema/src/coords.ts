@@ -46,3 +46,29 @@ export function formatDecDms(decDeg: number): string {
 export function formatCoord(raDeg: number, decDeg: number): string {
   return `RA ${formatRaHms(raDeg)} · Dec ${formatDecDms(decDeg)}`;
 }
+
+/** Compact RA to the minute, "09h00m" — for coarse labels (e.g. the grid). */
+export function formatRaHm(raDeg: number): string {
+  const hours = (((raDeg % 360) + 360) % 360) / 15;
+  let h = Math.floor(hours);
+  let m = Math.round((hours - h) * 60);
+  if (m >= 60) {
+    m -= 60;
+    h += 1;
+  }
+  if (h >= 24) h -= 24;
+  return `${pad(h)}h${pad(m)}m`;
+}
+
+/** Compact Dec to the arcminute, "−45°56′" — for coarse labels (e.g. the grid). */
+export function formatDecDm(decDeg: number): string {
+  const sign = decDeg < 0 ? '−' : '+';
+  const a = Math.abs(decDeg);
+  let deg = Math.floor(a);
+  let m = Math.round((a - deg) * 60);
+  if (m >= 60) {
+    m -= 60;
+    deg += 1;
+  }
+  return `${sign}${deg}°${pad(m)}′`;
+}

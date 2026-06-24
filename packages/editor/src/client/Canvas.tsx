@@ -5,8 +5,8 @@ import type Konva from 'konva';
 import {
   COLOR_PALETTE,
   fieldRadiusDeg,
-  formatRaHms,
-  formatDecDms,
+  formatRaHm,
+  formatDecDm,
   worldToPixel,
   type Reading,
   type Wcs,
@@ -59,7 +59,7 @@ function buildGrid(w: Wcs): { lines: number[][]; labels: GridLabel[] } {
     }
     if (pts.length >= 4) {
       lines.push(pts);
-      if (label) labels.push({ x: label[0], y: label[1], text: `Dec ${formatDecDms(dec)}`, center: false, top: true });
+      if (label) labels.push({ x: label[0], y: label[1], text: `Dec ${formatDecDm(dec)}`, center: false, top: true });
     }
   }
   // RA lines (constant α): label alternately at the top / bottom edge so the
@@ -84,7 +84,7 @@ function buildGrid(w: Wcs): { lines: number[][]; labels: GridLabel[] } {
       const useTop = raIdx % 2 === 0;
       const lp = useTop ? top : bottom;
       if (lp) {
-        labels.push({ x: lp[0], y: lp[1], text: `RA ${formatRaHms(ra)}`, center: true, top: useTop });
+        labels.push({ x: lp[0], y: lp[1], text: `RA ${formatRaHm(ra)}`, center: true, top: useTop });
       }
       raIdx += 1;
     }
