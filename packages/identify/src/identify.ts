@@ -7,6 +7,7 @@ import { fieldRadiusDeg } from './wcs.js';
 import { gateCandidates, selectObjects } from './select.js';
 import { assembleFactSheet } from './assemble.js';
 import { createLuminanceSampler, estimateBackground, type LuminanceSampler } from './luminance.js';
+import { createWikidataClient } from './wikidata.js';
 
 async function fileHash(path: string): Promise<string> {
   const buf = await readFile(path);
@@ -106,6 +107,23 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   const queries = [
     `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
   ];
+
+  // Wikidata enrichment (Tier 1): for selected objects that have a common name
+  // (⇒ famous), fetch a zh name + a mechanism-specific type. Best-effort, in
+  // parallel; failures are swallowed inside the client.
+  const wiki = createWikidataClient();
+  await Promise.all(
+    selected.map(async (g) => {
+      const en = g.candidate.common_name?.en;
+      if (!en) return;
+      const info = await wiki.lookup(en);
+      if (!info) return;
+      if (info.name_zh) {
+        g.candidate.common_name = { ...g.candidate.common_name, zh: info.name_zh };
+      }
+      if (info.category) g.candidate.wiki_type = { category: info.category };
+    }),
+  );
 
   return assembleFactSheet({
     image,
