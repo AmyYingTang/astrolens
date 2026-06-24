@@ -177,21 +177,41 @@ function buildReading(
     const t = byId.get(obj.id);
     const base = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const isB = obj.tier === 'B';
-    // A geometric front points an arrow at its anchor star; a wind shell and any
-    // CV-detected feature (e.g. a bright rim) are a small sample circle on the
-    // structure itself — they have a concrete detected pixel, nothing to point at.
+    // A geometric front points an arrow at its anchor star; a wind shell is a
+    // small dashed sample circle; a CV-detected ionization front is a curved arc
+    // along the nebula's rim (so it reads as a *front*, not a blob), drawn inside
+    // the parent's circle so it doesn't sit on top of it.
     const isCv = obj.detection_source === 'cv';
-    const shape: 'circle' | 'shell' | 'arrow' = !isB
-      ? 'circle'
-      : obj.feature_type === 'bubble_shell' || isCv
-        ? 'shell'
-        : 'arrow';
     const cx = base[0]!;
     const cy = base[1]!;
+    const parentPix =
+      isB && obj.parent_object_id ? byObjId.get(obj.parent_object_id)?.coord.pixel : null;
+    let shape: 'circle' | 'shell' | 'arrow' | 'arc' = !isB
+      ? 'circle'
+      : obj.feature_type === 'bubble_shell'
+        ? 'shell'
+        : isCv
+          ? 'arc'
+          : 'arrow';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
-    let r = shape === 'shell' ? sampleR : radiusFor(obj);
+    let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
     let arrow_to: [number, number] | undefined;
+    let arc: { cx: number; cy: number; r: number; a0: number; a1: number } | undefined;
+    if (shape === 'arc') {
+      // Curve centred on the parent nebula, through the detected rim point. Since
+      // the rim sits inside the (large) nebula circle, the arc lands inside it.
+      if (parentPix) {
+        const dx = cx - parentPix[0];
+        const dy = cy - parentPix[1];
+        const rr = Math.hypot(dx, dy) || 1;
+        const theta = Math.atan2(dy, dx);
+        const half = 0.5; // ~29° each side → ~57° arc
+        arc = { cx: parentPix[0], cy: parentPix[1], r: Math.round(rr), a0: theta - half, a1: theta + half };
+      } else {
+        shape = 'shell'; // no parent to curve around → fall back to a marker
+      }
+    }
     if (shape === 'arrow') {
       r = starR;
       const ap = obj.localization?.anchor_ref
@@ -213,6 +233,7 @@ function buildReading(
       circle: { cx, cy, r },
       shape,
       ...(arrow_to ? { arrow_to } : {}),
+      ...(arc ? { arc } : {}),
       badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },
       explanation: t?.explanation ?? { zh: '', en: '' },
       physics: t?.physics,

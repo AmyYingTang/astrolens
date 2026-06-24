@@ -33,11 +33,18 @@ export const Feature = z.object({
   /**
    * How to draw it. 'circle' = solid ring (A-class catalog object); 'shell' =
    * dashed ring (a wind/PN shell, soft); 'arrow' = an anchored direction from
-   * circle.{cx,cy} toward `arrow_to` (e.g. an ionization front's bright-rim
-   * side). The latter two are Class-B (inferred) annotations.
+   * circle.{cx,cy} toward `arrow_to`; 'arc' = a curved segment along a nebula's
+   * rim (e.g. an ionization front), defined by `arc`. All but 'circle' are
+   * Class-B (inferred) annotations.
    */
-  shape: z.enum(['circle', 'shell', 'arrow']).default('circle'),
+  shape: z.enum(['circle', 'shell', 'arrow', 'arc']).default('circle'),
   arrow_to: z.tuple([z.number(), z.number()]).optional(), // target point for shape 'arrow'
+  /** Curved segment for shape 'arc': centre (cx,cy), radius r, start/end angle
+   * in radians (clockwise from +x, screen coords). circle.{cx,cy} stays at the
+   * detected rim point so the badge anchors on the structure. */
+  arc: z
+    .object({ cx: z.number(), cy: z.number(), r: z.number(), a0: z.number(), a1: z.number() })
+    .optional(),
   /** false → listed in the Facts panel but not drawn on the image (e.g. a shell
    * coincident with its parent nebula — drawing a duplicate ring is clutter). */
   draw: z.boolean().default(true),

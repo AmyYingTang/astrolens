@@ -30,6 +30,17 @@ export function buildOverlaySvg(report: Reading): string {
         `<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
         `<polygon points="${ax},${ay} ${p2} ${p3}" fill="${color.stroke}"/>`,
       );
+    } else if (f.shape === 'arc' && f.arc) {
+      // Class-B ionization front: a curved arc along the nebula rim.
+      const { cx: acx, cy: acy, r: ar, a0, a1 } = f.arc;
+      const x0 = (acx + ar * Math.cos(a0)).toFixed(1);
+      const y0 = (acy + ar * Math.sin(a0)).toFixed(1);
+      const x1 = (acx + ar * Math.cos(a1)).toFixed(1);
+      const y1 = (acy + ar * Math.sin(a1)).toFixed(1);
+      const large = a1 - a0 > Math.PI ? 1 : 0;
+      parts.push(
+        `<path d="M ${x0} ${y0} A ${ar.toFixed(1)} ${ar.toFixed(1)} 0 ${large} 1 ${x1} ${y1}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}" stroke-linecap="round"/>`,
+      );
     } else {
       // A-class solid ring, or a Class-B shell sample (small dashed circle).
       const dash = f.shape === 'shell' ? ` stroke-dasharray="${strokeW * 5} ${strokeW * 3}"` : '';

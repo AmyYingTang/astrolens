@@ -53,6 +53,26 @@ function isExcitingStar(o: DerivableObject): boolean {
   return o.category === 'star' && (o.type.otype === 'WR*' || o.type.otype === 'WR?');
 }
 
+/**
+ * Nebulae that genuinely ARE a Wolf–Rayet / wind-blown bubble (the nebula = the
+ * shell). A WR star merely *embedded* in a giant star-forming complex (Carina,
+ * NGC 3576) is not powering a clean shell, so the generic "WR inside emission
+ * nebula → bubble" guess fires far too often. Restrict to known bubbles; extend
+ * as needed (or let the future AI pass判断 less-obvious cases).
+ */
+const WR_BUBBLE_NEBULAE = new Set<string>([
+  'SH2-308', // Dolphin, around HD 50896 (EZ CMa)
+  'NGC6888', // Crescent, around WR 136
+  'NGC2359', // Thor's Helmet, around WR 7
+  'NGC3199', // around WR 18
+  'RCW58', // around WR 40
+  'SH2-298', // around WR 6
+]);
+
+function isKnownWrBubble(host: DerivableObject): boolean {
+  return host.names.some((n) => WR_BUBBLE_NEBULAE.has(n.replace(/\s+/g, '').toUpperCase()));
+}
+
 function radiusDeg(o: DerivableObject): number {
   return o.size_arcmin ? o.size_arcmin[0] / 2 / 60 : 0;
 }
@@ -314,25 +334,21 @@ export function deriveBClassFeatures(
   for (const star of stars) {
     const host = containingNebula(nebulae, star);
     if (!host) continue;
-    // With an image, only assert a shell when the WR sits near the *visible*
-    // glow centre — a clean wind bubble has a central exciting star (e.g.
-    // SH2-308). An off-centre WR in a big star-forming complex isn't powering
-    // one, so we don't claim it. The marker uses the visible radius, not the
-    // (possibly inflated, merged) catalog size, so it lands on the real rim.
+    // Only assert a wind-blown shell for a nebula that genuinely IS a WR bubble
+    // (the nebula = the shell). Skips embedded WRs in big complexes (Carina,
+    // NGC 3576) — the common false positive.
+    if (!isKnownWrBubble(host)) continue;
+    // Place the marker with the *visible* glow radius when the image is present
+    // (the catalog size can be an inflated, merged extent), not the catalog size.
     let rimR: number | undefined;
-    if (opts.wcs && opts.sampler && opts.backgroundLum != null && host.coord.pixel && star.coord.pixel) {
+    if (opts.wcs && opts.sampler && opts.backgroundLum != null && host.coord.pixel) {
       const wcs = opts.wcs;
       const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
       const catR = host.size_arcmin
         ? (host.size_arcmin[0] * 60) / (wcs.scale_deg * 3600) / 2
         : Math.min(wcs.width, wcs.height) / 2;
       const Rvis = visibleRadiusPx(host.coord.pixel, catR, opts.sampler, opts.backgroundLum, wcs.width, wcs.height, win);
-      const dist = Math.hypot(
-        star.coord.pixel[0] - host.coord.pixel[0],
-        star.coord.pixel[1] - host.coord.pixel[1],
-      );
-      if (!(Rvis > win) || dist > 0.5 * Rvis) continue; // not a central-star bubble
-      rimR = Rvis;
+      if (Rvis > win) rimR = Rvis;
     }
     out.push(
       make(`bshell${++n}`, 'bubble_shell', host, star, {

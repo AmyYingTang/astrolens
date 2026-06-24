@@ -1,6 +1,16 @@
 import type * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KImage, Circle as KCircle, Group, Text, Line, Arrow } from 'react-konva';
+import {
+  Stage,
+  Layer,
+  Image as KImage,
+  Circle as KCircle,
+  Arc as KArc,
+  Group,
+  Text,
+  Line,
+  Arrow,
+} from 'react-konva';
 import type Konva from 'konva';
 import {
   COLOR_PALETTE,
@@ -228,7 +238,22 @@ export function Canvas({
 
             return (
               <Group key={f.id}>
-                {f.shape === 'arrow' && f.arrow_to ? (
+                {f.shape === 'arc' && f.arc ? (
+                  // Class-B ionization front: a curved arc along the nebula rim.
+                  // Drawn as a thin ring sector; the badge moves, the arc doesn't.
+                  <KArc
+                    x={f.arc.cx}
+                    y={f.arc.cy}
+                    innerRadius={f.arc.r - px(selected ? 4 : 3)}
+                    outerRadius={f.arc.r + px(selected ? 4 : 3)}
+                    angle={((f.arc.a1 - f.arc.a0) * 180) / Math.PI}
+                    rotation={(f.arc.a0 * 180) / Math.PI}
+                    fill={color.stroke}
+                    opacity={selected ? 1 : 0.85}
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                  />
+                ) : f.shape === 'arrow' && f.arrow_to ? (
                   // Class-B direction arrow (e.g. ionization front: bright rim
                   // faces this way). Non-draggable for now; the badge moves.
                   <Arrow
@@ -272,7 +297,7 @@ export function Canvas({
                   />
                 )}
 
-                {selected && f.shape !== 'arrow' && (
+                {selected && f.shape !== 'arrow' && f.shape !== 'arc' && (
                   <KCircle
                     x={cx + r}
                     y={cy}
