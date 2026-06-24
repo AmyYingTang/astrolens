@@ -7,6 +7,7 @@ import {
   createCachedSolveClient,
   createSimbadCatalogClient,
   createVizierCatalogClient,
+  createOpenNgcCatalogClient,
   createCompositeCatalogClient,
 } from '@astrolens/identify';
 
@@ -61,6 +62,7 @@ export async function identifyImage(args: IdentifyArgs): Promise<void> {
       catalog: createCompositeCatalogClient([
         createSimbadCatalogClient(),
         createVizierCatalogClient(),
+        createOpenNgcCatalogClient(),
       ]),
     },
   );

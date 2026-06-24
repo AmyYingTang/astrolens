@@ -1,0 +1,35 @@
+/**
+ * Curated common-name overlay — popular amateur nicknames that exist in no
+ * structured source we query (verified absent from SIMBAD `NAME`, Wikidata
+ * labels/aliases, Wikipedia, and OpenNGC's Common-names column). They live only
+ * in observing apps (SkySafari / Telescopius) and the astrophotography
+ * community, so the only reliable way to surface them is this hand-maintained
+ * map. Keyed by a catalogue designation; extend it as new targets come up.
+ */
+
+export interface Nickname {
+  en: string;
+  zh?: string;
+}
+
+export const NICKNAMES: Record<string, Nickname> = {
+  'NGC 3576': { en: 'Statue of Liberty Nebula', zh: '自由女神星云' },
+};
+
+/** Normalise a designation for matching: collapse whitespace, upper-case. */
+function norm(d: string): string {
+  return d.replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
+const INDEX: Record<string, Nickname> = Object.fromEntries(
+  Object.entries(NICKNAMES).map(([k, v]) => [norm(k), v]),
+);
+
+/** First curated nickname matching any of the object's designations, if any. */
+export function lookupNickname(designations: string[]): Nickname | undefined {
+  for (const d of designations) {
+    const n = INDEX[norm(d)];
+    if (n) return n;
+  }
+  return undefined;
+}

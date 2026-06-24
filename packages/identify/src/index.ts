@@ -17,6 +17,13 @@ export {
   VIZIER_CATALOGS,
   type VizierOptions,
 } from './vizier.js';
+export {
+  createOpenNgcCatalogClient,
+  parseOpenNgc,
+  OPENNGC_CSV_URL,
+  type OpenNgcOptions,
+} from './openngc.js';
+export { NICKNAMES, lookupNickname, type Nickname } from './nicknames.js';
 export { createCompositeCatalogClient, mergeCandidates } from './composite.js';
 export { deriveBClassFeatures, type DerivableObject, type DerivedFeature } from './features.js';
 export { createLuminanceSampler, type LuminanceSampler } from './luminance.js';

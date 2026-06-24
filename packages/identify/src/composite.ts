@@ -1,5 +1,6 @@
 import type { CatalogClient, CatalogCandidate, RegionQuery } from './types.js';
 import { objectCategory } from './otype.js';
+import { lookupNickname } from './nicknames.js';
 
 /**
  * Fan a region query out to several catalog clients (SIMBAD + VizieR) and merge,
@@ -35,6 +36,12 @@ function major(c: CatalogCandidate): number {
   return c.size_arcmin?.[0] ?? 0;
 }
 
+/** A human-given nickname (e.g. NGC 3576 = Statue of Liberty) marks the canonical
+ * member of a complex catalogued under several numbers — make it the survivor. */
+function fame(c: CatalogCandidate): number {
+  return lookupNickname([...Object.values(c.catalog_ids), ...c.names]) ? 1 : 0;
+}
+
 /** Two same-kind candidates are the same object if their centres are close
  * relative to their size (generous for extended nebulae, tight for stars). */
 function isDuplicate(a: CatalogCandidate, b: CatalogCandidate): boolean {
@@ -53,6 +60,7 @@ export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[]
   all.sort(
     (a, b) =>
       prestige(b) - prestige(a) ||
+      fame(b) - fame(a) ||
       major(b) - major(a) ||
       (a.mag ?? 99) - (b.mag ?? 99),
   );
@@ -78,11 +86,18 @@ export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[]
     // The common name can live on either source — keep whichever has it.
     if (!dup.common_name?.en && c.common_name?.en) dup.common_name = c.common_name;
     // Record the folded-in designation + its separation from the kept position,
-    // so the UI can show the cross-ID is the same physical object.
-    (dup.cross_match ??= []).push({
-      id: designationOf(c),
-      sep_arcmin: Math.round(sepArcmin(dup, c) * 10) / 10,
-    });
+    // so the UI can show the cross-ID is the same physical object. Skip when the
+    // folded id equals the survivor's own designation (two sources of the same
+    // catalog id → would read "RCW 57 ↔ RCW 57"), or is already recorded.
+    const foldedId = designationOf(c);
+    const ownId = designationOf(dup);
+    (dup.cross_match ??= []);
+    if (foldedId && foldedId !== ownId && !dup.cross_match.some((x) => x.id === foldedId)) {
+      dup.cross_match.push({
+        id: foldedId,
+        sep_arcmin: Math.round(sepArcmin(dup, c) * 10) / 10,
+      });
+    }
   }
   return kept;
 }

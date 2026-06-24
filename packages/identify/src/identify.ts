@@ -8,6 +8,7 @@ import { gateCandidates, selectObjects } from './select.js';
 import { assembleFactSheet } from './assemble.js';
 import { createLuminanceSampler, estimateBackground, type LuminanceSampler } from './luminance.js';
 import { createWikidataClient } from './wikidata.js';
+import { lookupNickname } from './nicknames.js';
 
 async function fileHash(path: string): Promise<string> {
   const buf = await readFile(path);
@@ -108,6 +109,15 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
   ];
 
+  // Curated nickname overlay: popular amateur names absent from every structured
+  // source (SIMBAD / Wikidata / OpenNGC), keyed by designation. Authoritative for
+  // the name, so applied before Wikidata; see nicknames.ts.
+  for (const g of selected) {
+    const c = g.candidate;
+    const nn = lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id]);
+    if (nn) c.common_name = { en: nn.en, zh: nn.zh ?? c.common_name?.zh };
+  }
+
   // Wikidata enrichment (Tier 1): for selected objects that have a common name
   // (⇒ famous), fetch a zh name + a mechanism-specific type. Best-effort, in
   // parallel; failures are swallowed inside the client.
@@ -118,7 +128,8 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
       if (!en) return;
       const info = await wiki.lookup(en);
       if (!info) return;
-      if (info.name_zh) {
+      // Don't overwrite a zh name the overlay already provided.
+      if (info.name_zh && !g.candidate.common_name?.zh) {
         g.candidate.common_name = { ...g.candidate.common_name, zh: info.name_zh };
       }
       if (info.category) g.candidate.wiki_type = { category: info.category };

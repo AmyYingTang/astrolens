@@ -10,6 +10,7 @@ import {
   createCachedSolveClient,
   createSimbadCatalogClient,
   createVizierCatalogClient,
+  createOpenNgcCatalogClient,
   createCompositeCatalogClient,
 } from '@astrolens/identify';
 import { readingFromFactsheet, tailorReading, ReaderError } from '@astrolens/reader';
@@ -168,6 +169,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
           catalog: createCompositeCatalogClient([
             createSimbadCatalogClient(),
             createVizierCatalogClient(),
+            createOpenNgcCatalogClient(),
           ]),
         },
       );
