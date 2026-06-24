@@ -32,3 +32,34 @@ export async function createLuminanceSampler(
     return data[(dy * gw + dx) * ch] ?? NaN;
   };
 }
+
+/** Median luminance in a window around (x,y). Median (not mean) is robust to a
+ * few bright point stars — it reflects the diffuse background/structure. */
+export function sampleMedian(s: LuminanceSampler, x: number, y: number, win: number): number {
+  const vals: number[] = [];
+  const step = win / 3;
+  for (let i = -3; i <= 3; i++) {
+    for (let j = -3; j <= 3; j++) {
+      const v = s(x + i * step, y + j * step);
+      if (Number.isFinite(v)) vals.push(v);
+    }
+  }
+  if (!vals.length) return NaN;
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length / 2)]!;
+}
+
+/** Field background luminance — median over a coarse grid across the frame. */
+export function estimateBackground(s: LuminanceSampler, w: number, h: number): number {
+  const vals: number[] = [];
+  const N = 24;
+  for (let i = 1; i < N; i++) {
+    for (let j = 1; j < N; j++) {
+      const v = s((i / N) * w, (j / N) * h);
+      if (Number.isFinite(v)) vals.push(v);
+    }
+  }
+  if (!vals.length) return NaN;
+  vals.sort((a, b) => a - b);
+  return vals[Math.floor(vals.length / 2)]!;
+}

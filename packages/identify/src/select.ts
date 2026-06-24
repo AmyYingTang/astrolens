@@ -2,6 +2,7 @@ import type { ObjectCategory } from '@astrolens/schema';
 import type { CatalogCandidate, Wcs } from './types.js';
 import { worldToPixel } from './wcs.js';
 import { isOptical, objectCategory } from './otype.js';
+import { sampleMedian, type LuminanceSampler } from './luminance.js';
 
 /** A candidate that passed the annotation gate, with its projected pixel + category. */
 export interface GatedCandidate {
@@ -21,6 +22,33 @@ export interface SelectOptions {
   maxGalaxies: number;
   /** Optional overall hard cap (applied after balancing). */
   topN?: number;
+  /** Image luminance — when present, a candidate must also be *visible* (bright
+   * structure, or a dark silhouette for dark nebulae) to be kept. */
+  sampler?: LuminanceSampler;
+  backgroundLum?: number;
+  visWindow?: number;
+}
+
+/** Catalogs whose membership counts as a "recognizable" DSO designation. */
+const NAMED_CATALOGS = [
+  'messier',
+  'ngc',
+  'ic',
+  'sharpless',
+  'rcw',
+  'vdb',
+  'cederblad',
+  'barnard',
+  'ldn',
+];
+/** Survey / anonymous designations that are NOT a human-recognizable name. */
+const SURVEY_NAME =
+  /^(\[|2MASX|LEDA|PGCC|PGC\b|TGU|GSC|UCAC|Gaia |TYC |SAO |IRAS|WISE|2MASS|UGC|MCG|HVC|MGr|HDC|GRG)/i;
+
+/** A DSO is "recognizable" if it has a known catalog id or a non-survey name. */
+function hasRecognizableName(c: CatalogCandidate): boolean {
+  if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) return true;
+  return [c.main_id, ...c.names].some((n) => n.trim() !== '' && !SURVEY_NAME.test(n.trim()));
 }
 
 type Kind = 'star' | 'cluster' | 'nebula' | 'galaxy';
@@ -97,9 +125,27 @@ function isProminent(g: GatedCandidate, opts: SelectOptions): boolean {
     case 'galaxy':
       return hasPrestige && major >= opts.galaxyMinArcmin; // drop faint survey galaxies
     default:
-      // nebulae / clouds — keep the large ones regardless of catalogue prestige
-      return major >= opts.nebulaMinArcmin;
+      // nebulae / clouds — must be a recognizable named object AND large enough.
+      // Drops survey-only clumps (e.g. PGCC Planck cold clumps) that aren't the
+      // image's subject.
+      return hasRecognizableName(c) && major >= opts.nebulaMinArcmin;
   }
+}
+
+/**
+ * Visibility gate: with an image sampler, a candidate must actually be visible
+ * in THIS frame — bright structure for emission/reflection/cluster/galaxy, or a
+ * dark silhouette for dark nebulae. Stars are gated by magnitude already.
+ */
+function isVisible(g: GatedCandidate, opts: SelectOptions): boolean {
+  const s = opts.sampler;
+  const bg = opts.backgroundLum;
+  if (!s || bg == null || !Number.isFinite(bg)) return true; // no image → don't gate
+  if (g.category === 'star') return true;
+  const v = sampleMedian(s, g.pixel[0], g.pixel[1], opts.visWindow ?? 40);
+  if (!Number.isFinite(v)) return true;
+  if (g.category === 'dark_nebula') return v < bg * 0.92; // darker than background
+  return v > bg * 1.12; // brighter than background
 }
 
 /**
@@ -116,7 +162,7 @@ export function selectObjects(gated: GatedCandidate[], opts: SelectOptions): Gat
   };
   const groups: Record<Kind, GatedCandidate[]> = { star: [], cluster: [], nebula: [], galaxy: [] };
   for (const g of gated) {
-    if (isProminent(g, opts)) groups[kindOf(g.category)].push(g);
+    if (isProminent(g, opts) && isVisible(g, opts)) groups[kindOf(g.category)].push(g);
   }
 
   const kept: GatedCandidate[] = [];
@@ -131,6 +177,11 @@ export function selectObjects(gated: GatedCandidate[], opts: SelectOptions): Gat
     );
     kept.push(...list.slice(0, caps[kind]));
   }
+
+  // Always keep the single most-significant gated object — the image's subject
+  // is shown even if it somehow failed the named/visible filters.
+  const top = [...gated].sort((a, b) => significance(b.candidate) - significance(a.candidate))[0];
+  if (top && !kept.includes(top)) kept.push(top);
 
   kept.sort((a, b) => significance(b.candidate) - significance(a.candidate));
   return opts.topN ? kept.slice(0, opts.topN) : kept;

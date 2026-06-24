@@ -6,7 +6,7 @@ import type { IdentifyInput, IdentifyDeps } from './types.js';
 import { fieldRadiusDeg } from './wcs.js';
 import { gateCandidates, selectObjects } from './select.js';
 import { assembleFactSheet } from './assemble.js';
-import { createLuminanceSampler, type LuminanceSampler } from './luminance.js';
+import { createLuminanceSampler, estimateBackground, type LuminanceSampler } from './luminance.js';
 
 async function fileHash(path: string): Promise<string> {
   const buf = await readFile(path);
@@ -29,15 +29,18 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     band: input.band ?? ('unknown' as const),
     starless: input.starless ?? false,
   };
+  // "Main objects only" — focus on the subject + a few standout companions, not
+  // every catalogued thing (see selection policy). Tight per-category caps.
   const selectOpts = {
     starMagMax: input.starMagMax ?? 4,
     nebulaMinArcmin: input.nebulaMinArcmin ?? 8,
     galaxyMinArcmin: input.galaxyMinArcmin ?? 3,
-    maxStars: 4,
-    maxClusters: 4,
-    maxNebulae: 3,
+    maxStars: 3,
+    maxClusters: 2,
+    maxNebulae: 2,
     maxGalaxies: 2,
-    topN: input.topN, // optional overall hard cap
+    // Very focused: the subject + a few standout companions. Hard overall cap.
+    topN: input.topN ?? 4,
   };
 
   const solveRes = await deps.solve.solve({
@@ -75,22 +78,25 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     radius_deg: radius,
   });
   const gated = gateCandidates(candidates, wcs);
-  const selected = selectObjects(gated, selectOpts);
-  console.error(
-    `[identify] candidates=${candidates.length} → in-frame/known=${gated.length} → selected=${selected.length} (prominence filter, cap ${selectOpts.topN}): ${selected.map((g) => g.candidate.names[0] ?? g.candidate.main_id).join(', ')}`,
-  );
-  const queries = [
-    `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
-  ];
 
-  // Image luminance, so Class-B markers can snap onto bright structure. Best
-  // effort — never fail identification if the image can't be read (e.g. tests).
+  // Image luminance — gate candidates on actual visibility + snap Class-B
+  // markers onto bright structure. Best effort: never fail if unreadable (tests).
   let sampler: LuminanceSampler | undefined;
   try {
     sampler = await createLuminanceSampler(input.imagePath, input.width, input.height);
   } catch {
     sampler = undefined;
   }
+  const backgroundLum = sampler ? estimateBackground(sampler, wcs.width, wcs.height) : undefined;
+  const visWindow = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 50));
+
+  const selected = selectObjects(gated, { ...selectOpts, sampler, backgroundLum, visWindow });
+  console.error(
+    `[identify] candidates=${candidates.length} → in-frame/known=${gated.length} → selected=${selected.length} (prominence filter, cap ${selectOpts.topN}): ${selected.map((g) => g.candidate.names[0] ?? g.candidate.main_id).join(', ')}`,
+  );
+  const queries = [
+    `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
+  ];
 
   return assembleFactSheet({
     image,
