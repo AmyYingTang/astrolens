@@ -87,9 +87,9 @@ export function buildPosterHtml(report: Reading, imageDataUri: string): string {
     .stage,.panel{flex:1 1 100%;width:100%;}.panel{margin-top:8px;}}
 </style></head><body>
 <div class="root">
-  <header><h1>${esc(o.name)}</h1></header>
+  <header><h1>${esc(o.name[lang])}</h1></header>
   <div class="poster">
-    <div class="stage"><img src="${imageDataUri}" alt="${esc(o.name)}">${buildOverlaySvg(report)}</div>
+    <div class="stage"><img src="${imageDataUri}" alt="${esc(o.name[lang])}">${buildOverlaySvg(report)}</div>
     <div class="panel">
       <p class="label">${s.overview}</p><p class="narrative">${esc(report.narrative[lang])}</p>
       <p class="label">${s.features}</p><ul class="features">${features}</ul>

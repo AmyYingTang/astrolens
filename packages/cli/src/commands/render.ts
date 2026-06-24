@@ -45,7 +45,7 @@ export async function renderReport(args: RenderArgs): Promise<void> {
   await mkdir(outDir, { recursive: true });
 
   const written: string[] = [];
-  const slug = slugifyName(report.object.name);
+  const slug = slugifyName(report.object.name.en || report.object.name.zh);
 
   // Carry the full reading.json alongside the rendered image so downstream
   // consumers (e.g. the gallery site) have the structured metadata — color_key

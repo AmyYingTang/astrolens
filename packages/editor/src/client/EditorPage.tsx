@@ -358,7 +358,7 @@ function Editor({
         <a className="home-link" href="#/">
           {t.backToLibrary}
         </a>
-        <span className="toolbar-title">{state.report.object.name}</span>
+        <span className="toolbar-title">{state.report.object.name[uiLang]}</span>
         <LangToggle />
       </header>
 

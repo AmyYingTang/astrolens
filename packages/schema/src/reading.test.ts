@@ -4,7 +4,7 @@ import { Reading, COLOR_PALETTE, ColorKey } from './index.js';
 const validReading = {
   version: '2.0',
   image: { src: 'image.jpg', width: 4144, height: 2822 },
-  object: { name: 'Sh2-308', type: { zh: 'WR 气泡', en: 'WR bubble' } },
+  object: { name: { zh: 'Sh2-308', en: 'Sh2-308' }, type: { zh: 'WR 气泡', en: 'WR bubble' } },
   narrative: { zh: '一个由沃尔夫-拉叶星吹出的蓝色气泡。', en: 'A blue bubble blown by a Wolf–Rayet star.' },
   features: [
     {

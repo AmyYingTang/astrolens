@@ -51,7 +51,9 @@ export const Feature = z.object({
 export type Feature = z.infer<typeof Feature>;
 
 export const ObjectInfo = z.object({
-  name: z.string(), // primary identifier
+  // primary identifier, bilingual (zh + en). Legacy readings stored a plain
+  // string — coerce it to both languages so they still load.
+  name: z.preprocess((v) => (typeof v === 'string' ? { zh: v, en: v } : v), LocalizedString),
   aliases: z.array(z.string()).default([]),
   type: LocalizedString, // "发射星云" / "Emission nebula"
   stage: z.number().min(1).max(7).optional(), // Amy's lifecycle 1-7

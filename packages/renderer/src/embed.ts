@@ -72,7 +72,7 @@ export function generateEmbedHtml(report: Reading, opts: EmbedOptions): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${esc(o.name)} — astrolens</title>
+<title>${esc(o.name[lang])} — astrolens</title>
 <style>
 .al-embed{--al-bg:#0b0e14;--al-panel:#141925;--al-text:#e6e9f0;--al-muted:#8a93a8;
   background:var(--al-bg);color:var(--al-text);border-radius:10px;overflow:hidden;
@@ -106,14 +106,14 @@ export function generateEmbedHtml(report: Reading, opts: EmbedOptions): string {
 <body style="margin:0;background:#0b0e14;">
 <div class="al-embed">
   <div class="al-stage">
-    <img src="${opts.imageDataUri}" alt="${esc(o.name)}">
+    <img src="${opts.imageDataUri}" alt="${esc(o.name[lang])}">
     <svg class="al-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
 ${overlay}
     </svg>
 ${tips}
   </div>
   <div class="al-panel">
-    <h3>${esc(o.name)}</h3>
+    <h3>${esc(o.name[lang])}</h3>
     <p class="al-narr">${esc(report.narrative[lang])}</p>
 ${panel}
   </div>

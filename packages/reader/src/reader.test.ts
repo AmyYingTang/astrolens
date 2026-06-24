@@ -106,7 +106,7 @@ describe('generateReading', () => {
     const reading = await generateReading(factsheet, { ...base, runner });
     expect(reading.version).toBe('2.0');
     expect(reading.features).toHaveLength(3);
-    expect(reading.object.name).toBe('M 4'); // headline = primary display name
+    expect(reading.object.name).toEqual({ zh: 'M 4', en: 'M 4' }); // headline = primary display name
     expect(runner).toHaveBeenCalledOnce();
   });
 

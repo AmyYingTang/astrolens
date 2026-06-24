@@ -21,7 +21,7 @@ export type Action =
   | { type: 'setColor'; id: string; color: ColorKey }
   | { type: 'setBadgeNum'; id: string; num: string; commit?: boolean }
   | { type: 'confirmFeature'; id: string }
-  | { type: 'setObjectName'; value: string; commit?: boolean }
+  | { type: 'setObjectName'; lang: Lang; value: string; commit?: boolean }
   | { type: 'setNarrative'; lang: Lang; value: string; commit?: boolean }
   | { type: 'addFeature' }
   | { type: 'deleteFeature'; id: string }
@@ -141,7 +141,13 @@ export function reducer(state: EditorState, action: Action): EditorState {
     case 'setObjectName':
       return change(
         state,
-        { ...state.report, object: { ...state.report.object, name: action.value } },
+        {
+          ...state.report,
+          object: {
+            ...state.report.object,
+            name: { ...state.report.object.name, [action.lang]: action.value },
+          },
+        },
         action.commit ?? true,
       );
 

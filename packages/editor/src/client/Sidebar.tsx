@@ -30,10 +30,12 @@ export function Sidebar({
         <div className="sidebar-title">
           <input
             className="title-input"
-            value={obj.name}
+            value={obj.name[lang]}
             title={t.titleHint}
             onFocus={() => dispatch({ type: 'beginChange' })}
-            onChange={(e) => dispatch({ type: 'setObjectName', value: e.target.value, commit: false })}
+            onChange={(e) =>
+              dispatch({ type: 'setObjectName', lang, value: e.target.value, commit: false })
+            }
           />
           <p className="muted">
             {report.features.length} {t.featuresSuffix} · {imageName}

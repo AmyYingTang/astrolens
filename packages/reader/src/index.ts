@@ -229,7 +229,7 @@ function buildReading(
     display_language: opts.displayLanguage ?? 'zh',
     tone: opts.tone,
     object: {
-      name: displayLabel(primary).zh,
+      name: displayLabel(primary),
       aliases: primary.names.slice(1),
       type: { zh: primary.type.zh, en: primary.type.en },
       distance_ly: distanceToLy(primary.distance),
@@ -300,7 +300,7 @@ export async function tailorReading(
   }
   const runner = opts.runner ?? runClaude;
   const prompt = buildTailorPrompt({
-    headline: reading.object.name,
+    headline: `${reading.object.name.zh} / ${reading.object.name.en}`,
     items: reading.features.map((f) => ({
       id: f.id,
       name: `${f.label.zh} / ${f.label.en}`,

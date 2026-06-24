@@ -77,7 +77,7 @@ export async function readReport(args: ReadArgs): Promise<void> {
     const readingPath = join(outDir, 'reading.json');
     await writeFile(readingPath, JSON.stringify(reading, null, 2) + '\n', 'utf8');
     console.log(`Wrote ${readingPath}`);
-    console.log(`Identified: ${reading.object.name} (${reading.object.type.en})`);
+    console.log(`Identified: ${reading.object.name.en} (${reading.object.type.en})`);
   } catch (err) {
     if (err instanceof ReaderError && err.raw) {
       const rawPath = join(outDir, 'raw_llm_output.txt');

@@ -61,7 +61,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
   return (
     <div className={`astrolens-reading${className ? ` ${className}` : ''}`}>
       <div className="ar-stage">
-        <img src={imageSrc} alt={o.name} onClick={() => setActive(null)} />
+        <img src={imageSrc} alt={o.name[lang]} onClick={() => setActive(null)} />
         <svg className="ar-svg" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           {report.features.map((f) => {
             if (f.draw === false) return null; // not drawn (e.g. coincident shell)
@@ -131,7 +131,7 @@ export function Reading(props: ReadingProps): React.JSX.Element {
       </div>
 
       <div className="ar-panel">
-        <h3>{o.name}</h3>
+        <h3>{o.name[lang]}</h3>
         <div className="ar-meta">{meta}</div>
         <p className="ar-narr">{report.narrative[lang]}</p>
         {report.features.map((f) =>

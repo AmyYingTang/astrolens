@@ -120,7 +120,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
         const r = await loadReport(e.name);
         const summary: ProjectSummary = {
           slug: e.name,
-          name: r.object.name,
+          name: r.object.name[r.display_language],
           type: r.object.type[r.display_language],
           stage: r.object.stage,
           imageName: basename(r.image.src),
@@ -372,7 +372,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
       const dir = projectDir(slug);
       const imagePath = join(dir, report.image.src);
       const want = (f: ExportFormat): boolean => format === 'all' || format === f;
-      const stem = objectStem(report.object.name);
+      const stem = objectStem(report.object.name.en || report.object.name.zh);
       const files: ExportFile[] = [];
 
       // Always carry the full reading.json so the gallery site has the
