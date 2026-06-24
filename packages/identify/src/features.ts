@@ -84,7 +84,7 @@ export interface DeriveOpts {
 
 /** Median luminance in a window around (x,y). Median (not mean) so a bright
  * point star can't win — we want diffuse nebula brightness, not a stellar spike. */
-function localMedian(s: LuminanceSampler, x: number, y: number, win: number): number {
+export function localMedian(s: LuminanceSampler, x: number, y: number, win: number): number {
   const vals: number[] = [];
   const step = win / 3;
   for (let i = -3; i <= 3; i++) {
@@ -117,7 +117,7 @@ function rimTowardCentre(sp: [number, number], R: number, w: number, h: number):
  * bubble, so we search a range of radii, not just the nominal rim. Candidates
  * too close to another labeled object (a bright star, cloud …) are skipped so
  * the shell marker doesn't pile onto an existing badge. */
-function rimBrightest(
+export function rimBrightest(
   sp: [number, number],
   R: number,
   s: LuminanceSampler,
@@ -125,7 +125,7 @@ function rimBrightest(
   h: number,
   win: number,
   avoid: [number, number][],
-): [number, number] | null {
+): { pixel: [number, number]; lum: number } | null {
   let best: [number, number] | null = null;
   let bestScore = -Infinity;
   const N = 48;
@@ -148,7 +148,7 @@ function rimBrightest(
       }
     }
   }
-  return best;
+  return best ? { pixel: best, lum: bestScore } : null;
 }
 
 /** Mark a wind shell with a small sample point on its rim — snapped to the
@@ -165,9 +165,8 @@ function shellRimCoord(
   const pixscale = wcs.scale_deg * 3600; // arcsec/px
   const R = (host.size_arcmin[0] * 60) / pixscale / 2; // rim radius, px
   const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 35));
-  const rim =
-    (opts.sampler && rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win, avoid)) ||
-    rimTowardCentre(sp, R, wcs.width, wcs.height);
+  const hit = opts.sampler ? rimBrightest(sp, R, opts.sampler, wcs.width, wcs.height, win, avoid) : null;
+  const rim = hit ? hit.pixel : rimTowardCentre(sp, R, wcs.width, wcs.height);
   const world = pixelToWorld(wcs, rim[0], rim[1]);
   return {
     ra_deg: world ? world[0] : star.coord.ra_deg,
@@ -185,7 +184,7 @@ export interface DerivedFeature {
   tier: 'B';
   parent_object_id: string;
   feature_type: FeatureTypeB;
-  feature_class: 'B-anchor';
+  feature_class: 'B-anchor' | 'B-visual';
   names: string[];
   category: ObjectCategory;
   type: { otype: string; zh: string; en: string };
@@ -193,7 +192,13 @@ export interface DerivedFeature {
   size_arcmin?: [number, number];
   catalog_ids: Record<string, string>;
   confidence: number;
-  localization: { method: 'anchor'; anchor_ref: string; direction: string; confidence: number };
+  localization: {
+    method: 'anchor' | 'world_to_pixel';
+    anchor_ref?: string;
+    direction?: string;
+    confidence: number;
+  };
+  detection_source: 'geometric' | 'cv' | 'ai';
   needs_human_review: true;
 }
 
@@ -232,6 +237,7 @@ function make(
       direction: opts.direction,
       confidence: opts.confidence,
     },
+    detection_source: 'geometric',
     needs_human_review: true,
   };
 }

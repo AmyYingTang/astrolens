@@ -72,6 +72,9 @@ export interface Strings {
   factsSolve: string;
   factsObjects: string;
   factsFeaturesB: string;
+  factsBSourceCv: string;
+  factsBSourceGeometric: string;
+  factsBSourceAi: string;
   factsNoneYet: string;
 }
 
@@ -145,6 +148,9 @@ const STRINGS: Record<UiLang, Strings> = {
     factsSolve: '解像',
     factsObjects: '目录天体',
     factsFeaturesB: '形态特征 (B 类 · 推断)',
+    factsBSourceCv: '图像检测 (CV)',
+    factsBSourceGeometric: '几何推断',
+    factsBSourceAi: 'AI 推断',
     factsNoneYet: '没有事实层(此项目早于识别阶段)。',
   },
   en: {
@@ -217,6 +223,9 @@ const STRINGS: Record<UiLang, Strings> = {
     factsSolve: 'Solve',
     factsObjects: 'Catalog objects',
     factsFeaturesB: 'Morphological features (Class B · inferred)',
+    factsBSourceCv: 'Image-detected (CV)',
+    factsBSourceGeometric: 'Geometric',
+    factsBSourceAi: 'AI',
     factsNoneYet: 'No fact sheet (this project predates the identification stage).',
   },
 };

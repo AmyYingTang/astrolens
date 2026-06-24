@@ -69,6 +69,10 @@ export const FactObject = z.object({
     .array(z.object({ id: z.string(), sep_arcmin: z.number() }))
     .default([]),
   localization: FactLocalization.optional(), // B-class: how it's placed; A-class uses coord.pixel
+  /** Where this entry came from: a catalog match (A-class), a geometric prior
+   * anchored on an A object, an image CV detector, or an AI/VLM pass. Drives the
+   * Facts-panel provenance grouping. */
+  detection_source: z.enum(['catalog', 'geometric', 'cv', 'ai']).default('catalog'),
   needs_human_review: z.boolean().default(false), // B-class uncertain ones → true
 });
 export type FactObject = z.infer<typeof FactObject>;

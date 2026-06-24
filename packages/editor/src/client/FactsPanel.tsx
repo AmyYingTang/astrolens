@@ -236,26 +236,46 @@ export function FactsPanel({
           <h3>
             {t.factsFeaturesB} ({bFeatures.length})
           </h3>
-          <ul className="legend">
-            {bFeatures.map((f) => (
-              <li
-                key={f.id}
-                className={`legend-row b-feature${selectedId === f.id ? ' sel' : ''}`}
-                onClick={() => onSelect(f.id)}
-              >
-                <span className="legend-dot" style={{ background: COLOR_PALETTE[f.color_key].badge }}>
-                  {f.badge.num}
-                </span>
-                <span className="legend-text">
-                  <span className="legend-name">
-                    {f.label[lang]}
-                    {f.needs_human_review ? ' ⚠' : ''}
-                  </span>
-                  <span className="muted">{bFeatureDetail(f, objById, lang)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
+          {(['cv', 'geometric', 'ai'] as const).map((src) => {
+            const rows = bFeatures.filter(
+              (f) => (objById.get(f.id)?.detection_source ?? 'geometric') === src,
+            );
+            if (!rows.length) return null;
+            const srcLabel =
+              src === 'cv'
+                ? t.factsBSourceCv
+                : src === 'ai'
+                  ? t.factsBSourceAi
+                  : t.factsBSourceGeometric;
+            return (
+              <div key={src} className="b-source-group">
+                <p className="b-source-head muted">── {srcLabel} ──</p>
+                <ul className="legend">
+                  {rows.map((f) => (
+                    <li
+                      key={f.id}
+                      className={`legend-row b-feature${selectedId === f.id ? ' sel' : ''}`}
+                      onClick={() => onSelect(f.id)}
+                    >
+                      <span
+                        className="legend-dot"
+                        style={{ background: COLOR_PALETTE[f.color_key].badge }}
+                      >
+                        {f.badge.num}
+                      </span>
+                      <span className="legend-text">
+                        <span className="legend-name">
+                          {f.label[lang]}
+                          {f.needs_human_review ? ' ⚠' : ''}
+                        </span>
+                        <span className="muted">{bFeatureDetail(f, objById, lang)}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </>
       )}
       </div>

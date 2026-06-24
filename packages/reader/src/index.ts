@@ -177,9 +177,13 @@ function buildReading(
     const t = byId.get(obj.id);
     const base = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const isB = obj.tier === 'B';
+    // A geometric front points an arrow at its anchor star; a wind shell and any
+    // CV-detected feature (e.g. a bright rim) are a small sample circle on the
+    // structure itself — they have a concrete detected pixel, nothing to point at.
+    const isCv = obj.detection_source === 'cv';
     const shape: 'circle' | 'shell' | 'arrow' = !isB
       ? 'circle'
-      : obj.feature_type === 'bubble_shell'
+      : obj.feature_type === 'bubble_shell' || isCv
         ? 'shell'
         : 'arrow';
     const cx = base[0]!;

@@ -4,7 +4,8 @@ import type { CatalogCandidate, Wcs } from './types.js';
 import type { GatedCandidate } from './select.js';
 import { objectTypeLabel } from './otype.js';
 import { deriveBClassFeatures } from './features.js';
-import type { LuminanceSampler } from './luminance.js';
+import { detectCvFeatures } from './cv.js';
+import { estimateBackground, type LuminanceSampler } from './luminance.js';
 import { fieldRadiusDeg } from './wcs.js';
 
 /** Identity confidence — *which* catalogue object this is. */
@@ -122,9 +123,14 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
     };
   });
 
-  // Class-B morphological features (geometric priors, deterministic). Appended
-  // after the A-class objects so the primary stays objects[0]. See features.ts.
-  const bFeatures = deriveBClassFeatures(objects, { wcs, sampler: args.sampler });
+  // Class-B morphological features, appended after the A-class objects so the
+  // primary stays objects[0]: geometric priors anchored on A objects (features.ts)
+  // + image CV detectors with no catalog anchor (cv.ts, e.g. a bright rim).
+  const bg = args.sampler ? estimateBackground(args.sampler, wcs.width, wcs.height) : undefined;
+  const bFeatures = [
+    ...deriveBClassFeatures(objects, { wcs, sampler: args.sampler }),
+    ...detectCvFeatures(objects, { wcs, sampler: args.sampler, backgroundLum: bg }),
+  ];
 
   return FactSheet.parse({
     version: '1.0',
