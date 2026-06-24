@@ -39,8 +39,15 @@ export const FactObject = z.object({
   feature_type: FeatureType.optional(), // B-class: controlled vocabulary (taxonomy.ts)
   feature_class: FeatureClass.optional(), // B-class instance tier: A+ / B-anchor / B-visual
   names: z.array(z.string()),
+  /** Human-friendly common name (en from SIMBAD `NAME`, zh from Wikidata). The
+   * display layer leads with this; absent for anonymous/survey-only targets. */
+  common_name: LocalizedString.partial().optional(),
+  /** All catalogue designations to show (NGC 2736, RCW 37, Sh 2-308 …). */
+  designations: z.array(z.string()).default([]),
   category: ObjectCategory, // which feature set applies
-  type: LocalizedString.extend({ otype: z.string() }), // SIMBAD otype + bilingual name
+  // SIMBAD otype + bilingual name. `source` = where the *type* came from
+  // (catalog | wiki | survey), separate from identity provenance.
+  type: LocalizedString.extend({ otype: z.string(), source: z.string().default('catalog') }),
   coord: z.object({
     ra_deg: z.number(),
     dec_deg: z.number(),
@@ -49,7 +56,18 @@ export const FactObject = z.object({
   size_arcmin: z.tuple([z.number(), z.number()]).optional(), // [major, minor]
   distance: z.object({ value: z.number(), unit: z.string(), source: z.string() }).optional(),
   catalog_ids: z.record(z.string(), z.string()).default({}), // { messier:'M42', ngc:'NGC 1976' }
+  /** Identity confidence — *which catalogue object this is*. */
   confidence: z.number().min(0).max(1),
+  /** Type/mechanism confidence — often lower than identity (survey catalogs type
+   * by emission, not by mechanism; an SNR filament reads as "emission nebula"). */
+  type_confidence: z.number().min(0).max(1).optional(),
+  /** The type came from a weak/generic source (e.g. an Hα survey) — hedge it. */
+  type_needs_review: z.boolean().default(false),
+  /** Cross-matched designations folded in by dedup, with their separation from
+   * the kept position — lets the UI show "NGC 2736 ↔ RCW 37 · Δ 2.1′". */
+  cross_match: z
+    .array(z.object({ id: z.string(), sep_arcmin: z.number() }))
+    .default([]),
   localization: FactLocalization.optional(), // B-class: how it's placed; A-class uses coord.pixel
   needs_human_review: z.boolean().default(false), // B-class uncertain ones → true
 });

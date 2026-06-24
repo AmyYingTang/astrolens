@@ -1,5 +1,5 @@
 // The WCS type + projection live in @astrolens/schema (shared with the editor).
-import type { Wcs } from '@astrolens/schema';
+import type { Wcs, ObjectCategory } from '@astrolens/schema';
 export type { Wcs };
 
 export interface SolveInput {
@@ -33,6 +33,12 @@ export interface CatalogCandidate {
   mag?: number;
   catalog_ids: Record<string, string>; // { messier:'M42', ngc:'NGC 1976' }
   source: string; // 'SIMBAD'
+  /** Friendly common name (en from SIMBAD `NAME`, zh filled later from Wikidata). */
+  common_name?: { zh?: string; en?: string };
+  /** Designations folded in by cross-source dedup + their separation (arcmin). */
+  cross_match?: { id: string; sep_arcmin: number }[];
+  /** Type resolved from Wikidata (P31), overriding a generic catalogue type. */
+  wiki_type?: { category?: ObjectCategory; en?: string; zh?: string };
 }
 
 export interface RegionQuery {

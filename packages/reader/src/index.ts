@@ -46,13 +46,23 @@ function distanceToLy(d?: { value: number; unit: string }): number | undefined {
 /** Survey designations that aren't human-friendly labels. */
 const JUNK_NAME = /^(\[|2MASX\b|LEDA\b|PGCC\b|TGU\b|GSC\b|UCAC|Gaia |TYC |HD |HIP |SAO |\* )/;
 
-/** Pick a display label: proper name → Messier/NGC/IC → star designation → type. */
+/** Pick a display label: common name → proper name → designation → type. */
 function displayLabel(obj: FactObject): LocalizedString {
+  // 0. the common name wins (Pencil Nebula / 铅笔星云) — the whole point of the
+  //    cross-ID work. en from SIMBAD NAME, zh from Wikidata (may be one-sided).
+  const cn = obj.common_name;
+  if (cn && (cn.en || cn.zh)) {
+    return { zh: cn.zh ?? cn.en!, en: cn.en ?? cn.zh! };
+  }
   // 1. a friendly proper name (Antares, Sh 2-308 …)
   const n = obj.names[0] ?? '';
   if (n && !JUNK_NAME.test(n)) return { zh: n, en: n };
-  // 2. a canonical catalogue id
-  const id = obj.catalog_ids.messier || obj.catalog_ids.ngc || obj.catalog_ids.ic;
+  // 2. a canonical catalogue designation
+  const id =
+    (obj.designations ?? [])[0] ??
+    obj.catalog_ids.messier ??
+    obj.catalog_ids.ngc ??
+    obj.catalog_ids.ic;
   if (id) return { zh: id, en: id };
   // 3. a star's designation still says *which* star (HD 50896, alf Sco) — better
   //    than a bare type; drop SIMBAD's leading "* " and collapse double spaces.

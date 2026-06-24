@@ -168,11 +168,16 @@ WHERE ${circleB} AND b.ra IS NOT NULL AND b.otype IN ('WR*', 'WR?')`;
       merged.push(c);
     }
 
-    // Enrich with proper names (Antares, …).
+    // Enrich with proper names (Antares, Pencil Nebula, …). The SIMBAD `NAME`
+    // pseudo-catalog is the common name — keep it both as names[0] and as the
+    // explicit `common_name.en` (main_id is the M/NGC designation, not the name).
     const names = await properNames(merged.map((c) => c.main_id).filter(Boolean));
     for (const c of merged) {
       const proper = names.get(c.main_id);
-      if (proper && !c.names.includes(proper)) c.names = [proper, ...c.names];
+      if (proper) {
+        if (!c.names.includes(proper)) c.names = [proper, ...c.names];
+        c.common_name = { en: proper };
+      }
     }
     return merged;
   }

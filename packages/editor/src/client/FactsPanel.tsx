@@ -29,16 +29,37 @@ interface Props {
 type FactObject = FactSheet['objects'][number];
 
 function objectDetail(o: FactObject, lang: 'zh' | 'en'): string {
-  // Show the raw SIMBAD/VizieR code with a plain-language gloss, e.g. "s*r (红超巨星)".
+  // type code/gloss · identity conf · type conf (+source) · coord · size · distance.
   const gloss = otypeLabel(o.type.otype);
-  const code = gloss ? `${o.type.otype} (${gloss[lang]})` : o.type.otype;
-  const parts: string[] = [code, `conf ${o.confidence.toFixed(2)}`];
-  parts.push(`${formatRaHms(o.coord.ra_deg)} ${formatDecDms(o.coord.dec_deg)}`);
-  if (o.size_arcmin) parts.push(`${o.size_arcmin[0]}′`);
-  if (o.distance) parts.push(`${o.distance.value} ${o.distance.unit}`);
-  const ids = Object.values(o.catalog_ids);
-  if (ids.length) parts.push(ids.join(', '));
+  const code = o.type.otype ? (gloss ? `${o.type.otype} (${gloss[lang]})` : o.type.otype) : '';
+  const typeConf =
+    o.type_confidence != null
+      ? `type ${o.type_confidence.toFixed(2)}${o.type.source === 'wiki' ? ' · wiki' : ''}`
+      : undefined;
+  const parts = [
+    code,
+    `id ${o.confidence.toFixed(2)}`,
+    typeConf,
+    `${formatRaHms(o.coord.ra_deg)} ${formatDecDms(o.coord.dec_deg)}`,
+    o.size_arcmin ? `${o.size_arcmin[0]}′` : undefined,
+    o.distance ? `${o.distance.value} ${o.distance.unit}` : undefined,
+  ].filter(Boolean);
   return parts.join(' · ');
+}
+
+/** Catalogue designations beyond the one already shown as the label. */
+function designationsLine(o: FactObject, label: string): string {
+  return o.designations.filter((d) => d && d !== label).join(' / ');
+}
+
+/** Cross-ID separation: "NGC 2736 ↔ RCW 37 · Δ 2.1′ · same object". */
+function separationLine(o: FactObject, lang: 'zh' | 'en'): string {
+  if (!o.cross_match?.length) return '';
+  const me = o.designations[0] ?? o.names[0] ?? '';
+  const thr = o.size_arcmin ? o.size_arcmin[0] : 5;
+  const same = o.cross_match.every((m) => m.sep_arcmin <= thr);
+  const verdict = same ? (lang === 'en' ? ' · same object' : ' · 同一天体') : '';
+  return o.cross_match.map((m) => `${me} ↔ ${m.id} · Δ ${m.sep_arcmin}′`).join('; ') + verdict;
 }
 
 /** Title type label: stars get the specific gloss (s*r → 红超巨星) since their
@@ -187,8 +208,12 @@ export function FactsPanel({
                 <span className="legend-name">
                   {f.label[lang]}
                   {o && typeName(o, lang) !== f.label[lang] ? ` — ${typeName(o, lang)}` : ''}
+                  {o?.type_needs_review ? ' ⚠机制待核' : ''}
                   {f.needs_human_review ? ' ⚠' : ''}
                 </span>
+                {o && designationsLine(o, f.label[lang]) && (
+                  <span className="muted">{designationsLine(o, f.label[lang])}</span>
+                )}
                 {o && (
                   <span
                     className="muted"
@@ -196,6 +221,9 @@ export function FactsPanel({
                   >
                     {objectDetail(o, lang)}
                   </span>
+                )}
+                {o && separationLine(o, lang) && (
+                  <span className="muted">{separationLine(o, lang)}</span>
                 )}
               </span>
             </li>

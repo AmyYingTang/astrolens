@@ -57,16 +57,32 @@ export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[]
       (a.mag ?? 99) - (b.mag ?? 99),
   );
 
+  const designationOf = (c: CatalogCandidate): string =>
+    Object.values(c.catalog_ids)[0] ?? c.names[0] ?? c.main_id;
+
   const kept: CatalogCandidate[] = [];
   for (const c of all) {
     const dup = kept.find((o) => isDuplicate(o, c));
     if (!dup) {
-      kept.push({ ...c, names: [...c.names], catalog_ids: { ...c.catalog_ids } });
+      kept.push({
+        ...c,
+        names: [...c.names],
+        catalog_ids: { ...c.catalog_ids },
+        cross_match: [...(c.cross_match ?? [])],
+      });
       continue;
     }
     for (const n of c.names) if (!dup.names.includes(n)) dup.names.push(n);
     for (const [k, v] of Object.entries(c.catalog_ids)) if (!dup.catalog_ids[k]) dup.catalog_ids[k] = v;
     if (major(c) > major(dup)) dup.size_arcmin = c.size_arcmin;
+    // The common name can live on either source — keep whichever has it.
+    if (!dup.common_name?.en && c.common_name?.en) dup.common_name = c.common_name;
+    // Record the folded-in designation + its separation from the kept position,
+    // so the UI can show the cross-ID is the same physical object.
+    (dup.cross_match ??= []).push({
+      id: designationOf(c),
+      sep_arcmin: Math.round(sepArcmin(dup, c) * 10) / 10,
+    });
   }
   return kept;
 }

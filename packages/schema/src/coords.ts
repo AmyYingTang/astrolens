@@ -8,7 +8,7 @@ const pad = (n: number): string => String(n).padStart(2, '0');
 
 /** Decimal RA degrees → "09h00m21s". */
 export function formatRaHms(raDeg: number): string {
-  let hours = (((raDeg % 360) + 360) % 360) / 15;
+  const hours = (((raDeg % 360) + 360) % 360) / 15;
   let h = Math.floor(hours);
   let m = Math.floor((hours - h) * 60);
   let s = Math.round(((hours - h) * 60 - m) * 60);
