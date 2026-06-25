@@ -30,6 +30,11 @@ export function buildOverlaySvg(report: Reading): string {
         `<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
         `<polygon points="${ax},${ay} ${p2} ${p3}" fill="${color.stroke}"/>`,
       );
+    } else if (f.shape === 'dot') {
+      // Comet nucleus: small filled dot (badge anchors at the coma radius).
+      parts.push(
+        `<circle cx="${cx}" cy="${cy}" r="${strokeW * 2.5}" fill="${color.stroke}" stroke="#0b0e14" stroke-width="${Math.max(1, Math.round(strokeW / 2))}"/>`,
+      );
     } else if (f.shape === 'arc' && f.arc) {
       // Class-B ionization front: a curved arc along the nebula rim.
       const { cx: acx, cy: acy, r: ar, a0, a1 } = f.arc;

@@ -173,7 +173,13 @@ function buildReading(
   const aObjects = factsheet.objects.filter((o) => o.tier !== 'B');
   const primary = aObjects[0]!;
 
-  const features = factsheet.objects.map((obj, i) => {
+  // The comet head is a title-only container — its parts (coma/nucleus/tails)
+  // carry everything, so drop it from the drawn + numbered + listed features
+  // ("彗星" is still the title via `primary`).
+  const isCometHead = (o: FactObject): boolean => o.category === 'comet' && o.tier !== 'B';
+  const drawnObjects = factsheet.objects.filter((o) => !isCometHead(o));
+
+  const features = drawnObjects.map((obj, i) => {
     const t = byId.get(obj.id);
     const base = obj.coord.pixel ?? [Math.round(width / 2), Math.round(height / 2)];
     const isB = obj.tier === 'B';
@@ -186,24 +192,30 @@ function buildReading(
     let cy = base[1]!;
     const parentPix =
       isB && obj.parent_object_id ? byObjId.get(obj.parent_object_id)?.coord.pixel : null;
-    let shape: 'circle' | 'shell' | 'arrow' | 'arc' = !isB
+    let shape: 'circle' | 'shell' | 'arrow' | 'arc' | 'dot' = !isB
       ? 'circle'
       : obj.feature_type === 'comet_coma' // the coma is a full circle, like an object
         ? 'circle'
-        : obj.arrow_to // a directional feature (comet tail) → arrow
-          ? 'arrow'
-          : obj.feature_type === 'ionization_front' && isCv
-            ? 'arc'
-            : obj.feature_type === 'bubble_shell'
-              ? 'shell'
-              : isCv // CV point marker (comet nucleus)
+        : obj.feature_type === 'comet_nucleus' // a point marker; badge clears the coma
+          ? 'dot'
+          : obj.arrow_to // a directional feature (comet tail) → arrow
+            ? 'arrow'
+            : obj.feature_type === 'ionization_front' && isCv
+              ? 'arc'
+              : obj.feature_type === 'bubble_shell'
                 ? 'shell'
-                : 'arrow';
+                : isCv
+                  ? 'shell'
+                  : 'arrow';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
-    // The comet nucleus is a point — a small marker inside the coma, not a full ring.
-    if (obj.feature_type === 'comet_nucleus') r = Math.max(6, Math.round(sampleR * 0.35));
+    // The nucleus is a small dot, but anchor its badge at the coma radius (the
+    // parent's size) so the label sits outside the coma instead of over it.
+    if (shape === 'dot') {
+      const parent = obj.parent_object_id ? byObjId.get(obj.parent_object_id) : undefined;
+      r = parent ? radiusFor(parent) : sampleR;
+    }
     let arrow_to: [number, number] | undefined;
     let arc: { cx: number; cy: number; r: number; a0: number; a1: number } | undefined;
     if (shape === 'arc') {

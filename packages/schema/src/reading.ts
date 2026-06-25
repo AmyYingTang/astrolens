@@ -37,7 +37,9 @@ export const Feature = z.object({
    * rim (e.g. an ionization front), defined by `arc`. All but 'circle' are
    * Class-B (inferred) annotations.
    */
-  shape: z.enum(['circle', 'shell', 'arrow', 'arc']).default('circle'),
+  // 'dot' = a small fixed marker (a comet nucleus) whose badge anchors at
+  // circle.r (set to the coma radius) so it clears the coma circle.
+  shape: z.enum(['circle', 'shell', 'arrow', 'arc', 'dot']).default('circle'),
   arrow_to: z.tuple([z.number(), z.number()]).optional(), // target point for shape 'arrow'
   /** Curved segment for shape 'arc': centre (cx,cy), radius r, start/end angle
    * in radians (clockwise from +x, screen coords). circle.{cx,cy} stays at the

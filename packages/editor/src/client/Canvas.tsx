@@ -253,6 +253,20 @@ export function Canvas({
                     onClick={() => dispatch({ type: 'select', id: f.id })}
                     onTap={() => dispatch({ type: 'select', id: f.id })}
                   />
+                ) : f.shape === 'dot' ? (
+                  // Comet nucleus: a small filled dot at centre; its badge anchors
+                  // at f.circle.r (the coma radius) so the label clears the coma.
+                  <KCircle
+                    x={cx}
+                    y={cy}
+                    radius={px(7)}
+                    fill={color.stroke}
+                    stroke="#0b0e14"
+                    strokeWidth={px(1)}
+                    opacity={selected ? 1 : 0.9}
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                  />
                 ) : f.shape === 'arrow' && f.arrow_to ? (
                   // Class-B direction arrow (e.g. ionization front: bright rim
                   // faces this way). Non-draggable for now; the badge moves.
@@ -297,7 +311,7 @@ export function Canvas({
                   />
                 )}
 
-                {selected && f.shape !== 'arrow' && f.shape !== 'arc' && (
+                {selected && f.shape !== 'arrow' && f.shape !== 'arc' && f.shape !== 'dot' && (
                   <KCircle
                     x={cx + r}
                     y={cy}

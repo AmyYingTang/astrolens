@@ -22,7 +22,8 @@ export const ColorKey = z.enum([
   'dark', // dark cloud / dust band
   'bg', // untouched background / molecular cloud
   // Comet
-  'comet', // comet head (nucleus / coma)
+  'comet', // comet coma
+  'ion', // ion tail (blue)
 ]);
 export type ColorKey = z.infer<typeof ColorKey>;
 
@@ -46,5 +47,6 @@ export const COLOR_PALETTE: Record<ColorKey, PaletteEntry> = {
   pillar: { stroke: '#bb9af7', badge: '#bb9af7' }, // purple
   dark: { stroke: '#9aa5b8', badge: '#9aa5b8' }, // grey
   bg: { stroke: '#7dcfa6', badge: '#7dcfa6' }, // mint
-  comet: { stroke: '#5ee0c0', badge: '#5ee0c0' }, // cyan-green (coma)
+  comet: { stroke: '#5ee0c0', badge: '#5ee0c0' }, // green (coma)
+  ion: { stroke: '#5b8cff', badge: '#5b8cff' }, // blue (ion tail)
 };

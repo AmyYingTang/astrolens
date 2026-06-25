@@ -35,8 +35,13 @@ export function generateEmbedHtml(report: Reading, opts: EmbedOptions): string {
       const bx = cx + (r + f.badge.bubble_r) * 0.7071 + f.badge.offset_x;
       const by = cy - (r + f.badge.bubble_r) * 0.7071 + f.badge.offset_y;
       const fs = f.badge.bubble_r * 1.1;
+      // A comet nucleus is a small filled dot; everything else a ring at circle.r.
+      const mark =
+        f.shape === 'dot'
+          ? `<circle class="al-circle" cx="${cx}" cy="${cy}" r="${strokeW * 2.5}" fill="${c.stroke}" stroke="none"/>`
+          : `<circle class="al-circle" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.stroke}" stroke-width="${strokeW}"/>`;
       return `<g class="al-feat" data-f="${esc(f.id)}">
-  <circle class="al-circle" cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${c.stroke}" stroke-width="${strokeW}"/>
+  ${mark}
   <circle cx="${bx}" cy="${by}" r="${f.badge.bubble_r}" fill="${c.badge}" stroke="#0b0e14" stroke-width="${Math.max(1, strokeW / 2)}"/>
   <text x="${bx}" y="${by}" font-size="${fs}" font-weight="700" fill="#0b0e14" text-anchor="middle" dominant-baseline="central">${esc(f.badge.num)}</text>
 </g>`;

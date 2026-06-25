@@ -110,10 +110,12 @@ export function FactsPanel({
 }: Props): React.JSX.Element {
   const { t, lang } = useUi();
   const objById = new Map((factsheet?.objects ?? []).map((o) => [o.id, o]));
-  // A-class (catalog) circles vs Class-B (inferred) shells/arrows — split so the
-  // uncertain morphology stays visually separate from the grounded facts.
-  const aFeatures = reading.features.filter((f) => f.shape === 'circle');
-  const bFeatures = reading.features.filter((f) => f.shape !== 'circle');
+  // A-class (catalog object) vs Class-B (inferred morphology) — split by the
+  // factsheet tier, not the shape, so a B-feature drawn as a circle (a comet's
+  // coma) still lands under morphological features, not catalog objects.
+  const isB = (f: { id: string }): boolean => objById.get(f.id)?.tier === 'B';
+  const aFeatures = reading.features.filter((f) => !isB(f));
+  const bFeatures = reading.features.filter((f) => isB(f));
   const s = factsheet?.solve;
   const [reidOpen, setReidOpen] = useState(false);
   const [starMag, setStarMag] = useState(4);
