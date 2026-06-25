@@ -182,24 +182,28 @@ function buildReading(
     // along the nebula's rim (so it reads as a *front*, not a blob), drawn inside
     // the parent's circle so it doesn't sit on top of it.
     const isCv = obj.detection_source === 'cv';
-    const cx = base[0]!;
-    const cy = base[1]!;
+    let cx = base[0]!;
+    let cy = base[1]!;
     const parentPix =
       isB && obj.parent_object_id ? byObjId.get(obj.parent_object_id)?.coord.pixel : null;
     let shape: 'circle' | 'shell' | 'arrow' | 'arc' = !isB
       ? 'circle'
-      : obj.arrow_to // a directional feature (comet tail) → arrow to its tip
-        ? 'arrow'
-        : obj.feature_type === 'ionization_front' && isCv
-          ? 'arc'
-          : obj.feature_type === 'bubble_shell'
-            ? 'shell'
-            : isCv // CV point marker (comet nucleus)
+      : obj.feature_type === 'comet_coma' // the coma is a full circle, like an object
+        ? 'circle'
+        : obj.arrow_to // a directional feature (comet tail) → arrow
+          ? 'arrow'
+          : obj.feature_type === 'ionization_front' && isCv
+            ? 'arc'
+            : obj.feature_type === 'bubble_shell'
               ? 'shell'
-              : 'arrow';
+              : isCv // CV point marker (comet nucleus)
+                ? 'shell'
+                : 'arrow';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
+    // The comet nucleus is a point — a small marker inside the coma, not a full ring.
+    if (obj.feature_type === 'comet_nucleus') r = Math.max(6, Math.round(sampleR * 0.35));
     let arrow_to: [number, number] | undefined;
     let arc: { cx: number; cy: number; r: number; a0: number; a1: number } | undefined;
     if (shape === 'arc') {
@@ -219,8 +223,26 @@ function buildReading(
     if (shape === 'arrow') {
       r = starR;
       if (obj.arrow_to?.pixel) {
-        // A comet tail: a full-length arrow from the nucleus to the detected tip.
-        arrow_to = [Math.round(obj.arrow_to.pixel[0]), Math.round(obj.arrow_to.pixel[1])];
+        const tip = obj.arrow_to.pixel;
+        // A comet tail: don't run the line along the whole tail — drop a short
+        // arrow perpendicular to it, pointing AT the tail from the side.
+        const dx = tip[0] - cx;
+        const dy = tip[1] - cy;
+        const L = Math.hypot(dx, dy) || 1;
+        const ux = dx / L;
+        const uy = dy / L;
+        const px = cx + ux * L * 0.45; // a point partway along the tail
+        const py = cy + uy * L * 0.45;
+        let nx = -uy; // perpendicular to the tail
+        let ny = ux;
+        if ((width / 2 - px) * nx + (height / 2 - py) * ny < 0) {
+          nx = -nx; // come in from the frame-interior side
+          ny = -ny;
+        }
+        const arm = Math.min(Math.max(L * 0.16, 50), 160);
+        cx = Math.round(px + nx * arm);
+        cy = Math.round(py + ny * arm);
+        arrow_to = [Math.round(px), Math.round(py)];
       }
       const ap = obj.localization?.anchor_ref
         ? byObjId.get(obj.localization.anchor_ref)?.coord.pixel
@@ -240,6 +262,9 @@ function buildReading(
       color_key: obj.feature_type ? featureColorKey(obj.feature_type) : categoryColorKey(obj.category),
       circle: { cx, cy, r },
       shape,
+      // The comet head is a container — its parts (coma/nucleus/tails) carry the
+      // visuals, so don't draw a duplicate circle for the head itself.
+      ...(obj.category === 'comet' && !isB ? { draw: false } : {}),
       ...(arrow_to ? { arrow_to } : {}),
       ...(arc ? { arc } : {}),
       badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },
