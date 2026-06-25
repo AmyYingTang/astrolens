@@ -17,6 +17,10 @@ export const NICKNAMES: Record<string, Nickname> = {
   // Famous dark nebula with no catalogued common name — only survey designations
   // (Dobashi TGU). Keyed on its main one so it surfaces + gets named.
   'TGU H1868': { en: 'Dark Doodad', zh: '暗黑涂鸦' },
+  // η Carinae — the iconic central engine of the Carina Nebula. Wildly variable
+  // (V≈6.5 now), so it's beyond the bright-star cutoff and never fetched/kept
+  // without curation. Keyed on the SIMBAD main_id.
+  '* eta Car': { en: 'Eta Carinae', zh: '海山二' },
 };
 
 /** Normalise a designation for matching: collapse whitespace, upper-case. */

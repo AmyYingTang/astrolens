@@ -1,5 +1,6 @@
 import { ofetch } from 'ofetch';
 import type { CatalogClient, CatalogCandidate, RegionQuery } from './types.js';
+import { NICKNAMES } from './nicknames.js';
 
 /**
  * SIMBAD TAP region query (ADQL). post-0.4.8 lowercase columns.
@@ -146,22 +147,37 @@ WHERE ${circleB} AND b.ra IS NOT NULL AND f."V" < ${starMagMax}`;
 FROM basic AS b LEFT JOIN allfluxes AS f ON b.oid = f.oidref
 WHERE ${circleB} AND b.ra IS NOT NULL AND b.otype IN ('WR*', 'WR?')`;
 
-    const [objRes, starRes, exRes] = await Promise.all([
+    // Curated landmarks (nickname overlay) — famous objects that the magnitude /
+    // otype filters above miss (e.g. η Carinae at V≈6.5, beyond the bright-star
+    // cutoff). Fetch by identifier within the cone, no mag/otype limit, so they
+    // become candidates; selection force-keeps them. No-op if none in the field.
+    const curatedIds = Object.keys(NICKNAMES)
+      .map((k) => `'${k.replace(/'/g, "''")}'`)
+      .join(', ');
+    const curatedAdql = curatedIds
+      ? `SELECT TOP 20 b.main_id, b.ra, b.dec, b.otype, b.galdim_majaxis, b.galdim_minaxis, f."V" AS vmag
+FROM basic AS b LEFT JOIN allfluxes AS f ON b.oid = f.oidref JOIN ident AS i ON i.oidref = b.oid
+WHERE ${circleB} AND b.ra IS NOT NULL AND i.id IN (${curatedIds})`
+      : null;
+
+    const [objRes, starRes, exRes, curRes] = await Promise.all([
       tap(objectsAdql),
       tap(starsAdql),
       tap(excitingAdql),
+      curatedAdql ? tap(curatedAdql) : Promise.resolve(null),
     ]);
     const objects = rows(objRes, false);
     const stars = rows(starRes, true);
     const exciting = rows(exRes, true);
+    const curated = curRes ? rows(curRes, true) : [];
     log(
-      `region r=${q.radius_deg.toFixed(3)}° → ${objects.length} sized objects, ${stars.length} bright stars, ${exciting.length} exciting stars`,
+      `region r=${q.radius_deg.toFixed(3)}° → ${objects.length} sized objects, ${stars.length} bright stars, ${exciting.length} exciting stars, ${curated.length} curated`,
     );
 
     // Merge, dedup by main_id (extended objects win on collision).
     const seen = new Set<string>();
     const merged: CatalogCandidate[] = [];
-    for (const c of [...objects, ...stars, ...exciting]) {
+    for (const c of [...objects, ...stars, ...exciting, ...curated]) {
       const key = c.main_id || `${c.ra_deg},${c.dec_deg}`;
       if (seen.has(key)) continue;
       seen.add(key);

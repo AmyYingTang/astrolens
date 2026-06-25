@@ -46,6 +46,11 @@ function angSepDeg(ra1: number, dec1: number, ra2: number, dec2: number): number
 
 const isWR = (c: CatalogCandidate): boolean => c.otype === 'WR*' || c.otype === 'WR?';
 
+/** A hand-curated famous object (nickname overlay) — surfaced as a landmark
+ * regardless of the magnitude / named / visibility / cap gates. */
+const isCurated = (c: CatalogCandidate): boolean =>
+  !!lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id]);
+
 /**
  * Composition prior: photographers frame the subject away from the edges. A
  * candidate centred in the frame scores ~1; one whose centre is in the outer
@@ -87,7 +92,7 @@ const SURVEY_NAME =
  * the Dark Doodad, TGU H1868 — would otherwise be dropped as survey noise). */
 function hasRecognizableName(c: CatalogCandidate): boolean {
   if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) return true;
-  if (lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id])) return true;
+  if (isCurated(c)) return true;
   return [c.main_id, ...c.names].some((n) => n.trim() !== '' && !SURVEY_NAME.test(n.trim()));
 }
 
@@ -193,8 +198,7 @@ function isVisible(g: GatedCandidate, opts: SelectOptions): boolean {
   // A curated famous object (nickname overlay) is trusted to be the subject — its
   // single-centroid luminance can mislead for a thin/extended cloud (the Dark
   // Doodad's centre isn't its darkest point), so don't gate it on that.
-  if (lookupNickname([...Object.values(g.candidate.catalog_ids), ...g.candidate.names, g.candidate.main_id]))
-    return true;
+  if (isCurated(g.candidate)) return true;
   const v = sampleMedian(s, g.pixel[0], g.pixel[1], opts.visWindow ?? 40);
   if (!Number.isFinite(v)) return true;
   if (g.category === 'dark_nebula') return v < bg * 0.92; // darker than background
@@ -235,6 +239,12 @@ export function selectObjects(gated: GatedCandidate[], opts: SelectOptions): Gat
 
   kept.sort((a, b) => composedScore(b, opts) - composedScore(a, opts));
   const result = opts.topN ? kept.slice(0, opts.topN) : kept;
+
+  // Curated landmarks (nickname overlay) are always surfaced — η Carinae (faint +
+  // variable), the Dark Doodad … — exempt from the per-type caps + topN.
+  for (const g of gated) {
+    if (isCurated(g.candidate) && !result.includes(g)) result.push(g);
+  }
 
   // Exciting star of the subject: for each selected emission nebula, add the one
   // WR star nearest its centre (its powering star) — even if faint / beyond the
