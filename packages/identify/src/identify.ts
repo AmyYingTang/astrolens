@@ -4,9 +4,15 @@ import { basename } from 'node:path';
 import { FactSheet } from '@astrolens/schema';
 import type { IdentifyInput, IdentifyDeps } from './types.js';
 import { fieldRadiusDeg } from './wcs.js';
-import { gateCandidates, selectObjects } from './select.js';
+import { gateCandidates, selectObjects, hasRecognizableName } from './select.js';
 import { assembleFactSheet } from './assemble.js';
-import { createLuminanceSampler, estimateBackground, type LuminanceSampler } from './luminance.js';
+import {
+  createLuminanceSampler,
+  createImageRaster,
+  estimateBackground,
+  type LuminanceSampler,
+} from './luminance.js';
+import { detectComet, cometToObjects, type CometFactObject } from './comet.js';
 import { createWikidataClient } from './wikidata.js';
 import { lookupNickname } from './nicknames.js';
 
@@ -104,6 +110,35 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   const backgroundLum = sampler ? estimateBackground(sampler, wcs.width, wcs.height) : undefined;
   const visWindow = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 50));
 
+  // Comet detection — a comet is a moving object (no catalog), so it's read from
+  // the image morphology: head/nucleus/coma + dust/ion tails. When found it's the
+  // primary; the catalog objects (incidental background galaxies/stars) stay.
+  let cometObjects: CometFactObject[] | undefined;
+  try {
+    const raster = await createImageRaster(input.imagePath, input.width, input.height);
+    const comet = detectComet(raster, wcs, wcs.scale_deg * 3600);
+    // A comet is a transient — it has NO catalog object at its position. If a
+    // catalogued object sits at the detected head, it's that object (e.g. the
+    // Pencil filament = NGC 2736), not a comet — a thin nebula can otherwise mimic
+    // the head-plus-tail shape.
+    if (comet) {
+      const [nx, ny] = comet.nucleusPixel;
+      const guard = Math.max(comet.comaRadiusPx * 3, 80);
+      // Only a RECOGNIZABLE extended object (a real named nebula/galaxy, e.g. the
+      // Pencil = NGC 2736) at the head vetoes. A background point star, or a faint
+      // survey clump the comet is merely superimposed on (a Planck PGCC), must not.
+      const onCatalogObject = gated.some(
+        (g) =>
+          g.candidate.size_arcmin &&
+          hasRecognizableName(g.candidate) &&
+          Math.hypot(g.pixel[0] - nx, g.pixel[1] - ny) < guard,
+      );
+      if (!onCatalogObject) cometObjects = cometToObjects(comet);
+    }
+  } catch {
+    cometObjects = undefined; // best-effort
+  }
+
   const selected = selectObjects(gated, {
     ...selectOpts,
     sampler,
@@ -145,5 +180,6 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     queries,
     timestamp,
     sampler,
+    cometObjects,
   });
 }

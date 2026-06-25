@@ -94,8 +94,11 @@ export const FEATURE_TAXONOMY = {
   stellar_population: { zh: '红巨星/蓝 HB 颜色', en: 'Stellar population', default_class: 'B-visual', default_color_key: 'star', catalogs: ['color region'], applies_to: ['globular_cluster'] },
 
   // — Comet (time-sensitive) —
-  comet_coma: { zh: '核/coma', en: 'Coma', default_class: 'A', default_color_key: 'hot', catalogs: ['JPL Horizons'], applies_to: ['comet'] },
-  comet_tail: { zh: '离子/尘埃尾', en: 'Comet tail', default_class: 'B-anchor', default_color_key: 'bg', catalogs: ['anchor nucleus'], applies_to: ['comet'] },
+  comet_nucleus: { zh: '核', en: 'Nucleus', default_class: 'B-visual', default_color_key: 'comet', catalogs: ['morphology'], applies_to: ['comet'] },
+  comet_coma: { zh: '彗发', en: 'Coma', default_class: 'A', default_color_key: 'comet', catalogs: ['morphology'], applies_to: ['comet'] },
+  comet_dust_tail: { zh: '尘埃尾', en: 'Dust tail', default_class: 'B-visual', default_color_key: 'star', catalogs: ['morphology'], applies_to: ['comet'] },
+  comet_ion_tail: { zh: '离子尾', en: 'Ion tail', default_class: 'B-visual', default_color_key: 'shock', catalogs: ['morphology'], applies_to: ['comet'] },
+  comet_tail: { zh: '彗尾', en: 'Comet tail', default_class: 'B-visual', default_color_key: 'bg', catalogs: ['morphology'], applies_to: ['comet'] },
 } satisfies Record<string, FeatureTaxonomyEntry>;
 
 export type FeatureTypeKey = keyof typeof FEATURE_TAXONOMY;
@@ -121,7 +124,7 @@ const CATEGORY_COLOR: Record<ObjectCategory, ColorKey> = {
   globular_cluster: 'star',
   open_cluster: 'star',
   star: 'hot',
-  comet: 'bg',
+  comet: 'comet',
 };
 
 /** Deterministic object-category → palette key, for annotating whole objects. */

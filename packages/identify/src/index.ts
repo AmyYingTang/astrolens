@@ -27,7 +27,13 @@ export { NICKNAMES, lookupNickname, type Nickname } from './nicknames.js';
 export { createCompositeCatalogClient, mergeCandidates } from './composite.js';
 export { deriveBClassFeatures, type DerivableObject, type DerivedFeature } from './features.js';
 export { detectCvFeatures, type CvOpts } from './cv.js';
-export { createLuminanceSampler, type LuminanceSampler } from './luminance.js';
+export {
+  createLuminanceSampler,
+  createImageRaster,
+  type LuminanceSampler,
+  type ImageRaster,
+} from './luminance.js';
+export { detectComet, cometToObjects, type CometResult, type CometTail, type CometFactObject } from './comet.js';
 export { createWikidataClient, type WikiInfo, type WikidataOptions } from './wikidata.js';
 export { createCachedSolveClient, defaultSolveCacheDir } from './cache.js';
 export type {

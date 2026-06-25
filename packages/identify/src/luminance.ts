@@ -49,6 +49,65 @@ export function sampleMedian(s: LuminanceSampler, x: number, y: number, win: num
   return vals[Math.floor(vals.length / 2)]!;
 }
 
+/**
+ * A coarse downsampled RGB raster with direct grid access + coordinate mapping —
+ * for image-morphology detectors (the comet detector) that scan/trace the whole
+ * frame (find the brightest extended blob, follow a tail), which a point sampler
+ * can't do. Colour is kept so dust (yellow) vs ion (blue) tails can be told apart.
+ */
+export interface ImageRaster {
+  gw: number;
+  gh: number;
+  fullW: number;
+  fullH: number;
+  /** Luminance 0–255 at a grid cell. */
+  lum(gx: number, gy: number): number;
+  /** [r,g,b] 0–255 at a grid cell. */
+  rgb(gx: number, gy: number): [number, number, number];
+  /** Full-image pixel → grid cell. */
+  toGrid(x: number, y: number): [number, number];
+  /** Grid cell → full-image pixel (cell centre). */
+  toFull(gx: number, gy: number): [number, number];
+}
+
+export async function createImageRaster(
+  imagePath: string,
+  fullW: number,
+  fullH: number,
+  maxDim = 400,
+): Promise<ImageRaster> {
+  const scale = Math.min(1, maxDim / Math.max(fullW, fullH));
+  const w = Math.max(1, Math.round(fullW * scale));
+  const h = Math.max(1, Math.round(fullH * scale));
+  const { data, info } = await sharp(imagePath)
+    .removeAlpha()
+    .resize(w, h, { fit: 'fill' })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const ch = info.channels;
+  const gw = info.width;
+  const gh = info.height;
+  const clampG = (v: number, hi: number): number => Math.min(hi - 1, Math.max(0, v));
+  const rgb = (gx: number, gy: number): [number, number, number] => {
+    const i = (clampG(gy, gh) * gw + clampG(gx, gw)) * ch;
+    const r = data[i] ?? 0;
+    return [r, ch > 1 ? (data[i + 1] ?? r) : r, ch > 2 ? (data[i + 2] ?? r) : r];
+  };
+  return {
+    gw,
+    gh,
+    fullW,
+    fullH,
+    rgb,
+    lum: (gx, gy) => {
+      const [r, g, b] = rgb(gx, gy);
+      return 0.299 * r + 0.587 * g + 0.114 * b;
+    },
+    toGrid: (x, y) => [clampG(Math.floor((x / fullW) * gw), gw), clampG(Math.floor((y / fullH) * gh), gh)],
+    toFull: (gx, gy) => [((gx + 0.5) / gw) * fullW, ((gy + 0.5) / gh) * fullH],
+  };
+}
+
 /** Field background luminance — median over a coarse grid across the frame. */
 export function estimateBackground(s: LuminanceSampler, w: number, h: number): number {
   const vals: number[] = [];

@@ -69,6 +69,15 @@ export const FactObject = z.object({
     .array(z.object({ id: z.string(), sep_arcmin: z.number() }))
     .default([]),
   localization: FactLocalization.optional(), // B-class: how it's placed; A-class uses coord.pixel
+  /** Tip of a directional feature drawn as an arrow from `coord` (e.g. a comet
+   * tail: nucleus → tail end). World + display pixel, like `coord`. */
+  arrow_to: z
+    .object({
+      ra_deg: z.number(),
+      dec_deg: z.number(),
+      pixel: z.tuple([z.number(), z.number()]).nullable(),
+    })
+    .optional(),
   /** Where this entry came from: a catalog match (A-class), a geometric prior
    * anchored on an A object, an image CV detector, or an AI/VLM pass. Drives the
    * Facts-panel provenance grouping. */

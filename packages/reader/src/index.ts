@@ -188,11 +188,15 @@ function buildReading(
       isB && obj.parent_object_id ? byObjId.get(obj.parent_object_id)?.coord.pixel : null;
     let shape: 'circle' | 'shell' | 'arrow' | 'arc' = !isB
       ? 'circle'
-      : obj.feature_type === 'bubble_shell'
-        ? 'shell'
-        : isCv
+      : obj.arrow_to // a directional feature (comet tail) → arrow to its tip
+        ? 'arrow'
+        : obj.feature_type === 'ionization_front' && isCv
           ? 'arc'
-          : 'arrow';
+          : obj.feature_type === 'bubble_shell'
+            ? 'shell'
+            : isCv // CV point marker (comet nucleus)
+              ? 'shell'
+              : 'arrow';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
@@ -214,10 +218,14 @@ function buildReading(
     }
     if (shape === 'arrow') {
       r = starR;
+      if (obj.arrow_to?.pixel) {
+        // A comet tail: a full-length arrow from the nucleus to the detected tip.
+        arrow_to = [Math.round(obj.arrow_to.pixel[0]), Math.round(obj.arrow_to.pixel[1])];
+      }
       const ap = obj.localization?.anchor_ref
         ? byObjId.get(obj.localization.anchor_ref)?.coord.pixel
         : null;
-      if (ap) {
+      if (!arrow_to && ap) {
         const dx = ap[0] - cx;
         const dy = ap[1] - cy;
         const d = Math.hypot(dx, dy) || 1;

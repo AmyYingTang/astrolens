@@ -90,7 +90,7 @@ const SURVEY_NAME =
 /** A DSO is "recognizable" if it has a known catalog id, a non-survey name, or a
  * curated nickname (a famous object whose only catalog ids are survey ones — e.g.
  * the Dark Doodad, TGU H1868 — would otherwise be dropped as survey noise). */
-function hasRecognizableName(c: CatalogCandidate): boolean {
+export function hasRecognizableName(c: CatalogCandidate): boolean {
   if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) return true;
   if (isCurated(c)) return true;
   return [c.main_id, ...c.names].some((n) => n.trim() !== '' && !SURVEY_NAME.test(n.trim()));

@@ -6,6 +6,7 @@ import { objectTypeLabel } from './otype.js';
 import { deriveBClassFeatures } from './features.js';
 import { detectCvFeatures } from './cv.js';
 import { estimateBackground, type LuminanceSampler } from './luminance.js';
+import type { CometFactObject } from './comet.js';
 import { fieldRadiusDeg } from './wcs.js';
 
 /** Drop Class-B inferences weaker than this — a low-confidence morphological
@@ -87,6 +88,9 @@ export interface AssembleArgs {
   timestamp: string;
   /** Image luminance, for snapping Class-B markers onto bright structure. */
   sampler?: LuminanceSampler;
+  /** Image-detected comet (head + nucleus/coma/tails), no catalog. When present
+   * the comet is the primary and the catalog objects become secondaries. */
+  cometObjects?: CometFactObject[];
 }
 
 /**
@@ -102,6 +106,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
     warnings.push('No prominent catalogued object with an optical counterpart in the field.');
   }
 
+  const hasComet = (args.cometObjects?.length ?? 0) > 0;
   const objects = args.selected.map((g, i) => {
     const c = g.candidate;
     const rt = resolveType(c, g.category);
@@ -109,7 +114,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       c.common_name && (c.common_name.en || c.common_name.zh) ? c.common_name : undefined;
     return {
       id: `obj${i + 1}`,
-      role: i === 0 ? ('primary' as const) : ('secondary' as const),
+      role: !hasComet && i === 0 ? ('primary' as const) : ('secondary' as const),
       names: c.names.length ? c.names : [c.main_id],
       ...(common ? { common_name: common } : {}),
       designations: designationsOf(c),
@@ -150,7 +155,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       wcs,
       frame: 'display',
     },
-    objects: [...objects, ...bFeatures],
+    objects: [...(args.cometObjects ?? []), ...objects, ...bFeatures],
     warnings,
     provenance: {
       queries: args.queries,
