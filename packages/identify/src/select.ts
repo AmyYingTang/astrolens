@@ -3,6 +3,7 @@ import type { CatalogCandidate, Wcs } from './types.js';
 import { worldToPixel } from './wcs.js';
 import { isOptical, objectCategory } from './otype.js';
 import { sampleMedian, type LuminanceSampler } from './luminance.js';
+import { lookupNickname } from './nicknames.js';
 
 /** A candidate that passed the annotation gate, with its projected pixel + category. */
 export interface GatedCandidate {
@@ -81,9 +82,12 @@ const NAMED_CATALOGS = [
 const SURVEY_NAME =
   /^(\[|2MASX|LEDA|PGCC|PGC\b|TGU|GSC|UCAC|Gaia |TYC |SAO |IRAS|WISE|2MASS|UGC|MCG|HVC|MGr|HDC|GRG)/i;
 
-/** A DSO is "recognizable" if it has a known catalog id or a non-survey name. */
+/** A DSO is "recognizable" if it has a known catalog id, a non-survey name, or a
+ * curated nickname (a famous object whose only catalog ids are survey ones — e.g.
+ * the Dark Doodad, TGU H1868 — would otherwise be dropped as survey noise). */
 function hasRecognizableName(c: CatalogCandidate): boolean {
   if (NAMED_CATALOGS.some((k) => c.catalog_ids[k])) return true;
+  if (lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id])) return true;
   return [c.main_id, ...c.names].some((n) => n.trim() !== '' && !SURVEY_NAME.test(n.trim()));
 }
 
@@ -186,6 +190,11 @@ function isVisible(g: GatedCandidate, opts: SelectOptions): boolean {
   const bg = opts.backgroundLum;
   if (!s || bg == null || !Number.isFinite(bg)) return true; // no image → don't gate
   if (g.category === 'star') return true;
+  // A curated famous object (nickname overlay) is trusted to be the subject — its
+  // single-centroid luminance can mislead for a thin/extended cloud (the Dark
+  // Doodad's centre isn't its darkest point), so don't gate it on that.
+  if (lookupNickname([...Object.values(g.candidate.catalog_ids), ...g.candidate.names, g.candidate.main_id]))
+    return true;
   const v = sampleMedian(s, g.pixel[0], g.pixel[1], opts.visWindow ?? 40);
   if (!Number.isFinite(v)) return true;
   if (g.category === 'dark_nebula') return v < bg * 0.92; // darker than background

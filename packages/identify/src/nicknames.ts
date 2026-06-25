@@ -14,6 +14,9 @@ export interface Nickname {
 
 export const NICKNAMES: Record<string, Nickname> = {
   'NGC 3576': { en: 'Statue of Liberty Nebula', zh: '自由女神星云' },
+  // Famous dark nebula with no catalogued common name — only survey designations
+  // (Dobashi TGU). Keyed on its main one so it surfaces + gets named.
+  'TGU H1868': { en: 'Dark Doodad', zh: '暗黑涂鸦' },
 };
 
 /** Normalise a designation for matching: collapse whitespace, upper-case. */

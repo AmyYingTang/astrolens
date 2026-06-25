@@ -83,6 +83,16 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   });
   const gated = gateCandidates(candidates, wcs);
 
+  // Curated nickname overlay (amateur names absent from SIMBAD/Wikidata/OpenNGC,
+  // e.g. Dark Doodad / Statue of Liberty), applied BEFORE selection so a famous
+  // but survey-only object is recognized, fame-boosted, and kept — not just
+  // labelled after the fact. See nicknames.ts.
+  for (const g of gated) {
+    const c = g.candidate;
+    const nn = lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id]);
+    if (nn) c.common_name = { en: nn.en, zh: nn.zh ?? c.common_name?.zh };
+  }
+
   // Image luminance — gate candidates on actual visibility + snap Class-B
   // markers onto bright structure. Best effort: never fail if unreadable (tests).
   let sampler: LuminanceSampler | undefined;
@@ -108,15 +118,6 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   const queries = [
     `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
   ];
-
-  // Curated nickname overlay: popular amateur names absent from every structured
-  // source (SIMBAD / Wikidata / OpenNGC), keyed by designation. Authoritative for
-  // the name, so applied before Wikidata; see nicknames.ts.
-  for (const g of selected) {
-    const c = g.candidate;
-    const nn = lookupNickname([...Object.values(c.catalog_ids), ...c.names, c.main_id]);
-    if (nn) c.common_name = { en: nn.en, zh: nn.zh ?? c.common_name?.zh };
-  }
 
   // Wikidata enrichment (Tier 1): for selected objects that have a common name
   // (⇒ famous), fetch a zh name + a mechanism-specific type. Best-effort, in
