@@ -120,7 +120,7 @@ const CATEGORY_COLOR: Record<ObjectCategory, ColorKey> = {
   supernova_remnant: 'shock',
   reflection_nebula: 'bg',
   dark_nebula: 'dark',
-  galaxy: 'bg',
+  galaxy: 'cavity', // pale lavender — distinct from the mint 'bg' / green comet coma
   globular_cluster: 'star',
   open_cluster: 'star',
   star: 'hot',
