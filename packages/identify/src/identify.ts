@@ -20,6 +20,7 @@ import {
   type MorphResult,
   type MorphFeature,
 } from './morph.js';
+import { visibleRadiusPx } from './features.js';
 import { createWikidataClient } from './wikidata.js';
 import { lookupNickname } from './nicknames.js';
 
@@ -171,6 +172,34 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   if (selected.some((g) => g.category === 'emission_nebula')) {
     try {
       const detected = await detectMorphology(input.imagePath);
+      // Confine pillars to a selected emission nebula's VISIBLE glow — otherwise
+      // the detector finds dark-column structure in unrelated foreground dust
+      // (e.g. the Rho Oph clouds around M4) and mis-attributes it to a far, faint
+      // nebula. Use the image-measured glow extent (the catalog size is often an
+      // inflated footprint), falling back to the catalog radius.
+      const ds = detected.downsample;
+      const win = Math.max(8, Math.round(Math.min(wcs.width, wcs.height) / 50));
+      const nebFoot = selected
+        .filter((g) => g.category === 'emission_nebula' && g.candidate.size_arcmin)
+        .map((g) => {
+          const catR = (g.candidate.size_arcmin![0] * 60) / (wcs.scale_deg * 3600) / 2;
+          let r = catR;
+          if (sampler && backgroundLum != null) {
+            const vis = visibleRadiusPx(g.pixel, catR, sampler, backgroundLum, wcs.width, wcs.height, win);
+            if (vis > win) r = vis;
+          }
+          return { x: g.pixel[0], y: g.pixel[1], r: r * 1.15 };
+        });
+      const confined: MorphResult = {
+        ...detected,
+        features: nebFoot.length
+          ? detected.features.filter((f) =>
+              nebFoot.some(
+                (n) => Math.hypot(f.centroid_px[0] * ds - n.x, f.centroid_px[1] * ds - n.y) <= n.r,
+              ),
+            )
+          : [],
+      };
       // 朝星先验: hard-filter pillars whose lit rim doesn't face an exciting star
       // (WR / O / blue supergiant) in the field — this also drops non-pillar dark
       // features (the Keyhole) whose geometry doesn't obey the prior. Drawn from
@@ -180,12 +209,12 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
       const stars = gated
         .filter((g) => g.category === 'star' && isExcitingOtype(g.candidate.otype))
         .map((g) => g.pixel);
-      const result = applyIlluminationPrior(detected, stars);
+      const result = applyIlluminationPrior(confined, stars);
       const sel = selectForOutreach(result);
       if (sel.length) {
         morphology = { result, selected: sel };
         console.error(
-          `[identify] morphology: ${detected.features.length} pillars → ${result.features.length} after 朝星先验 (${stars.length} exciting stars) → ${sel.length} selected`,
+          `[identify] morphology: ${detected.features.length} → ${confined.features.length} in-nebula → ${result.features.length} after 朝星先验 → ${sel.length} selected`,
         );
       }
     } catch {
