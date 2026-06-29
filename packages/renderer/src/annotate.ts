@@ -46,6 +46,31 @@ export function buildOverlaySvg(report: Reading): string {
       parts.push(
         `<path d="M ${x0} ${y0} A ${ar.toFixed(1)} ${ar.toFixed(1)} 0 ${large} 1 ${x1} ${y1}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}" stroke-linecap="round"/>`,
       );
+    } else if (f.shape === 'polyline' && f.polygon && f.polygon.length > 1) {
+      // A pillar's bright rim: a thin open line tracing the lit edge (its own
+      // colour/label distinguishes it from the dashed column outline).
+      const rpts = f.polygon.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      parts.push(
+        `<polyline points="${rpts}" fill="none" stroke="${color.stroke}" stroke-width="${Math.max(1, Math.round(strokeW * 0.8))}" stroke-linecap="round" stroke-linejoin="round"/>`,
+      );
+    } else if (f.shape === 'polygon' && f.polygon && f.polygon.length > 1) {
+      // Class-B morphology suggestion (e.g. a pillar): a soft dashed outline,
+      // never a hard box. An optional arrow shows the 迎光 / illumination direction.
+      const pts = f.polygon.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+      parts.push(
+        `<polygon points="${pts}" fill="none" stroke="${color.stroke}" stroke-width="${strokeW}" stroke-dasharray="${strokeW * 4} ${strokeW * 3}" stroke-linejoin="round"/>`,
+      );
+      if (f.arrow_to) {
+        const [ax, ay] = f.arrow_to;
+        const ang = Math.atan2(ay - cy, ax - cx);
+        const hl = strokeW * 5;
+        const p2 = `${(ax - hl * Math.cos(ang - 0.4)).toFixed(1)},${(ay - hl * Math.sin(ang - 0.4)).toFixed(1)}`;
+        const p3 = `${(ax - hl * Math.cos(ang + 0.4)).toFixed(1)},${(ay - hl * Math.sin(ang + 0.4)).toFixed(1)}`;
+        parts.push(
+          `<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="${color.stroke}" stroke-width="${strokeW}"/>`,
+          `<polygon points="${ax},${ay} ${p2} ${p3}" fill="${color.stroke}"/>`,
+        );
+      }
     } else {
       // A-class solid ring, or a Class-B shell sample (small dashed circle).
       const dash = f.shape === 'shell' ? ` stroke-dasharray="${strokeW * 5} ${strokeW * 3}"` : '';

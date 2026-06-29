@@ -281,6 +281,46 @@ export function Canvas({
                     onClick={() => dispatch({ type: 'select', id: f.id })}
                     onTap={() => dispatch({ type: 'select', id: f.id })}
                   />
+                ) : f.shape === 'polyline' && f.polygon ? (
+                  // A pillar's bright rim: a thin open line (its own colour/label
+                  // distinguishes it from the dashed column outline).
+                  <Line
+                    points={f.polygon.flatMap((p) => [p[0], p[1]])}
+                    stroke={color.stroke}
+                    strokeWidth={px(selected ? 2 : 1)}
+                    lineCap="round"
+                    lineJoin="round"
+                    opacity={selected ? 1 : 0.85}
+                    onClick={() => dispatch({ type: 'select', id: f.id })}
+                    onTap={() => dispatch({ type: 'select', id: f.id })}
+                  />
+                ) : f.shape === 'polygon' && f.polygon ? (
+                  // Class-B morphology suggestion (pillar): a soft dashed contour
+                  // outline + the 迎光 illumination arrow. Suggestion-only.
+                  <>
+                    <Line
+                      points={f.polygon.flatMap((p) => [p[0], p[1]])}
+                      closed
+                      stroke={color.stroke}
+                      strokeWidth={px(selected ? 3 : 2)}
+                      dash={[px(9), px(7)]}
+                      opacity={selected ? 1 : 0.8}
+                      lineJoin="round"
+                      onClick={() => dispatch({ type: 'select', id: f.id })}
+                      onTap={() => dispatch({ type: 'select', id: f.id })}
+                    />
+                    {f.arrow_to && (
+                      <Arrow
+                        points={[cx, cy, f.arrow_to[0], f.arrow_to[1]]}
+                        stroke={color.stroke}
+                        fill={color.stroke}
+                        strokeWidth={px(selected ? 3 : 2)}
+                        pointerLength={px(12)}
+                        pointerWidth={px(10)}
+                        opacity={selected ? 1 : 0.85}
+                      />
+                    )}
+                  </>
                 ) : (
                   // A-class solid ring, or a Class-B shell sample — a small
                   // dashed circle dropped on a point of the shell's rim. Both
@@ -311,7 +351,12 @@ export function Canvas({
                   />
                 )}
 
-                {selected && f.shape !== 'arrow' && f.shape !== 'arc' && f.shape !== 'dot' && (
+                {selected &&
+                  f.shape !== 'arrow' &&
+                  f.shape !== 'arc' &&
+                  f.shape !== 'dot' &&
+                  f.shape !== 'polygon' &&
+                  f.shape !== 'polyline' && (
                   <KCircle
                     x={cx + r}
                     y={cy}

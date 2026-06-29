@@ -78,6 +78,10 @@ export const FactObject = z.object({
       pixel: z.tuple([z.number(), z.number()]).nullable(),
     })
     .optional(),
+  /** Class-B morphology suggestion outline (e.g. a pillar) — a closed contour in
+   * display pixels. Drawn as a soft polygon, never a hard box; the semantic name
+   * stays unset (geometry only — naming is the type-anchor stage's job). */
+  polygon: z.array(z.tuple([z.number(), z.number()])).optional(),
   /** Where this entry came from: a catalog match (A-class), a geometric prior
    * anchored on an A object, an image CV detector, or an AI/VLM pass. Drives the
    * Facts-panel provenance grouping. */

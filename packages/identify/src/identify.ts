@@ -13,6 +13,13 @@ import {
   type LuminanceSampler,
 } from './luminance.js';
 import { detectComet, cometToObjects, type CometFactObject } from './comet.js';
+import {
+  detectMorphology,
+  selectForOutreach,
+  applyIlluminationPrior,
+  type MorphResult,
+  type MorphFeature,
+} from './morph.js';
 import { createWikidataClient } from './wikidata.js';
 import { lookupNickname } from './nicknames.js';
 
@@ -20,6 +27,11 @@ async function fileHash(path: string): Promise<string> {
   const buf = await readFile(path);
   return 'sha256:' + createHash('sha256').update(buf).digest('hex').slice(0, 16);
 }
+
+/** Hot, luminous stars that ionize an HII region — the photoevaporation prior's
+ * anchor (Wolf–Rayet / O star / blue supergiant). */
+const isExcitingOtype = (otype: string): boolean =>
+  /^WR/.test(otype) || /^O/.test(otype) || otype === 's*b';
 
 /**
  * Stage 1: plate-solve + region catalog query → grounded FactSheet.
@@ -150,6 +162,34 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
   console.error(
     `[identify] candidates=${candidates.length} → in-frame/known=${gated.length} → selected=${selected.length} (prominence filter, cap ${selectOpts.topN}): ${selected.map((g) => g.candidate.names[0] ?? g.candidate.main_id).join(', ')}`,
   );
+
+  // Class-B morphology (pillars) — deterministic CV on the image (no AI). Run only
+  // when an emission nebula is in the selected set (the morphology targets HII
+  // pillars; skip galaxy/cluster/star fields to save the work). Best-effort: a
+  // read/decode failure never breaks identification.
+  let morphology: { result: MorphResult; selected: MorphFeature[] } | undefined;
+  if (selected.some((g) => g.category === 'emission_nebula')) {
+    try {
+      const detected = await detectMorphology(input.imagePath);
+      // 朝星先验: hard-filter pillars whose lit rim doesn't face an exciting star
+      // (WR / O / blue supergiant) in the field — this also drops non-pillar dark
+      // features (the Keyhole) whose geometry doesn't obey the prior. No exciting
+      // star ⇒ no prior (the set passes through as un-anchored B-visual).
+      const stars = selected
+        .filter((g) => g.category === 'star' && isExcitingOtype(g.candidate.otype))
+        .map((g) => g.pixel);
+      const result = applyIlluminationPrior(detected, stars);
+      const sel = selectForOutreach(result);
+      if (sel.length) {
+        morphology = { result, selected: sel };
+        console.error(
+          `[identify] morphology: ${detected.features.length} pillars → ${result.features.length} after 朝星先验 (${stars.length} exciting stars) → ${sel.length} selected`,
+        );
+      }
+    } catch {
+      morphology = undefined;
+    }
+  }
   const queries = [
     `SIMBAD region r=${radius.toFixed(3)}deg @ (${wcs.ra0_deg.toFixed(3)}, ${wcs.dec0_deg.toFixed(3)})`,
   ];
@@ -181,5 +221,6 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     timestamp,
     sampler,
     cometObjects,
+    morphology,
   });
 }

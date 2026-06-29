@@ -34,6 +34,17 @@ export {
   type ImageRaster,
 } from './luminance.js';
 export { detectComet, cometToObjects, type CometResult, type CometTail, type CometFactObject } from './comet.js';
+export {
+  detectMorphology,
+  selectForOutreach,
+  applyIlluminationPrior,
+  DEFAULT_MORPH_PARAMS,
+  DEFAULT_SELECT_PARAMS,
+  type MorphResult,
+  type MorphFeature,
+  type MorphParams,
+  type SelectParams,
+} from './morph.js';
 export { createWikidataClient, type WikiInfo, type WikidataOptions } from './wikidata.js';
 export { createCachedSolveClient, defaultSolveCacheDir } from './cache.js';
 export type {

@@ -192,21 +192,25 @@ function buildReading(
     let cy = base[1]!;
     const parentPix =
       isB && obj.parent_object_id ? byObjId.get(obj.parent_object_id)?.coord.pixel : null;
-    let shape: 'circle' | 'shell' | 'arrow' | 'arc' | 'dot' = !isB
+    let shape: 'circle' | 'shell' | 'arrow' | 'arc' | 'dot' | 'polygon' | 'polyline' = !isB
       ? 'circle'
       : obj.feature_type === 'comet_coma' // the coma is a full circle, like an object
         ? 'circle'
         : obj.feature_type === 'comet_nucleus' // a point marker; badge clears the coma
           ? 'dot'
-          : obj.arrow_to // a directional feature (comet tail) → arrow
-            ? 'arrow'
-            : obj.feature_type === 'ionization_front' && isCv
-              ? 'arc'
-              : obj.feature_type === 'bubble_shell'
-                ? 'shell'
-                : isCv
-                  ? 'shell'
-                  : 'arrow';
+          : obj.feature_type === 'pillar' // a morphology outline → soft closed polygon
+            ? 'polygon'
+            : obj.feature_type === 'ionization_front' && obj.polygon // a pillar's rim → thin line
+              ? 'polyline'
+              : obj.arrow_to // a directional feature (comet tail) → arrow
+                ? 'arrow'
+                : obj.feature_type === 'ionization_front' && isCv
+                  ? 'arc'
+                  : obj.feature_type === 'bubble_shell'
+                    ? 'shell'
+                    : isCv
+                      ? 'shell'
+                      : 'arrow';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
@@ -218,6 +222,35 @@ function buildReading(
     }
     let arrow_to: [number, number] | undefined;
     let arc: { cx: number; cy: number; r: number; a0: number; a1: number } | undefined;
+    let polygon: [number, number][] | undefined;
+    if (shape === 'polygon') {
+      // A pillar: draw its detected contour + use arrow_to (already a sky→pixel
+      // point) as the 迎光 arrow. Set the badge radius to the contour's extent so
+      // the numbered badge sits OUTSIDE the outline, not on top of it.
+      polygon = obj.polygon;
+      if (obj.arrow_to?.pixel) arrow_to = obj.arrow_to.pixel;
+      if (polygon && polygon.length >= 2) {
+        let maxd = starR;
+        for (const [vx, vy] of polygon) maxd = Math.max(maxd, Math.hypot(vx - cx, vy - cy));
+        r = Math.round(maxd);
+      } else {
+        shape = 'shell'; // no contour → fall back to a marker
+        r = starR;
+      }
+    }
+    if (shape === 'polyline') {
+      // A pillar's bright rim: a thin open line through its lit-edge points; badge
+      // anchored just outside the segment.
+      polygon = obj.polygon;
+      if (polygon && polygon.length >= 2) {
+        let maxd = starR;
+        for (const [vx, vy] of polygon) maxd = Math.max(maxd, Math.hypot(vx - cx, vy - cy));
+        r = Math.round(maxd);
+      } else {
+        shape = 'shell';
+        r = starR;
+      }
+    }
     if (shape === 'arc') {
       // Curve centred on the parent nebula, through the detected rim point. Since
       // the rim sits inside the (large) nebula circle, the arc lands inside it.
@@ -279,6 +312,7 @@ function buildReading(
       ...(obj.category === 'comet' && !isB ? { draw: false } : {}),
       ...(arrow_to ? { arrow_to } : {}),
       ...(arc ? { arc } : {}),
+      ...(polygon ? { polygon } : {}),
       badge: { num: String(i + 1), offset_x: 0, offset_y: 0, bubble_r: bubbleR },
       explanation: t?.explanation ?? { zh: '', en: '' },
       physics: t?.physics,

@@ -39,8 +39,13 @@ export const Feature = z.object({
    */
   // 'dot' = a small fixed marker (a comet nucleus) whose badge anchors at
   // circle.r (set to the coma radius) so it clears the coma circle.
-  shape: z.enum(['circle', 'shell', 'arrow', 'arc', 'dot']).default('circle'),
+  // 'polygon' = a soft closed outline (a Class-B morphology suggestion, e.g. a
+  // pillar) drawn from `polygon`; an optional `arrow_to` adds the 迎光 arrow.
+  // 'polyline' = an open thin line from `polygon` (a pillar's bright rim).
+  shape: z.enum(['circle', 'shell', 'arrow', 'arc', 'dot', 'polygon', 'polyline']).default('circle'),
   arrow_to: z.tuple([z.number(), z.number()]).optional(), // target point for shape 'arrow'
+  /** Closed contour (shape 'polygon') or open line (shape 'polyline'), display px. */
+  polygon: z.array(z.tuple([z.number(), z.number()])).optional(),
   /** Curved segment for shape 'arc': centre (cx,cy), radius r, start/end angle
    * in radians (clockwise from +x, screen coords). circle.{cx,cy} stays at the
    * detected rim point so the badge anchors on the structure. */

@@ -12,8 +12,9 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "vite build",
+    "build": "tsc -b && vite build",
     "build:client": "vite build",
+    "build:server": "tsc -b",
     "typecheck:client": "tsc -p tsconfig.client.json --noEmit"
   },
   "dependencies": {
