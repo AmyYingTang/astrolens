@@ -304,7 +304,12 @@ function buildReading(
       id: obj.id,
       fact_ref: { object_id: obj.id, feature_id: obj.id },
       label: isB ? { zh: obj.type.zh, en: obj.type.en } : displayLabel(obj),
-      color_key: obj.feature_type ? featureColorKey(obj.feature_type) : categoryColorKey(obj.category),
+      color_key:
+        shape === 'polyline' // a pillar's bright rim — cyan, high-contrast vs the red Hα body
+          ? 'shock'
+          : obj.feature_type
+            ? featureColorKey(obj.feature_type)
+            : categoryColorKey(obj.category),
       circle: { cx, cy, r },
       shape,
       // The comet head is a container — its parts (coma/nucleus/tails) carry the

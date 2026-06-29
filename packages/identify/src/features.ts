@@ -69,8 +69,13 @@ const WR_BUBBLE_NEBULAE = new Set<string>([
   'SH2-298', // around WR 6
 ]);
 
+/** Is any of these names a known WR wind-bubble (the nebula = the shell)? */
+export function isWrBubble(names: string[]): boolean {
+  return names.some((n) => WR_BUBBLE_NEBULAE.has(n.replace(/\s+/g, '').toUpperCase()));
+}
+
 function isKnownWrBubble(host: DerivableObject): boolean {
-  return host.names.some((n) => WR_BUBBLE_NEBULAE.has(n.replace(/\s+/g, '').toUpperCase()));
+  return isWrBubble(host.names);
 }
 
 function radiusDeg(o: DerivableObject): number {

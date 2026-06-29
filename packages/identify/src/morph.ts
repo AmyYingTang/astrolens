@@ -73,12 +73,19 @@ export interface SelectParams {
   w_scale: number;
   w_rim: number;
   w_isolation: number;
-  w_complete: number;
   /** Weight on centeredness — photographers frame the subject centrally, and an
    * edge feature reads as a stray. Full credit within 50% of frame-half, fading
    * to 0 by 75%. */
   w_center: number;
+  /** Weight on solidity (a regular, filled shape over a ragged blob). */
+  w_solidity: number;
+  /** Weight on elongation (a clean finger-shaped pillar over a round clump). */
+  w_elong: number;
   min_length_px: number;
+  /** Drop pillars smaller than this (downsampled px²) — too small to read clearly. */
+  min_area_px: number;
+  /** Drop pillars more ragged than this solidity. */
+  min_solidity: number;
   /** Hard exclude a feature whose centroid is past this fraction of the way to a
    * frame edge (0 = centre, 1 = edge) — keeps far strays out of the subject set. */
   max_edge_frac: number;
@@ -89,11 +96,14 @@ export interface SelectParams {
 export const DEFAULT_SELECT_PARAMS: SelectParams = {
   top_n: 3,
   w_scale: 0.3,
-  w_rim: 0.25,
-  w_isolation: 0.15,
-  w_complete: 0.1,
-  w_center: 0.4,
-  min_length_px: 30,
+  w_rim: 0.1,
+  w_isolation: 0.05,
+  w_center: 0.35,
+  w_solidity: 0.25,
+  w_elong: 0.2,
+  min_length_px: 40,
+  min_area_px: 600,
+  min_solidity: 0.55,
   max_edge_frac: 0.8,
   grid: [3, 3],
   per_cell: 2,
@@ -109,6 +119,9 @@ export interface MorphFeature {
   orientation_deg: number;
   elongation: number;
   area_px: number;
+  /** Solidity = area / convex-hull area ∈ (0,1]. High = a clean filled shape; low
+   * = a ragged / squiggly blob. Used to prefer regular pillars for outreach. */
+  solidity: number;
   rim_coverage_frac: number;
   /** Direction (deg, image frame) from the column toward the bright rim ⇒ toward
    * the ionizing source. Verified against the exciting-star prior in the WCS phase. */
@@ -559,6 +572,32 @@ function traceContour(lab: Int32Array, l: number, w: number, h: number): Array<[
   return out;
 }
 
+/** Convex-hull area of a point set (Andrew's monotone chain) — for solidity. */
+function convexHullArea(pts: Array<[number, number]>): number {
+  if (pts.length < 3) return 0;
+  const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o: [number, number], a: [number, number], b: [number, number]): number =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: Array<[number, number]> = [];
+  for (const pt of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, pt) <= 0) lower.pop();
+    lower.push(pt);
+  }
+  const upper: Array<[number, number]> = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const pt = p[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, pt) <= 0) upper.pop();
+    upper.push(pt);
+  }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  let a = 0;
+  for (let i = 0; i < hull.length; i++) {
+    const j = (i + 1) % hull.length;
+    a += hull[i]![0] * hull[j]![1] - hull[j]![0] * hull[i]![1];
+  }
+  return Math.abs(a) / 2;
+}
+
 // ---------------------------------------------------------------------------
 // Load: intensity = max(R,G,B) on a 2× box-averaged frame (matches PIL reduce).
 // ---------------------------------------------------------------------------
@@ -731,14 +770,17 @@ export async function detectMorphology(
       const step = Math.max(1, Math.floor(ordered.length / 12));
       rim_px = ordered.filter((_, idx) => idx % step === 0).map((q) => [q.x, q.y] as [number, number]);
     }
+    const contour = traceContour(lab, l, w, h);
+    const hullA = convexHullArea(contour);
     features.push({
       type: 'pillar',
       centroid_px: [cx, cy],
-      contour_px: traceContour(lab, l, w, h),
+      contour_px: contour,
       length_px: major,
       orientation_deg: (0.5 * Math.atan2(2 * m11, m20 - m02) * 180) / Math.PI,
       elongation: elong,
       area_px: area,
+      solidity: hullA > 0 ? Math.min(1, area / hullA) : 0,
       rim_coverage_frac: frac,
       illumination_vector_deg: illum,
       rim_px,
@@ -769,7 +811,10 @@ export function selectForOutreach(
   const cyF = res.height / 2;
   const scored: MorphFeature[] = [];
   for (const f of feats) {
+    // Talkability gates: large + regular enough to read clearly as a pillar.
     if (f.length_px < s.min_length_px) continue;
+    if (f.area_px < s.min_area_px) continue;
+    if (f.solidity < s.min_solidity) continue;
     // Edge fraction: 0 at the frame centre, 1 at an edge. Drop far strays.
     const edge = Math.max(Math.abs(f.centroid_px[0] - cxF) / cxF, Math.abs(f.centroid_px[1] - cyF) / cyF);
     if (edge > s.max_edge_frac) continue;
@@ -781,13 +826,15 @@ export function selectForOutreach(
       if (dd < nearest) nearest = dd;
     }
     const iso = Number.isFinite(nearest) ? Math.min((nearest / maxDim) ** 0.5, 1) : 1;
-    const complete = f.contour_px.length > 8 ? 1 : 0.4;
+    // Elongation credit: 0 at elong 2 (round), 1 by elong 4+ (a clean finger).
+    const elongScore = Math.min(1, Math.max(0, (f.elongation - 2) / 2));
     f.salience =
       s.w_scale * (f.area_px / amax) +
       s.w_rim * f.rim_coverage_frac +
       s.w_isolation * iso +
-      s.w_complete * complete +
-      s.w_center * center;
+      s.w_center * center +
+      s.w_solidity * f.solidity +
+      s.w_elong * elongScore;
     scored.push(f);
   }
   scored.sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0));

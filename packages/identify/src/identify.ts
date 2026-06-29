@@ -173,9 +173,11 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
       const detected = await detectMorphology(input.imagePath);
       // 朝星先验: hard-filter pillars whose lit rim doesn't face an exciting star
       // (WR / O / blue supergiant) in the field — this also drops non-pillar dark
-      // features (the Keyhole) whose geometry doesn't obey the prior. No exciting
-      // star ⇒ no prior (the set passes through as un-anchored B-visual).
-      const stars = selected
+      // features (the Keyhole) whose geometry doesn't obey the prior. Drawn from
+      // ALL gated candidates, not just the displayed set, so the prior still works
+      // even though a generic HII region's embedded WR is no longer badged. No
+      // exciting star ⇒ no prior (the set passes through as un-anchored B-visual).
+      const stars = gated
         .filter((g) => g.category === 'star' && isExcitingOtype(g.candidate.otype))
         .map((g) => g.pixel);
       const result = applyIlluminationPrior(detected, stars);

@@ -4,6 +4,7 @@ import { worldToPixel } from './wcs.js';
 import { isOptical, objectCategory } from './otype.js';
 import { sampleMedian, type LuminanceSampler } from './luminance.js';
 import { lookupNickname } from './nicknames.js';
+import { isWrBubble } from './features.js';
 
 /** A candidate that passed the annotation gate, with its projected pixel + category. */
 export interface GatedCandidate {
@@ -246,10 +247,15 @@ export function selectObjects(gated: GatedCandidate[], opts: SelectOptions): Gat
     if (isCurated(g.candidate) && !result.includes(g)) result.push(g);
   }
 
-  // Exciting star of the subject: for each selected emission nebula, add the one
-  // WR star nearest its centre (its powering star) — even if faint / beyond the
-  // cap. Other (faint, off-subject) WR stars stay dropped.
-  const nebulae = result.filter((g) => g.category === 'emission_nebula' && g.candidate.size_arcmin);
+  // Surface the WR star only when it's morphologically the point — i.e. the
+  // nebula IS a known WR wind-bubble (the Dolphin / SH2-308 around a WR star).
+  // In a generic HII region the embedded WR is just one faint hot star among
+  // many, not visually meaningful, so we don't badge it (it's still used as the
+  // illumination-prior anchor for pillars — see identify.ts — just not shown).
+  const nebulae = result.filter(
+    (g) =>
+      g.category === 'emission_nebula' && g.candidate.size_arcmin && isWrBubble(g.candidate.names),
+  );
   for (const neb of nebulae) {
     const r = neb.candidate.size_arcmin![0] / 2 / 60; // deg
     const inside = gated

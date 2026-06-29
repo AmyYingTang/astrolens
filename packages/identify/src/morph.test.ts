@@ -21,6 +21,7 @@ function feature(over: Partial<MorphFeature>): MorphFeature {
     orientation_deg: 0,
     elongation: 3,
     area_px: 500,
+    solidity: 0.7,
     rim_coverage_frac: 0.5,
     illumination_vector_deg: 45,
     rim_px: [],
@@ -51,8 +52,8 @@ describe('selectForOutreach', () => {
 
   it('drops features below the talkability length gate', () => {
     const features: MorphFeature[] = [
-      feature({ centroid_px: [20, 20], length_px: 8 }), // too small to be tellable
-      feature({ centroid_px: [200, 200], length_px: 120 }),
+      feature({ centroid_px: [20, 20], length_px: 8, area_px: 800 }), // too short to be tellable
+      feature({ centroid_px: [200, 200], length_px: 120, area_px: 800 }),
     ];
     const res: MorphResult = { features, width: 400, height: 400, downsample: 2, footprint_frac: 0.3 };
     const picked = selectForOutreach(res, { ...DEFAULT_SELECT_PARAMS, min_length_px: 30 });

@@ -51,6 +51,26 @@ function isDuplicate(a: CatalogCandidate, b: CatalogCandidate): boolean {
   return sepArcmin(a, b) <= threshold;
 }
 
+/** Bright diffuse-nebula categories whose catalogues overlap — the same complex
+ * is listed as both an HII region and a "reflection" Cederblad entry. */
+const BRIGHT_NEBULA = new Set(['emission_nebula', 'reflection_nebula']);
+
+/** The same physical complex catalogued across mechanisms — e.g. Carina as both
+ * NGC 3372 (HII, 210′) and Ced 109 (RNe, 120′ — Cederblad blanket-types as
+ * reflection). Merge a CROSS-category bright-nebula pair only when concentric and
+ * comparable in size, so a genuine small reflection nebula embedded in a big HII
+ * region (a real sub-object) is never swallowed. */
+function isSameComplex(a: CatalogCandidate, b: CatalogCandidate): boolean {
+  const ka = kindOf(a);
+  const kb = kindOf(b);
+  if (ka === kb) return false; // same category → isDuplicate already handles it
+  if (!BRIGHT_NEBULA.has(ka) || !BRIGHT_NEBULA.has(kb)) return false;
+  const big = Math.max(major(a), major(b));
+  const small = Math.min(major(a), major(b));
+  if (small <= 0 || small < 0.4 * big) return false; // comparable, not a sub-nebula
+  return sepArcmin(a, b) <= 0.3 * small; // concentric
+}
+
 export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[] {
   const all = lists.flat();
   // Preferred representative first (prestige, then larger size, then brighter),
@@ -70,7 +90,7 @@ export function mergeCandidates(lists: CatalogCandidate[][]): CatalogCandidate[]
 
   const kept: CatalogCandidate[] = [];
   for (const c of all) {
-    const dup = kept.find((o) => isDuplicate(o, c));
+    const dup = kept.find((o) => isDuplicate(o, c) || isSameComplex(o, c));
     if (!dup) {
       kept.push({
         ...c,
