@@ -160,11 +160,20 @@ FROM basic AS b LEFT JOIN allfluxes AS f ON b.oid = f.oidref JOIN ident AS i ON 
 WHERE ${circleB} AND b.ra IS NOT NULL AND i.id IN (${curatedIds})`
       : null;
 
+    // Each sub-query is independent: a single timeout must NOT drop the others
+    // (otherwise one slow query loses every SIMBAD result — objects, bright stars
+    // AND curated landmarks like η Carinae — leaving only the VizieR/OpenNGC
+    // nebula). An empty result degrades gracefully; the whole batch failing does not.
+    const safeTap = (adql: string): Promise<TapResponse> =>
+      tap(adql).catch((e: unknown) => {
+        log(`sub-query failed (${(e as Error)?.message ?? e}); continuing without it`);
+        return { metadata: [], data: [] } as TapResponse;
+      });
     const [objRes, starRes, exRes, curRes] = await Promise.all([
-      tap(objectsAdql),
-      tap(starsAdql),
-      tap(excitingAdql),
-      curatedAdql ? tap(curatedAdql) : Promise.resolve(null),
+      safeTap(objectsAdql),
+      safeTap(starsAdql),
+      safeTap(excitingAdql),
+      curatedAdql ? safeTap(curatedAdql) : Promise.resolve(null),
     ]);
     const objects = rows(objRes, false);
     const stars = rows(starRes, true);
