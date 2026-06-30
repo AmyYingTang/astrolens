@@ -3,6 +3,7 @@ import { cac } from 'cac';
 import { TOOL_VERSION } from './version.js';
 import { loadEnv } from './env.js';
 import { identifyImage } from './commands/identify.js';
+import { identifyAi } from './commands/identifyAi.js';
 import { readReport } from './commands/read.js';
 import { renderReport } from './commands/render.js';
 import { editReport } from './commands/edit.js';
@@ -30,6 +31,14 @@ cli
       apiKey: options.apiKey,
       cache: options.cache,
     });
+  });
+
+cli
+  .command('identify-ai <project>', 'EXPERIMENT: AI Class-B feature pass on a solved project (compare vs CV)')
+  .option('--model <model>', 'Model passed to the claude CLI', { default: 'claude-opus-4-8' })
+  .option('--out <dir>', 'Output directory (default: the project directory)')
+  .action(async (project: string, options) => {
+    await identifyAi({ project, model: options.model, out: options.out });
   });
 
 cli

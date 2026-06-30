@@ -25,11 +25,12 @@ export {
 } from './openngc.js';
 export { NICKNAMES, lookupNickname, type Nickname } from './nicknames.js';
 export { createCompositeCatalogClient, mergeCandidates } from './composite.js';
-export { deriveBClassFeatures, type DerivableObject, type DerivedFeature } from './features.js';
+export { deriveBClassFeatures, visibleRadiusPx, type DerivableObject, type DerivedFeature } from './features.js';
 export { detectCvFeatures, type CvOpts } from './cv.js';
 export {
   createLuminanceSampler,
   createImageRaster,
+  estimateBackground,
   type LuminanceSampler,
   type ImageRaster,
 } from './luminance.js';
