@@ -22,6 +22,7 @@ function feature(over: Partial<MorphFeature>): MorphFeature {
     elongation: 3,
     area_px: 500,
     solidity: 0.7,
+    local_brightness: 0.6,
     rim_coverage_frac: 0.5,
     illumination_vector_deg: 45,
     rim_px: [],

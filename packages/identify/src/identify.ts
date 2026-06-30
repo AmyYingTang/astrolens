@@ -29,10 +29,39 @@ async function fileHash(path: string): Promise<string> {
   return 'sha256:' + createHash('sha256').update(buf).digest('hex').slice(0, 16);
 }
 
-/** Hot, luminous stars that ionize an HII region — the photoevaporation prior's
- * anchor (Wolf–Rayet / O star / blue supergiant). */
-const isExcitingOtype = (otype: string): boolean =>
-  /^WR/.test(otype) || /^O/.test(otype) || otype === 's*b';
+/** Brightness-weighted centroid of the glow within radius `r` of (cx,cy) — a
+ * proxy for the ionizing region (the embedded OB cluster). HII regions are
+ * ionized by a whole hot-star cluster, not the single WR star we happen to
+ * catalogue, so the bright core is the truer "toward the source" target for the
+ * photoevaporation prior. Falls back to the catalog centre if no glow is sampled. */
+function brightCentroid(
+  cx: number,
+  cy: number,
+  r: number,
+  s: LuminanceSampler,
+  bg: number,
+  w: number,
+  h: number,
+): [number, number] {
+  let sx = 0;
+  let sy = 0;
+  let sw = 0;
+  const step = Math.max(6, Math.round(r / 40));
+  for (let y = Math.max(0, cy - r); y <= Math.min(h - 1, cy + r); y += step) {
+    for (let x = Math.max(0, cx - r); x <= Math.min(w - 1, cx + r); x += step) {
+      if ((x - cx) ** 2 + (y - cy) ** 2 > r * r) continue;
+      const v = s(x, y);
+      if (!Number.isFinite(v)) continue;
+      const wt = v - bg;
+      if (wt > 0) {
+        sx += x * wt;
+        sy += y * wt;
+        sw += wt;
+      }
+    }
+  }
+  return sw > 0 ? [sx / sw, sy / sw] : [cx, cy];
+}
 
 /**
  * Stage 1: plate-solve + region catalog query → grounded FactSheet.
@@ -184,11 +213,15 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
         .map((g) => {
           const catR = (g.candidate.size_arcmin![0] * 60) / (wcs.scale_deg * 3600) / 2;
           let r = catR;
+          let anchor: [number, number] = [g.pixel[0], g.pixel[1]];
           if (sampler && backgroundLum != null) {
             const vis = visibleRadiusPx(g.pixel, catR, sampler, backgroundLum, wcs.width, wcs.height, win);
             if (vis > win) r = vis;
+            // Anchor the prior on the glow's bright centroid (the ionizing
+            // cluster), not a single off-centre WR star.
+            anchor = brightCentroid(g.pixel[0], g.pixel[1], r, sampler, backgroundLum, wcs.width, wcs.height);
           }
-          return { x: g.pixel[0], y: g.pixel[1], r: r * 1.15 };
+          return { x: g.pixel[0], y: g.pixel[1], r: r * 1.15, anchor };
         });
       const confined: MorphResult = {
         ...detected,
@@ -200,21 +233,18 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
             )
           : [],
       };
-      // 朝星先验: hard-filter pillars whose lit rim doesn't face an exciting star
-      // (WR / O / blue supergiant) in the field — this also drops non-pillar dark
-      // features (the Keyhole) whose geometry doesn't obey the prior. Drawn from
-      // ALL gated candidates, not just the displayed set, so the prior still works
-      // even though a generic HII region's embedded WR is no longer badged. No
-      // exciting star ⇒ no prior (the set passes through as un-anchored B-visual).
-      const stars = gated
-        .filter((g) => g.category === 'star' && isExcitingOtype(g.candidate.otype))
-        .map((g) => g.pixel);
-      const result = applyIlluminationPrior(confined, stars);
+      // Illumination prior: hard-filter pillars whose lit rim doesn't face the
+      // nebula's bright ionizing centre (the embedded OB cluster — anchored on the
+      // glow's bright centroid, not a single off-centre WR star). Also drops
+      // non-pillar dark features (the Keyhole) whose geometry doesn't obey it. No
+      // nebula glow ⇒ no prior (the set passes through as un-anchored B-visual).
+      const anchors = nebFoot.map((n) => n.anchor);
+      const result = applyIlluminationPrior(confined, anchors);
       const sel = selectForOutreach(result);
       if (sel.length) {
         morphology = { result, selected: sel };
         console.error(
-          `[identify] morphology: ${detected.features.length} → ${confined.features.length} in-nebula → ${result.features.length} after 朝星先验 → ${sel.length} selected`,
+          `[identify] morphology: ${detected.features.length} → ${confined.features.length} in-nebula → ${result.features.length} after illumination prior → ${sel.length} selected`,
         );
       }
     } catch {

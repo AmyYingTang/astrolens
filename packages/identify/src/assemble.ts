@@ -105,21 +105,12 @@ export interface AssembleArgs {
 function morphToObjects(
   morphology: { result: MorphResult; selected: MorphFeature[] },
   wcs: Wcs,
-  objects: Array<{
-    id: string;
-    category: ObjectCategory;
-    type: { otype: string };
-    coord: { pixel: [number, number] | null };
-  }>,
+  objects: Array<{ id: string; category: ObjectCategory; coord: { pixel: [number, number] | null } }>,
 ): Array<Record<string, unknown>> {
   const { result, selected } = morphology;
   const ds = result.downsample;
   const tax = FEATURE_TAXONOMY.pillar;
   const nebulae = objects.filter((o) => o.category === 'emission_nebula' && o.coord.pixel);
-  const isExciting = (ot: string): boolean => /^(WR|O)/.test(ot) || ot === 's*b';
-  const excitingStars = objects.filter(
-    (o) => o.category === 'star' && isExciting(o.type.otype) && o.coord.pixel,
-  );
   const armPx = Math.min(Math.max(0.04 * Math.min(wcs.width, wcs.height), 40), 200);
   return selected.flatMap((f, k) => {
     const cx = f.centroid_px[0] * ds;
@@ -135,18 +126,10 @@ function morphToObjects(
         parent = n.id;
       }
     }
-    // A pillar consistent with the photoevaporation prior is anchored on the
-    // exciting star it points at (nearest one) → upgrade B-visual to B-anchor.
+    // A pillar consistent with the prior (its rim faces the nebula's ionizing
+    // centre) is anchored on that host nebula → upgrade B-visual to B-anchor.
     const anchored = f.consistent_with_prior === true;
-    let anchorRef: string | undefined;
-    let bestS = Infinity;
-    for (const s of excitingStars) {
-      const d = Math.hypot(s.coord.pixel![0] - cx, s.coord.pixel![1] - cy);
-      if (d < bestS) {
-        bestS = d;
-        anchorRef = s.id;
-      }
-    }
+    const anchorRef = anchored ? (parent ?? undefined) : undefined;
     let arrow_to: { ra_deg: number; dec_deg: number; pixel: [number, number] } | undefined;
     if (f.illumination_vector_deg != null) {
       const a = (f.illumination_vector_deg * Math.PI) / 180;

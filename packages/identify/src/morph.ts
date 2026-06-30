@@ -81,6 +81,9 @@ export interface SelectParams {
   w_solidity: number;
   /** Weight on elongation (a clean finger-shaped pillar over a round clump). */
   w_elong: number;
+  /** Weight on local glow brightness — the visually prominent pillars sit in the
+   * bright ionized core, not the faint outskirts. The dominant term. */
+  w_brightness: number;
   min_length_px: number;
   /** Drop pillars smaller than this (downsampled px²) — too small to read clearly. */
   min_area_px: number;
@@ -95,18 +98,19 @@ export interface SelectParams {
 
 export const DEFAULT_SELECT_PARAMS: SelectParams = {
   top_n: 3,
-  w_scale: 0.3,
-  w_rim: 0.1,
+  w_scale: 0.15,
+  w_rim: 0.15,
   w_isolation: 0.05,
-  w_center: 0.35,
-  w_solidity: 0.25,
-  w_elong: 0.2,
-  min_length_px: 40,
-  min_area_px: 600,
-  min_solidity: 0.55,
+  w_center: 0.05,
+  w_solidity: 0.1,
+  w_elong: 0.1,
+  w_brightness: 0.4,
+  min_length_px: 25,
+  min_area_px: 150,
+  min_solidity: 0.4,
   max_edge_frac: 0.8,
   grid: [3, 3],
-  per_cell: 2,
+  per_cell: 3,
 };
 
 /** One detected morphological feature, in the downsampled grid's pixel space.
@@ -122,6 +126,10 @@ export interface MorphFeature {
   /** Solidity = area / convex-hull area ∈ (0,1]. High = a clean filled shape; low
    * = a ragged / squiggly blob. Used to prefer regular pillars for outreach. */
   solidity: number;
+  /** Local nebula-glow brightness at the column (smooth background level relative
+   * to the bright core) ∈ (0,1]. High = embedded in the bright ionized core (the
+   * visually prominent pillars); low = a faint-outskirts column. */
+  local_brightness: number;
   rim_coverage_frac: number;
   /** Direction (deg, image frame) from the column toward the bright rim ⇒ toward
    * the ionizing source. Verified against the exciting-star prior in the WCS phase. */
@@ -669,6 +677,7 @@ export async function detectMorphology(
 
   // dark-column layer (silhouette dust). Local darkening vs a smooth background.
   const bg = gaussian(d, w, h, p.sigma_bg);
+  const bgHi = percentile(bg, 99) || 1; // bright-core glow level, for local_brightness
   const dk = new Float32Array(w * h);
   for (let i = 0; i < w * h; i++) dk[i] = Math.max(bg[i]! - d[i]!, 0);
   const pDark = percentile(dk, p.p_dark);
@@ -772,6 +781,7 @@ export async function detectMorphology(
     }
     const contour = traceContour(lab, l, w, h);
     const hullA = convexHullArea(contour);
+    const lb = Math.min(1, (bg[(Math.round(cy) | 0) * w + (Math.round(cx) | 0)] ?? 0) / bgHi);
     features.push({
       type: 'pillar',
       centroid_px: [cx, cy],
@@ -781,6 +791,7 @@ export async function detectMorphology(
       elongation: elong,
       area_px: area,
       solidity: hullA > 0 ? Math.min(1, area / hullA) : 0,
+      local_brightness: lb,
       rim_coverage_frac: frac,
       illumination_vector_deg: illum,
       rim_px,
@@ -834,7 +845,8 @@ export function selectForOutreach(
       s.w_isolation * iso +
       s.w_center * center +
       s.w_solidity * f.solidity +
-      s.w_elong * elongScore;
+      s.w_elong * elongScore +
+      s.w_brightness * f.local_brightness;
     scored.push(f);
   }
   scored.sort((a, b) => (b.salience ?? 0) - (a.salience ?? 0));
@@ -855,20 +867,22 @@ export function selectForOutreach(
 
 /**
  * Photoevaporation prior — a real pillar's illuminated rim faces the ionizing
- * source, so its lit edge should point roughly at an exciting star. HARD filter:
- * drop pillars whose illumination vector misses the nearest exciting star by more
- * than `toleranceDeg`; survivors are flagged `consistent_with_prior`. This is also
- * what suppresses non-pillar dark features (e.g. the Keyhole) whose geometry
- * doesn't obey the prior. With no exciting star (no WCS / none in the field) the
- * prior can't be applied, so the set passes through unchanged — the honest
- * no-anchor fallback. `stars` are full-image pixels; centroids scale by downsample.
+ * source, so its lit edge should point roughly at the nebula's ionizing centre.
+ * HARD filter: drop pillars whose illumination vector misses the nearest `anchor`
+ * by more than `toleranceDeg`; survivors are flagged `consistent_with_prior`. This
+ * also suppresses non-pillar dark features (e.g. the Keyhole) whose geometry
+ * doesn't obey the prior. With no anchor (no WCS / no glow) the prior can't be
+ * applied, so the set passes through unchanged — the honest no-anchor fallback.
+ * `anchors` are full-image pixels (ionizing-region centroids); pillar centroids
+ * scale by downsample. (HII regions are ionized by a whole OB cluster, so the
+ * bright core is a better anchor than the one WR star we happen to catalogue.)
  */
 export function applyIlluminationPrior(
   res: MorphResult,
-  stars: Array<[number, number]>,
+  anchors: Array<[number, number]>,
   toleranceDeg = 55,
 ): MorphResult {
-  if (!stars.length) return res;
+  if (!anchors.length) return res;
   const ds = res.downsample;
   const kept = res.features.filter((f) => {
     if (f.illumination_vector_deg == null) {
@@ -878,16 +892,16 @@ export function applyIlluminationPrior(
     const cx = f.centroid_px[0] * ds;
     const cy = f.centroid_px[1] * ds;
     let best = Infinity;
-    let star = stars[0]!;
-    for (const s of stars) {
-      const d = Math.hypot(s[0] - cx, s[1] - cy);
+    let anchor = anchors[0]!;
+    for (const a of anchors) {
+      const d = Math.hypot(a[0] - cx, a[1] - cy);
       if (d < best) {
         best = d;
-        star = s;
+        anchor = a;
       }
     }
-    const starAngle = (Math.atan2(star[1] - cy, star[0] - cx) * 180) / Math.PI;
-    const diff = Math.abs(((f.illumination_vector_deg - starAngle + 540) % 360) - 180);
+    const anchorAngle = (Math.atan2(anchor[1] - cy, anchor[0] - cx) * 180) / Math.PI;
+    const diff = Math.abs(((f.illumination_vector_deg - anchorAngle + 540) % 360) - 180);
     f.consistent_with_prior = diff <= toleranceDeg;
     return f.consistent_with_prior;
   });
