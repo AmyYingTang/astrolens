@@ -23,6 +23,8 @@ interface Props {
   onToggleCollapse: () => void;
   onReidentify: (opts: ReidentifyOptions) => void;
   reidentifying: boolean;
+  onIdentifyAi: () => void;
+  identifyingAi: boolean;
   style?: React.CSSProperties;
 }
 
@@ -106,6 +108,8 @@ export function FactsPanel({
   onToggleCollapse,
   onReidentify,
   reidentifying,
+  onIdentifyAi,
+  identifyingAi,
   style,
 }: Props): React.JSX.Element {
   const { t, lang } = useUi();
@@ -141,6 +145,15 @@ export function FactsPanel({
         <div className="reid">
           <button className="primary" onClick={() => setReidOpen((v) => !v)} disabled={reidentifying}>
             {reidentifying ? t.reidentifying : `${t.reidentify} ▾`}
+          </button>
+          <button
+            className="primary"
+            onClick={onIdentifyAi}
+            disabled={identifyingAi}
+            title="实验: 用 AI 识别 B 类特征 (需 claude 已登录)"
+            style={{ marginLeft: 8 }}
+          >
+            {identifyingAi ? 'AI 识别中…' : 'AI 试标 ✨'}
           </button>
           {reidOpen && (
             <div className="reid-menu">

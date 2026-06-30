@@ -211,6 +211,8 @@ function buildReading(
                     : isCv
                       ? 'shell'
                       : 'arrow';
+    // AI-suggested features are coarse points → a soft dashed-circle marker.
+    if (isB && obj.detection_source === 'ai') shape = 'shell';
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);

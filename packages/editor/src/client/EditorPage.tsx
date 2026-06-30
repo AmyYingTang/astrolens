@@ -8,6 +8,7 @@ import {
   fetchJob,
   fetchReport,
   generateReading,
+  identifyAi,
   imageUrl,
   reidentify,
   saveReport,
@@ -111,6 +112,7 @@ function Editor({
   const [menuOpen, setMenuOpen] = useState(false);
   const [factsCollapsed, setFactsCollapsed] = useState(false);
   const [reidentifying, setReidentifying] = useState(false);
+  const [identifyingAi, setIdentifyingAi] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [genMenuOpen, setGenMenuOpen] = useState(false);
@@ -226,6 +228,18 @@ function Editor({
     } catch (e) {
       setSaveError((e as Error).message);
       setReidentifying(false);
+    }
+  };
+
+  const doIdentifyAi = async (): Promise<void> => {
+    setIdentifyingAi(true);
+    setSaveError(null);
+    try {
+      await identifyAi(slug); // ~30s claude vision call; folds 'ai' features in
+      location.reload(); // pick up the AI features in the factsheet + reading
+    } catch (e) {
+      setSaveError((e as Error).message);
+      setIdentifyingAi(false);
     }
   };
 
@@ -372,6 +386,8 @@ function Editor({
           onToggleCollapse={() => setFactsCollapsed((v) => !v)}
           onReidentify={(opts) => void doReidentify(opts)}
           reidentifying={reidentifying}
+          onIdentifyAi={() => void doIdentifyAi()}
+          identifyingAi={identifyingAi}
           style={!factsCollapsed && factsW != null ? { flex: `0 0 ${factsW}px` } : undefined}
         />
         {!factsCollapsed && <div className="divider" onMouseDown={startDragFacts} title="拖动调整 facts / 图像宽度" />}
@@ -485,10 +501,10 @@ function Editor({
       )}
       {saveError && <div className="save-error">{t.errorLabel}: {saveError}</div>}
 
-      {(reidentifying || generating) && (
+      {(reidentifying || generating || identifyingAi) && (
         <div className="overlay">
           <div className="overlay-box">
-            {generating ? t.genReadingRunning : t.reidentifying}
+            {identifyingAi ? 'AI 识别 B 类特征中 (~30s)…' : generating ? t.genReadingRunning : t.reidentifying}
             <p className="muted">{generating ? t.stageReading : t.stageSolving}</p>
           </div>
         </div>
