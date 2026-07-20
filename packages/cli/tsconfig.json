@@ -11,6 +11,7 @@
     { "path": "../identify" },
     { "path": "../reader" },
     { "path": "../renderer" },
-    { "path": "../editor" }
+    { "path": "../editor" },
+    { "path": "../atlas" }
   ]
 }

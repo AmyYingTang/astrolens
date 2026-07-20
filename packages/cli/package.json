@@ -10,6 +10,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
+    "@astrolens/atlas": "workspace:*",
     "@astrolens/editor": "workspace:*",
     "@astrolens/identify": "workspace:*",
     "@astrolens/reader": "workspace:*",

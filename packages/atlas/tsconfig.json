@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/server.ts", "src/shared.ts", "src/store.ts", "src/atlas.ts", "src/featureTypes.ts"],
+  "references": [{ "path": "../schema" }, { "path": "../identify" }]
+}

@@ -8,6 +8,7 @@ import { readReport } from './commands/read.js';
 import { renderReport } from './commands/render.js';
 import { editReport } from './commands/edit.js';
 import { studio } from './commands/studio.js';
+import { atlas } from './commands/atlas.js';
 
 const cli = cac('astrolens');
 
@@ -86,6 +87,17 @@ cli
   .option('--no-open', 'Do not open the browser automatically')
   .action(async (options) => {
     await studio({ workspace: options.workspace, port: Number(options.port), open: options.open });
+  });
+
+cli
+  .command('atlas', 'Launch the feature-atlas annotation tool (build the B-class baseline library)')
+  .option('--data-dir <dir>', 'Atlas data dir (atlas.json + reference images)', {
+    default: 'packages/atlas/data',
+  })
+  .option('--port <port>', 'Port to serve on', { default: 3100 })
+  .option('--no-open', 'Do not open the browser automatically')
+  .action(async (options) => {
+    await atlas({ dataDir: options.dataDir, port: Number(options.port), open: options.open });
   });
 
 cli.help();

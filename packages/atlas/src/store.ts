@@ -1,0 +1,72 @@
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
+import { AtlasFile, EMPTY_ATLAS } from './atlas.js';
+
+// Storage adapter (TOOL_HANDOFF §3, §12). Two separable concerns:
+//   1. the atlas JSON — small, portable, the ONLY thing the consumer reads;
+//      stored as a committable static data file.
+//   2. reference images — large binaries, needed only for tool-side editing.
+//
+// Backend is config-driven, never hardcoded: `local` (default, zero deps,
+// self-deploy out of the box) here; `r2`/`s3` adapters implement the same
+// interface later. Credentials (if any) stay server-side env — never VITE_.
+
+export interface AtlasStore {
+  loadAtlas(): Promise<AtlasFile>;
+  saveAtlas(atlas: AtlasFile): Promise<void>;
+  /** Persist a reference image under `key`; returns the key stored in the entry. */
+  putRefImage(key: string, data: Buffer): Promise<string>;
+  /** Fetch a reference image by key (works for local FS or object storage). */
+  getRefImage(key: string): Promise<Buffer>;
+}
+
+export interface LocalStoreOptions {
+  /** Root data dir. atlas.json lives here; ref images under `<dataDir>/refimg`. */
+  dataDir: string;
+}
+
+export class LocalAtlasStore implements AtlasStore {
+  private readonly dataDir: string;
+  private readonly atlasPath: string;
+  private readonly imgDir: string;
+
+  constructor(opts: LocalStoreOptions) {
+    this.dataDir = resolve(opts.dataDir);
+    this.atlasPath = join(this.dataDir, 'atlas.json');
+    this.imgDir = join(this.dataDir, 'refimg');
+  }
+
+  async loadAtlas(): Promise<AtlasFile> {
+    try {
+      const raw = await readFile(this.atlasPath, 'utf8');
+      return AtlasFile.parse(JSON.parse(raw));
+    } catch (e) {
+      // Missing file → empty atlas (first run). Re-throw genuine parse errors so
+      // a corrupt data file isn't silently masked as "empty".
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { ...EMPTY_ATLAS };
+      throw e;
+    }
+  }
+
+  async saveAtlas(atlas: AtlasFile): Promise<void> {
+    await mkdir(this.dataDir, { recursive: true });
+    const valid = AtlasFile.parse(atlas);
+    await writeFile(this.atlasPath, JSON.stringify(valid, null, 2) + '\n', 'utf8');
+  }
+
+  async putRefImage(key: string, data: Buffer): Promise<string> {
+    await mkdir(this.imgDir, { recursive: true });
+    await writeFile(this.safePath(key), data);
+    return key;
+  }
+
+  async getRefImage(key: string): Promise<Buffer> {
+    return readFile(this.safePath(key));
+  }
+
+  /** Guard against path traversal in a ref-image key. */
+  private safePath(key: string): string {
+    if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid image key: ${key}`);
+    return join(this.imgDir, key);
+  }
+}
