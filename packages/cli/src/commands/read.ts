@@ -6,6 +6,7 @@ import {
   createNovaSolveClient,
   createCachedSolveClient,
   createSimbadCatalogClient,
+  defaultRegistryPath,
 } from '@astrolens/identify';
 import { generateReading, ReaderError } from '@astrolens/reader';
 import { TOOL_VERSION } from '../version.js';
@@ -50,6 +51,7 @@ export async function readReport(args: ReadArgs): Promise<void> {
       height: meta.height,
       imageSrc: imageName,
       targetName: args.hint,
+      registryPath: defaultRegistryPath(),
     },
     { solve, catalog: createSimbadCatalogClient() },
   );

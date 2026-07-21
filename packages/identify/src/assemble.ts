@@ -1,17 +1,24 @@
-import { FactSheet, FEATURE_TAXONOMY, pixelToWorld } from '@astrolens/schema';
-import type { ObjectCategory } from '@astrolens/schema';
+import { FactSheet } from '@astrolens/schema';
+import type { ObjectCategory, Registry } from '@astrolens/schema';
 import type { CatalogCandidate, Wcs } from './types.js';
 import type { GatedCandidate } from './select.js';
 import { objectTypeLabel } from './otype.js';
-import { deriveBClassFeatures } from './features.js';
-import { estimateBackground, type LuminanceSampler } from './luminance.js';
+import type { LuminanceSampler } from './luminance.js';
 import type { CometFactObject } from './comet.js';
 import type { MorphResult, MorphFeature } from './morph.js';
 import { fieldRadiusDeg } from './wcs.js';
+import { applyAtlas, type AtlasHost } from './atlasApply.js';
 
-/** Drop Class-B inferences weaker than this — a low-confidence morphological
- * guess (e.g. the geometric ionization front at 0.4) is noise, not signal. */
-const MIN_B_CONFIDENCE = 0.5;
+/** Nebula-ish categories we surface a "no baseline annotations yet" hint for
+ * when they aren't in the atlas (stars/clusters don't get B-class features). */
+const NEBULA_CATEGORIES = new Set<ObjectCategory>([
+  'emission_nebula',
+  'reflection_nebula',
+  'planetary_nebula',
+  'supernova_remnant',
+  'dark_nebula',
+  'galaxy',
+]);
 
 /** Identity confidence — *which* catalogue object this is. */
 function objConfidence(c: CatalogCandidate): number {
@@ -91,113 +98,15 @@ export interface AssembleArgs {
   /** Image-detected comet (head + nucleus/coma/tails), no catalog. When present
    * the comet is the primary and the catalog objects become secondaries. */
   cometObjects?: CometFactObject[];
-  /** Image-detected morphology (pillars …), outreach-selected. Mapped to Class-B
-   * suggestion features — contour polygon + 迎光 arrow — linked to the host nebula. */
+  /** Image-detected morphology (pillars …), outreach-selected. RETIRED from the
+   * factsheet output (atlas is now B-class's only source); still accepted so
+   * callers don't break — no longer rendered. */
   morphology?: { result: MorphResult; selected: MorphFeature[] };
+  /** The approved atlas registry (from @astrolens/atlas export). B-class features
+   * are projected from it onto the user image. null / absent → no B-class. */
+  registry?: Registry | null;
 }
 
-/**
- * Map outreach-selected pillars (in the detector's downsampled grid) into
- * Class-B FactObjects: scale to full pixels, project to sky, link to the nearest
- * emission nebula, and carry the contour polygon + 迎光 arrow. Geometry only —
- * the semantic name is left to the type-anchor stage, `display` stays a suggestion.
- */
-function morphToObjects(
-  morphology: { result: MorphResult; selected: MorphFeature[] },
-  wcs: Wcs,
-  objects: Array<{ id: string; category: ObjectCategory; coord: { pixel: [number, number] | null } }>,
-): Array<Record<string, unknown>> {
-  const { result, selected } = morphology;
-  const ds = result.downsample;
-  const tax = FEATURE_TAXONOMY.pillar;
-  const nebulae = objects.filter((o) => o.category === 'emission_nebula' && o.coord.pixel);
-  const armPx = Math.min(Math.max(0.04 * Math.min(wcs.width, wcs.height), 40), 200);
-  return selected.flatMap((f, k) => {
-    const cx = f.centroid_px[0] * ds;
-    const cy = f.centroid_px[1] * ds;
-    const world = pixelToWorld(wcs, cx, cy);
-    const polygon = f.contour_px.map(([x, y]) => [x * ds, y * ds] as [number, number]);
-    let parent: string | null = null;
-    let bestD = Infinity;
-    for (const n of nebulae) {
-      const d = Math.hypot(n.coord.pixel![0] - cx, n.coord.pixel![1] - cy);
-      if (d < bestD) {
-        bestD = d;
-        parent = n.id;
-      }
-    }
-    // A pillar consistent with the prior (its rim faces the nebula's ionizing
-    // centre) is anchored on that host nebula → upgrade B-visual to B-anchor.
-    const anchored = f.consistent_with_prior === true;
-    const anchorRef = anchored ? (parent ?? undefined) : undefined;
-    let arrow_to: { ra_deg: number; dec_deg: number; pixel: [number, number] } | undefined;
-    if (f.illumination_vector_deg != null) {
-      const a = (f.illumination_vector_deg * Math.PI) / 180;
-      const tx = cx + armPx * Math.cos(a);
-      const ty = cy + armPx * Math.sin(a);
-      const tw = pixelToWorld(wcs, tx, ty);
-      arrow_to = {
-        ra_deg: tw ? tw[0] : world ? world[0] : 0,
-        dec_deg: tw ? tw[1] : world ? world[1] : 0,
-        pixel: [Math.round(tx), Math.round(ty)],
-      };
-    }
-    const pillar: Record<string, unknown> = {
-      id: `pillar${k + 1}`,
-      role: 'context',
-      tier: 'B',
-      parent_object_id: parent,
-      feature_type: 'pillar',
-      feature_class: anchored ? 'B-anchor' : 'B-visual',
-      names: [`${tax.zh} / ${tax.en}`],
-      designations: [],
-      category: 'emission_nebula',
-      type: { otype: '', zh: tax.zh, en: tax.en, source: 'image' },
-      coord: { ra_deg: world ? world[0] : 0, dec_deg: world ? world[1] : 0, pixel: [Math.round(cx), Math.round(cy)] },
-      ...(arrow_to ? { arrow_to } : {}),
-      polygon,
-      catalog_ids: {},
-      confidence: anchored ? Math.min(1, f.confidence + 0.1) : f.confidence,
-      localization: {
-        method: anchored ? 'anchor' : 'world_to_pixel',
-        confidence: anchored ? 0.6 : 0.5,
-        ...(anchored && anchorRef ? { anchor_ref: anchorRef } : {}),
-      },
-      detection_source: 'cv',
-      needs_human_review: true,
-    };
-    // The lit edge becomes its OWN Class-B feature (a bright rim / 电离锋面) — its
-    // own colour + label + badge — anchored on the pillar, drawn as a thin line.
-    const out: Array<Record<string, unknown>> = [pillar];
-    if (f.rim_px.length > 1) {
-      const rimPts = f.rim_px.map(([x, y]) => [x * ds, y * ds] as [number, number]);
-      const mx = Math.round(rimPts.reduce((a, p) => a + p[0], 0) / rimPts.length);
-      const my = Math.round(rimPts.reduce((a, p) => a + p[1], 0) / rimPts.length);
-      const rw = pixelToWorld(wcs, mx, my);
-      const rtax = FEATURE_TAXONOMY.ionization_front;
-      out.push({
-        id: `rim${k + 1}`,
-        role: 'context',
-        tier: 'B',
-        parent_object_id: `pillar${k + 1}`,
-        feature_type: 'ionization_front',
-        feature_class: anchored ? 'B-anchor' : 'B-visual',
-        names: [`${rtax.zh} / ${rtax.en}`],
-        designations: [],
-        category: 'emission_nebula',
-        type: { otype: '', zh: rtax.zh, en: rtax.en, source: 'image' },
-        coord: { ra_deg: rw ? rw[0] : 0, dec_deg: rw ? rw[1] : 0, pixel: [mx, my] },
-        polygon: rimPts,
-        catalog_ids: {},
-        confidence: f.confidence,
-        localization: { method: 'world_to_pixel', confidence: anchored ? 0.6 : 0.5 },
-        detection_source: 'cv',
-        needs_human_review: true,
-      });
-    }
-    return out;
-  });
-}
 
 /**
  * Build a validated FactSheet (solved path). Each selected catalogue entry — a
@@ -238,25 +147,29 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
     };
   });
 
-  // Class-B geometric priors anchored on A objects (features.ts), appended after
-  // the A-class objects so the primary stays objects[0]. The standalone CV
-  // bright-rim detector (cv.ts) was dropped in favour of pillar-anchored rims
-  // (morph.ts) — a lone rim arc was noisier and less accurate than a rim tied to
-  // a detected pillar.
-  const bg = args.sampler ? estimateBackground(args.sampler, wcs.width, wcs.height) : undefined;
-  const bFeatures = deriveBClassFeatures(objects, {
-    wcs,
-    sampler: args.sampler,
-    backgroundLum: bg,
-  }).filter((f) => f.confidence >= MIN_B_CONFIDENCE);
-
-  // Image-detected morphology (pillars), outreach-selected — appended as Class-B
-  // suggestion features linked to the host nebula.
-  const morphObjects = args.morphology
-    ? morphToObjects(args.morphology, wcs, objects).filter(
-        (o) => (o.confidence as number) >= MIN_B_CONFIDENCE,
-      )
-    : [];
+  // Class-B features come ONLY from the human feature atlas now. The old auto
+  // detectors — geometric priors (features.ts deriveBClassFeatures), outreach
+  // morphology (morph.ts → morphToObjects), CV (cv.ts) and the VLM pass — are
+  // retired from the user-visible factsheet (their code stays in the repo,
+  // unwired). Match each A-object against the approved registry, project its
+  // ICRS annotations onto this image's WCS, clip to frame.
+  const hosts: AtlasHost[] = objects.map((o) => ({
+    id: o.id,
+    category: o.category,
+    names: o.names,
+    designations: o.designations,
+    catalog_ids: o.catalog_ids,
+  }));
+  const atlas = args.registry
+    ? applyAtlas(hosts, wcs, args.registry)
+    : { features: [], unmatched: hosts };
+  // Nebula-type objects with no baseline annotations → a soft "not covered yet"
+  // hint (the editor can offer a link to annotate it). Not an error.
+  for (const h of atlas.unmatched) {
+    if (NEBULA_CATEGORIES.has(h.category)) {
+      warnings.push(`No baseline annotations for ${h.names[0] ?? h.id} yet.`);
+    }
+  }
 
   return FactSheet.parse({
     version: '1.0',
@@ -272,7 +185,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       wcs,
       frame: 'display',
     },
-    objects: [...(args.cometObjects ?? []), ...objects, ...bFeatures, ...morphObjects],
+    objects: [...(args.cometObjects ?? []), ...objects, ...atlas.features],
     warnings,
     provenance: {
       queries: args.queries,

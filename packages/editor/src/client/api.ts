@@ -46,18 +46,6 @@ export async function reidentify(slug: string, opts: { starMagMax?: number } = {
   if (!body.ok) throw new Error(body.error ?? `Re-identify failed (${res.status})`);
 }
 
-/** EXPERIMENT: run the AI Class-B feature pass; folds 'ai' features into the
- * factsheet + regenerates the reading. Synchronous (the claude call is ~30s). */
-export async function identifyAi(slug: string, model?: string): Promise<number> {
-  const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/identify-ai`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(model ? { model } : {}),
-  });
-  const body = (await res.json()) as { ok: boolean; count?: number; error?: string };
-  if (!body.ok) throw new Error(body.error ?? `AI feature pass failed (${res.status})`);
-  return body.count ?? 0;
-}
 
 export async function generateReading(slug: string, tone?: string): Promise<void> {
   const res = await fetch(`/api/projects/${encodeURIComponent(slug)}/reading`, {

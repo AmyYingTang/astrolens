@@ -48,6 +48,13 @@ export {
 } from './morph.js';
 export { createWikidataClient, type WikiInfo, type WikidataOptions } from './wikidata.js';
 export { runAiFeaturePass, type RunClaudeFn } from './aiFeatures.js';
+export {
+  applyAtlas,
+  loadRegistry,
+  defaultRegistryPath,
+  type AtlasHost,
+  type AtlasApplyResult,
+} from './atlasApply.js';
 export { createCachedSolveClient, defaultSolveCacheDir } from './cache.js';
 export type {
   Wcs,

@@ -13,3 +13,4 @@ export * from './otypes.js';
 export * from './wcs.js';
 export * from './coords.js';
 export * from './factsheet.js';
+export * from './registry.js';

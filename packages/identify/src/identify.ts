@@ -6,6 +6,7 @@ import type { IdentifyInput, IdentifyDeps } from './types.js';
 import { fieldRadiusDeg } from './wcs.js';
 import { gateCandidates, selectObjects, hasRecognizableName } from './select.js';
 import { assembleFactSheet } from './assemble.js';
+import { loadRegistry } from './atlasApply.js';
 import {
   createLuminanceSampler,
   createImageRaster,
@@ -273,6 +274,9 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     }),
   );
 
+  // Atlas Apply: B-class features are projected from the approved registry.
+  const registry = input.registryPath ? await loadRegistry(input.registryPath) : null;
+
   return assembleFactSheet({
     image,
     wcs,
@@ -283,5 +287,6 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     sampler,
     cometObjects,
     morphology,
+    registry,
   });
 }

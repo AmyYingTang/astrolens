@@ -9,6 +9,7 @@ import {
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
   createCompositeCatalogClient,
+  defaultRegistryPath,
 } from '@astrolens/identify';
 
 export interface IdentifyArgs {
@@ -56,6 +57,7 @@ export async function identifyImage(args: IdentifyArgs): Promise<void> {
       band,
       starless: args.starless,
       topN: args.topN,
+      registryPath: defaultRegistryPath(),
     },
     {
       solve,

@@ -213,6 +213,9 @@ function buildReading(
                       : 'arrow';
     // AI-suggested features are coarse points → a soft dashed-circle marker.
     if (isB && obj.detection_source === 'ai') shape = 'shell';
+    // Atlas features carry an explicit geometry (polygon/polyline/point) — honour
+    // it directly, overriding the feature_type→shape heuristic above.
+    if (obj.geometry_kind) shape = obj.geometry_kind === 'point' ? 'dot' : obj.geometry_kind;
     // A shell is a small sample circle; its coord.pixel was already snapped onto
     // the (bright) rim in Stage 1, so just draw a small circle there.
     let r = shape === 'shell' || shape === 'arc' ? sampleR : radiusFor(obj);
@@ -307,11 +310,13 @@ function buildReading(
       fact_ref: { object_id: obj.id, feature_id: obj.id },
       label: isB ? { zh: obj.type.zh, en: obj.type.en } : displayLabel(obj),
       color_key:
-        shape === 'polyline' // a pillar's bright rim — cyan, high-contrast vs the red Hα body
-          ? 'shock'
-          : obj.feature_type
-            ? featureColorKey(obj.feature_type)
-            : categoryColorKey(obj.category),
+        obj.detection_source === 'atlas' && obj.feature_type
+          ? featureColorKey(obj.feature_type) // atlas: the feature's own palette (not forced cyan)
+          : shape === 'polyline' // a pillar's bright rim — cyan, high-contrast vs the red Hα body
+            ? 'shock'
+            : obj.feature_type
+              ? featureColorKey(obj.feature_type)
+              : categoryColorKey(obj.category),
       circle: { cx, cy, r },
       shape,
       // The comet head is a container — its parts (coma/nucleus/tails) carry the

@@ -82,10 +82,14 @@ export const FactObject = z.object({
    * display pixels. Drawn as a soft polygon, never a hard box; the semantic name
    * stays unset (geometry only — naming is the type-anchor stage's job). */
   polygon: z.array(z.tuple([z.number(), z.number()])).optional(),
+  /** For atlas-sourced features: how to draw the `polygon` (closed area / open
+   * line / single point). When set it overrides the feature_type→shape heuristic
+   * in the reader; unset for all other producers (shape inferred as before). */
+  geometry_kind: z.enum(['polygon', 'polyline', 'point']).optional(),
   /** Where this entry came from: a catalog match (A-class), a geometric prior
-   * anchored on an A object, an image CV detector, or an AI/VLM pass. Drives the
-   * Facts-panel provenance grouping. */
-  detection_source: z.enum(['catalog', 'geometric', 'cv', 'ai']).default('catalog'),
+   * anchored on an A object, an image CV detector, an AI/VLM pass, or the human
+   * feature atlas (approved baseline annotations). Drives provenance grouping. */
+  detection_source: z.enum(['catalog', 'geometric', 'cv', 'ai', 'atlas']).default('catalog'),
   needs_human_review: z.boolean().default(false), // B-class uncertain ones → true
 });
 export type FactObject = z.infer<typeof FactObject>;

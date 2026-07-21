@@ -12,9 +12,9 @@ import {
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
   createCompositeCatalogClient,
-  runAiFeaturePass,
+  defaultRegistryPath,
 } from '@astrolens/identify';
-import { readingFromFactsheet, tailorReading, ReaderError, runClaude } from '@astrolens/reader';
+import { readingFromFactsheet, tailorReading, ReaderError } from '@astrolens/reader';
 import { renderAnnotatedBuffer, generateEmbedHtml, renderPosterBuffers } from '@astrolens/renderer';
 import type {
   CreateProjectRequest,
@@ -164,7 +164,15 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
   ): Promise<void> => {
     try {
       const factsheet = await identify(
-        { imagePath, width, height, imageSrc: imageName, targetName: opts.hint, starMagMax: opts.starMagMax },
+        {
+          imagePath,
+          width,
+          height,
+          imageSrc: imageName,
+          targetName: opts.hint,
+          starMagMax: opts.starMagMax,
+          registryPath: defaultRegistryPath(),
+        },
         {
           solve: createCachedSolveClient(createNovaSolveClient({ apiKey: opts.apiKey })),
           catalog: createCompositeCatalogClient([
@@ -303,42 +311,13 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
     }
   });
 
-  // EXPERIMENT: AI Class-B feature pass — folds detection_source:'ai' features
-  // into the factsheet + regenerates the reading, so they render alongside the CV
-  // ones. Synchronous (the claude vision call is ~30s); needs the `claude` CLI
-  // authenticated, same as reading generation.
-  app.post('/api/projects/:slug/identify-ai', async (req, res) => {
-    try {
-      const slug = req.params.slug;
-      const dir = projectDir(slug);
-      const model = ((req.body ?? {}) as { model?: string }).model;
-      const factsheet = FactSheet.parse(JSON.parse(await readFile(join(dir, 'factsheet.json'), 'utf8')));
-      const files = await readdir(dir);
-      const imageName = files.find((f) => /^image\.(jpe?g|png)$/i.test(f));
-      if (!imageName) throw new Error('No source image found in this project');
-      const aiFeats = await runAiFeaturePass(
-        factsheet,
-        join(dir, imageName),
-        join(dir, 'ai_grid.jpg'),
-        runClaude,
-        model,
-      );
-      // Replace any previous AI features; keep everything else.
-      const kept = factsheet.objects.filter((o) => o.detection_source !== 'ai');
-      const merged = FactSheet.parse({ ...factsheet, objects: [...kept, ...aiFeats] });
-      await writeFile(join(dir, 'factsheet.json'), JSON.stringify(merged, null, 2) + '\n', 'utf8');
-      let lang: 'zh' | 'en' = 'zh';
-      try {
-        lang = (await loadReport(slug)).display_language;
-      } catch {
-        // no prior reading — default zh
-      }
-      const reading = readingFromFactsheet(merged, { toolVersion, displayLanguage: lang, imageSrc: imageName });
-      await writeFile(join(dir, 'reading.json'), JSON.stringify(reading, null, 2) + '\n', 'utf8');
-      res.json({ ok: true, count: aiFeats.length });
-    } catch (e) {
-      res.status(500).json({ ok: false, error: (e as Error).message });
-    }
+  // RETIRED: the AI (VLM) Class-B feature pass. B-class features now come solely
+  // from the approved feature atlas (Atlas Apply); the automatic detectors are
+  // no longer wired to user-visible rendering. `runAiFeaturePass` stays in
+  // @astrolens/identify but is not exposed here. Kept as a 410 so any stale
+  // client gets a clear signal instead of a 404.
+  app.post('/api/projects/:slug/identify-ai', (_req, res) => {
+    res.status(410).json({ ok: false, error: 'The AI feature pass is retired — B-class features come from the atlas.' });
   });
 
   app.get('/api/projects/:slug/job', async (req, res) => {
