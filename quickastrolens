@@ -20,6 +20,7 @@ astrolens 便捷运行脚本
   ./quickastrolens read <图片> [对象名] [语言]    识别 + AI 解读 + 渲染,一步到位
   ./quickastrolens render <reading.json> [格式]  渲染 annotated|embed|poster|all
   ./quickastrolens edit <reading.json> [端口]    打开本地编辑器,浏览器里微调圈和文字
+  ./quickastrolens atlas [端口]                  打开基准标注库工具(B 类形态标注,默认端口 3100)
   ./quickastrolens help                         显示帮助
 
 提示:把 ASTROMETRY_API_KEY 放进仓库根的 .env(identify / read / studio 都会自动读)。
@@ -142,6 +143,16 @@ case "$cmd" in
       node "$CLI" edit "$report" --port "$2"
     else
       node "$CLI" edit "$report"
+    fi
+    ;;
+
+  atlas)
+    shift
+    ensure_built
+    if [ $# -ge 1 ]; then
+      node "$CLI" atlas --port "$1"
+    else
+      node "$CLI" atlas
     fi
     ;;
 
