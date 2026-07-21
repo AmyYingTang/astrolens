@@ -85,6 +85,53 @@ body {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+.sidebar h3.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+}
+.step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0d1017;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+/* Steps 2–4 are inert until an image is uploaded + solved, making the order
+   obvious. */
+.sidebar section.locked {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.sidebar section.locked .step-n {
+  background: var(--border);
+  color: var(--muted);
+}
+.hint.substeps {
+  color: var(--accent-strong);
+  background: var(--panel-2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  line-height: 1.6;
+}
+.muted-li {
+  color: var(--muted);
+  font-size: 12px;
+}
+.library h3 {
+  color: var(--muted);
+}
 
 .sidebar input,
 .sidebar select {
@@ -109,6 +156,58 @@ body {
 .field-label .req {
   color: #e0af68;
   font-size: 11px;
+}
+.help {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  cursor: help;
+}
+.help-tip {
+  display: none;
+  position: absolute;
+  top: 150%;
+  left: 0;
+  width: 220px;
+  max-width: 74vw;
+  padding: 8px 10px;
+  background: #0d1017;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-line;
+  z-index: 30;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+.help-tip.right {
+  left: auto;
+  right: 0;
+}
+.help:hover .help-tip {
+  display: block;
+}
+.btn-help-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-help-row .primary {
+  flex: 1;
 }
 .type-context {
   margin: 2px 0 6px;
@@ -149,26 +248,6 @@ button.link {
 }
 .row button {
   flex: 1;
-}
-.modes {
-  display: flex;
-  gap: 18px;
-  margin: 6px 0 10px;
-}
-.modes label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-/* The global `.sidebar input { width:100% }` rule would blow the radios up to
-   full width and wrap the labels; reset radios to their intrinsic size. */
-.modes input[type='radio'] {
-  width: auto;
-  margin: 0;
-  padding: 0;
-  flex: none;
 }
 
 .hint {

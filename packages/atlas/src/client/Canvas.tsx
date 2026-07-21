@@ -1,25 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Group, Image as KImage, Line, Circle } from 'react-konva';
+import { Stage, Layer, Group, Image as KImage, Line, Circle, Text } from 'react-konva';
 import type Konva from 'konva';
 import type { GeometryType } from '../atlas.js';
 
 export interface Shape {
+  id: string;
   type: GeometryType;
   verticesPx: [number, number][];
   color: string;
   closed: boolean;
+  label: string;
 }
 
 interface CanvasProps {
   imageSrc: string;
   imgWidth: number;
   imgHeight: number;
-  mode: 'pan' | 'draw';
-  /** Committed shapes (saved annotations), already in image px. */
+  /** Drawing = clicks place vertices; not drawing = drag to pan. Wheel zooms in both. */
+  drawing: boolean;
+  /** Committed shapes (already-added annotations), in image px. */
   shapes: Shape[];
   /** In-progress shape being drawn. */
   draft: { verticesPx: [number, number][]; type: GeometryType; color: string } | null;
   onAddPoint: (x: number, y: number) => void;
+  onDeleteShape: (id: string) => void;
 }
 
 function useHtmlImage(src: string): HTMLImageElement | null {
@@ -37,7 +41,16 @@ function useHtmlImage(src: string): HTMLImageElement | null {
 
 const flat = (pts: [number, number][]): number[] => pts.flatMap(([x, y]) => [x, y]);
 
-export function Canvas({ imageSrc, imgWidth, imgHeight, mode, shapes, draft, onAddPoint }: CanvasProps): JSX.Element {
+export function Canvas({
+  imageSrc,
+  imgWidth,
+  imgHeight,
+  drawing,
+  shapes,
+  draft,
+  onAddPoint,
+  onDeleteShape,
+}: CanvasProps): JSX.Element {
   const wrapRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<Konva.Group>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
@@ -94,17 +107,18 @@ export function Canvas({ imageSrc, imgWidth, imgHeight, mode, shapes, draft, onA
   };
 
   const onClick = (): void => {
-    if (mode !== 'draw') return;
+    if (!drawing) return;
     const g = groupRef.current;
     if (!g) return;
     const p = g.getRelativePointerPosition();
     if (!p) return;
-    // Ignore clicks outside the image bounds.
     if (p.x < 0 || p.y < 0 || p.x > imgWidth || p.y > imgHeight) return;
     onAddPoint(p.x, p.y);
   };
 
   const vertexR = 4 / scale;
+  const badgeR = 9 / scale;
+  const fontPx = 15 / scale;
 
   return (
     <div ref={wrapRef} className="canvas-wrap">
@@ -112,7 +126,7 @@ export function Canvas({ imageSrc, imgWidth, imgHeight, mode, shapes, draft, onA
         width={size.w}
         height={size.h}
         onWheel={onWheel}
-        style={{ cursor: mode === 'draw' ? 'crosshair' : 'grab' }}
+        style={{ cursor: drawing ? 'crosshair' : 'grab' }}
       >
         <Layer>
           <Group
@@ -121,27 +135,61 @@ export function Canvas({ imageSrc, imgWidth, imgHeight, mode, shapes, draft, onA
             y={pos.y}
             scaleX={scale}
             scaleY={scale}
-            draggable={mode === 'pan'}
+            draggable={!drawing}
             onClick={onClick}
             onTap={onClick}
             onDragEnd={(e) => setPos({ x: e.target.x(), y: e.target.y() })}
           >
             {img && <KImage image={img} width={imgWidth} height={imgHeight} />}
 
-            {shapes.map((s, i) =>
-              s.type === 'point' ? (
-                <Circle key={i} x={s.verticesPx[0][0]} y={s.verticesPx[0][1]} radius={6 / scale} stroke={s.color} strokeWidth={2 / scale} />
-              ) : (
-                <Line
-                  key={i}
-                  points={flat(s.verticesPx)}
-                  stroke={s.color}
-                  strokeWidth={2 / scale}
-                  closed={s.closed}
-                  fill={s.closed ? `${s.color}22` : undefined}
-                />
-              ),
-            )}
+            {shapes.map((s) => {
+              const [ax, ay] = s.verticesPx[0];
+              return (
+                <Group key={s.id}>
+                  {s.type === 'point' ? (
+                    <Circle x={ax} y={ay} radius={6 / scale} stroke={s.color} strokeWidth={2 / scale} />
+                  ) : (
+                    <Line
+                      points={flat(s.verticesPx)}
+                      stroke={s.color}
+                      strokeWidth={2 / scale}
+                      closed={s.closed}
+                      fill={s.closed ? `${s.color}22` : undefined}
+                    />
+                  )}
+                  {/* Name label in the shape's own colour, with a dark halo so it
+                      reads over both bright and dark nebulosity. */}
+                  <Text
+                    x={ax + badgeR * 1.6}
+                    y={ay - fontPx}
+                    text={s.label}
+                    fontSize={fontPx}
+                    fontStyle="bold"
+                    fill={s.color}
+                    stroke="#0d1017"
+                    strokeWidth={2.4 / scale}
+                    fillAfterStrokeEnabled
+                    listening={false}
+                  />
+                  {/* Delete handle on the shape itself (only when not drawing). */}
+                  {!drawing && (
+                    <Group onClick={() => onDeleteShape(s.id)} onTap={() => onDeleteShape(s.id)}>
+                      <Circle x={ax} y={ay} radius={badgeR} fill="#e0555a" />
+                      <Text
+                        x={ax}
+                        y={ay}
+                        text="×"
+                        fontSize={badgeR * 1.7}
+                        fill="#fff"
+                        offsetX={badgeR * 0.45}
+                        offsetY={badgeR * 0.72}
+                        listening={false}
+                      />
+                    </Group>
+                  )}
+                </Group>
+              );
+            })}
 
             {draft && draft.verticesPx.length > 0 && (
               <>

@@ -19,6 +19,26 @@ interface Session {
   identityNote?: string;
 }
 
+function StepHead({ n, title }: { n: number; title: string }): JSX.Element {
+  return (
+    <h3 className="step">
+      <span className="step-n">{n}</span>
+      {title}
+    </h3>
+  );
+}
+
+/** A small `?` badge that reveals `text` on hover (instant, unlike native title).
+ *  align='right' opens the tip leftward so icons near the panel edge don't clip. */
+function HelpIcon({ text, align = 'left' }: { text: string; align?: 'left' | 'right' }): JSX.Element {
+  return (
+    <span className="help">
+      <span className="help-icon">?</span>
+      <span className={align === 'right' ? 'help-tip right' : 'help-tip'}>{text}</span>
+    </span>
+  );
+}
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((res, rej) => {
     const fr = new FileReader();
@@ -72,7 +92,7 @@ export function App(): JSX.Element {
   const [primaryId, setPrimaryId] = useState('');
   const [aliasesText, setAliasesText] = useState('');
   const [typeKey, setTypeKey] = useState('pillar');
-  const [mode, setMode] = useState<'pan' | 'draw'>('pan');
+  const [drawing, setDrawing] = useState(false);
   const [draftPx, setDraftPx] = useState<[number, number][]>([]);
   const [labelZh, setLabelZh] = useState('');
   const [labelEn, setLabelEn] = useState('');
@@ -90,6 +110,35 @@ export function App(): JSX.Element {
     const ft = types.find((x) => x.key === key);
     return ft ? ft[lang] : key;
   };
+
+  // Per-annotation display name with auto-numbering: unnamed features of the
+  // same type get an ordinal ("Pillar 1", "Pillar 2") so multiple of one type
+  // are distinguishable. Named ones use their name. Numbering is display-only —
+  // it is NOT stored (the atlas keeps the ordered array); the apply side should
+  // mirror this convention.
+  const displayNames = useMemo(() => {
+    const map = new Map<string, string>();
+    const unnamedByType = new Map<string, string[]>();
+    for (const a of annotations) {
+      if (!a.label[lang]?.trim()) {
+        const arr = unnamedByType.get(a.feature_type) ?? [];
+        arr.push(a.id);
+        unnamedByType.set(a.feature_type, arr);
+      }
+    }
+    for (const a of annotations) {
+      const named = a.label[lang]?.trim();
+      if (named) {
+        map.set(a.id, named);
+        continue;
+      }
+      const arr = unnamedByType.get(a.feature_type) ?? [];
+      const tn = typeName(a.feature_type);
+      map.set(a.id, arr.length > 1 ? `${tn} ${arr.indexOf(a.id) + 1}` : tn);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [annotations, types, lang]);
 
   useEffect(() => {
     void fetchFeatureTypes().then((f) => {
@@ -180,6 +229,21 @@ export function App(): JSX.Element {
     setLabelEn('');
   };
 
+  const minPts = geometry === 'point' ? 1 : geometry === 'polygon' ? 3 : 2;
+  const canFinish = drawing && draftPx.length >= minPts;
+  const startDraw = (): void => {
+    setDraftPx([]);
+    setDrawing(true);
+  };
+  const endDraw = (): void => {
+    setDraftPx([]);
+    setDrawing(false);
+  };
+  const finishSave = (): void => {
+    finishShape(); // commits if enough points; clears the draft + name inputs
+    setDrawing(false);
+  };
+
   const loadEntry = async (id: string): Promise<void> => {
     const { entry } = await getObject(id);
     if (!entry) return;
@@ -229,14 +293,16 @@ export function App(): JSX.Element {
       }
       if (px.length === 0) continue;
       out.push({
+        id: a.id,
         type: a.geometry.type,
         verticesPx: px,
         color: types.find((x) => x.key === a.feature_type)?.hint ?? '#7aa2f7',
         closed: a.geometry.type === 'polygon',
+        label: displayNames.get(a.id) ?? '',
       });
     }
     return out;
-  }, [annotations, session, types]);
+  }, [annotations, session, types, displayNames]);
 
   const draft = session
     ? { verticesPx: draftPx, type: geometry, color: curType?.hint ?? '#7aa2f7' }
@@ -256,12 +322,10 @@ export function App(): JSX.Element {
 
       <div className="body">
         <aside className="sidebar">
+          {/* Step 1 — upload */}
           <section>
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-            >
+            <StepHead n={1} title={t('stepUpload')} />
+            <button className="primary" disabled={busy} onClick={() => fileRef.current?.click()}>
               {t('upload')}
             </button>
             <input
@@ -278,8 +342,9 @@ export function App(): JSX.Element {
             {status && <p className="status">{status}</p>}
           </section>
 
-          <section>
-            <h3>{t('identity')}</h3>
+          {/* Step 2 — identity (locked until an image is solved) */}
+          <section className={session ? '' : 'locked'}>
+            <StepHead n={2} title={t('stepIdentity')} />
             <label className="field-label">
               {t('primaryId')} <span className="req">* {t('required')}</span>
             </label>
@@ -302,9 +367,13 @@ export function App(): JSX.Element {
             {session?.identityNote && <p className="hint">{session.identityNote}</p>}
           </section>
 
-          <section>
-            <h3>{t('featureType')}</h3>
-            <select value={typeKey} onChange={(e) => setTypeKey(e.target.value)}>
+          {/* Step 3 — draw features */}
+          <section className={session ? '' : 'locked'}>
+            <StepHead n={3} title={t('stepDraw')} />
+            <p className="hint substeps">{t('drawSteps')}</p>
+
+            <label className="field-label">{t('featureType')}</label>
+            <select value={typeKey} disabled={drawing} onChange={(e) => setTypeKey(e.target.value)}>
               {types.map((ft) => (
                 <option key={ft.key} value={ft.key}>
                   {ft.zh} · {ft.en} ({ft.geometry})
@@ -312,41 +381,42 @@ export function App(): JSX.Element {
               ))}
             </select>
 
-            <div className="modes">
-              <label>
-                <input type="radio" checked={mode === 'pan'} onChange={() => setMode('pan')} />
-                {t('pan')}
-              </label>
-              <label>
-                <input type="radio" checked={mode === 'draw'} onChange={() => setMode('draw')} />
-                {t('draw')}
-              </label>
-            </div>
-            <p className="hint">{t('coarseHint')}</p>
-
-            <label className="field-label">{t('labelName')}</label>
-            <p className="hint">{t('labelHelp')}</p>
+            <label className="field-label">
+              {t('labelName')}
+              <HelpIcon text={t('labelHelp')} />
+            </label>
             <input placeholder={t('labelZh')} value={labelZh} onChange={(e) => setLabelZh(e.target.value)} />
             <input placeholder={t('labelEn')} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
-            <div className="row">
-              <button disabled={draftPx.length === 0} onClick={() => setDraftPx((d) => d.slice(0, -1))}>
-                {t('undo')}
-              </button>
-              <button disabled={draftPx.length === 0} onClick={finishShape}>
-                {t('addAnno')}
-              </button>
-            </div>
+
+            {drawing ? (
+              <>
+                <p className="status">{t('pointsPlaced').replace('{n}', String(draftPx.length))}</p>
+                <div className="row">
+                  <button className="primary" disabled={!canFinish} onClick={finishSave}>
+                    {t('finishSave')}
+                  </button>
+                  <button onClick={endDraw}>{t('endDraw')}</button>
+                </div>
+              </>
+            ) : (
+              <div className="btn-help-row">
+                <button className="primary" onClick={startDraw}>
+                  {t('startDraw')}
+                </button>
+                <HelpIcon align="right" text={`${t('navHint')}\n${t('listHint')}`} />
+              </div>
+            )}
           </section>
 
-          <section>
-            <h3>
-              {t('annotations')} ({annotations.length})
-            </h3>
+          {/* Step 4 — save */}
+          <section className={session ? '' : 'locked'}>
+            <StepHead n={4} title={t('stepSave')} />
             <ul className="annos">
+              {annotations.length === 0 && <li className="muted-li">{t('annotations')} (0)</li>}
               {annotations.map((a) => (
                 <li key={a.id}>
                   <span className="dot" style={{ background: types.find((x) => x.key === a.feature_type)?.hint }} />
-                  {a.label[lang] || typeName(a.feature_type)}
+                  {displayNames.get(a.id) ?? typeName(a.feature_type)}
                   <button className="x" onClick={() => setAnnotations((xs) => xs.filter((y) => y.id !== a.id))}>
                     ×
                   </button>
@@ -354,7 +424,7 @@ export function App(): JSX.Element {
               ))}
             </ul>
             <button className="primary" disabled={!session || !primaryId.trim()} onClick={save}>
-              {t('save')}
+              {t('save')} ({annotations.length})
             </button>
             {(!session || !primaryId.trim()) && (
               <p className="hint">⚠ {!session ? t('needImage') : t('needId')}</p>
@@ -363,8 +433,10 @@ export function App(): JSX.Element {
           </section>
 
           {objects.length > 0 && (
-            <section>
-              <h3>Atlas ({objects.length})</h3>
+            <section className="library">
+              <h3>
+                {t('libraryTitle')} ({objects.length})
+              </h3>
               <ul className="annos">
                 {objects.map((o) => (
                   <li key={o.primary_id}>
@@ -385,10 +457,11 @@ export function App(): JSX.Element {
               imageSrc={session.imageSrc}
               imgWidth={session.width}
               imgHeight={session.height}
-              mode={mode}
+              drawing={drawing}
               shapes={shapes}
               draft={draft}
               onAddPoint={onAddPoint}
+              onDeleteShape={(id) => setAnnotations((xs) => xs.filter((y) => y.id !== id))}
             />
           ) : (
             <div className="empty">{t('noImage')}</div>
