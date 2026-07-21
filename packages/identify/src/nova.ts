@@ -42,7 +42,10 @@ function errMsg(e: unknown): string {
 
 export function createNovaSolveClient(opts: NovaOptions): SolveClient {
   const base = opts.baseUrl ?? 'https://nova.astrometry.net';
-  const pollMs = opts.pollIntervalMs ?? 5000;
+  // Poll every 2s (was 5s): nova often solves in seconds, and the poll interval
+  // is pure added latency for a fast solve. Requests are light; 2s is a good
+  // balance for live use. Override via pollIntervalMs.
+  const pollMs = opts.pollIntervalMs ?? 2000;
   const timeoutMs = opts.timeoutMs ?? 300_000;
 
   // NOTE: nova serves JSON with a text content-type, so ofetch would return a
@@ -82,6 +85,8 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
   }
 
   async function solve(input: SolveInput): Promise<SolveResult> {
+    const t0 = Date.now();
+    const secs = (): string => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
     try {
       log(`api key length ${opts.apiKey.length}`);
       log('logging in…');
@@ -89,7 +94,7 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
 
       log(`uploading ${basename(input.imagePath)} (${(input.width)}×${input.height})…`);
       const subid = await upload(session, input);
-      log(`submission ${subid} created; waiting for a job to spawn…`);
+      log(`submission ${subid} created (${secs()}); waiting for a job to spawn…`);
 
       const deadline = Date.now() + timeoutMs;
 
@@ -102,9 +107,9 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
         jobId = sub.jobs.find((j): j is number => j != null) ?? null;
       }
       if (jobId == null) {
-        return { status: 'failed', error: `timed out after ${timeoutMs / 1000}s waiting for a job (subid ${subid})` };
+        return { status: 'failed', error: `timed out after ${timeoutMs / 1000}s waiting for a job (subid ${subid})`, elapsed_ms: Date.now() - t0 };
       }
-      log(`job ${jobId} spawned; solving…`);
+      log(`job ${jobId} spawned (${secs()}); solving…`);
 
       let solved = false;
       while (Date.now() < deadline) {
@@ -116,19 +121,19 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
           break;
         }
         if (job.status === 'failure') {
-          return { status: 'failed', nova_job_id: String(jobId), error: `job ${jobId} failed: nova could not solve this image (too few stars / not a star field?)` };
+          return { status: 'failed', nova_job_id: String(jobId), error: `job ${jobId} failed: nova could not solve this image (too few stars / not a star field?)`, elapsed_ms: Date.now() - t0 };
         }
         log(`job ${jobId} status=${job.status}…`);
         await sleep(pollMs);
       }
       if (!solved) {
-        return { status: 'failed', nova_job_id: String(jobId), error: `timed out after ${timeoutMs / 1000}s waiting for job ${jobId} to finish` };
+        return { status: 'failed', nova_job_id: String(jobId), error: `timed out after ${timeoutMs / 1000}s waiting for job ${jobId} to finish`, elapsed_ms: Date.now() - t0 };
       }
 
       const cal = await ofetch<Calibration>(`${base}/api/jobs/${jobId}/calibration`, {
         responseType: 'json',
       });
-      log(`solved: ra=${cal.ra.toFixed(4)} dec=${cal.dec.toFixed(4)} pixscale=${cal.pixscale.toFixed(2)}″/px orient=${cal.orientation.toFixed(1)} parity=${cal.parity}`);
+      log(`✔ solved in ${secs()}: ra=${cal.ra.toFixed(4)} dec=${cal.dec.toFixed(4)} pixscale=${cal.pixscale.toFixed(2)}″/px orient=${cal.orientation.toFixed(1)} parity=${cal.parity}`);
       const wcs: Wcs = {
         ra0_deg: cal.ra,
         dec0_deg: cal.dec,
@@ -143,11 +148,11 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
         width: input.width,
         height: input.height,
       };
-      return { status: 'solved', wcs, nova_job_id: String(jobId) };
+      return { status: 'solved', wcs, nova_job_id: String(jobId), elapsed_ms: Date.now() - t0 };
     } catch (e) {
       const msg = errMsg(e);
-      log(`error: ${msg}`);
-      return { status: 'failed', error: msg };
+      log(`failed in ${secs()}: ${msg}`);
+      return { status: 'failed', error: msg, elapsed_ms: Date.now() - t0 };
     }
   }
 

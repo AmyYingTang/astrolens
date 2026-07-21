@@ -56,6 +56,14 @@ export async function readReport(args: ReadArgs): Promise<void> {
     { solve, catalog: createSimbadCatalogClient() },
   );
 
+  const s = factsheet.solve;
+  if (s.status === 'solved') {
+    console.log(
+      `Plate-solved in ${s.solve_cached ? 'cache (instant)' : `${((s.solve_ms ?? 0) / 1000).toFixed(1)}s`}` +
+        `${s.nova_job_id ? ` — nova job ${s.nova_job_id}` : ''}.`,
+    );
+  }
+
   await copyFile(imagePath, join(outDir, imageName));
   const factsheetPath = join(outDir, 'factsheet.json');
   await writeFile(factsheetPath, JSON.stringify(factsheet, null, 2) + '\n', 'utf8');

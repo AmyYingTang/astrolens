@@ -281,6 +281,8 @@ export async function identify(input: IdentifyInput, deps: IdentifyDeps): Promis
     image,
     wcs,
     novaJobId: solveRes.nova_job_id,
+    solveMs: solveRes.elapsed_ms,
+    solveCached: solveRes.cached,
     selected,
     queries,
     timestamp,

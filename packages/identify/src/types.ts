@@ -14,6 +14,10 @@ export interface SolveResult {
   nova_job_id?: string;
   /** Human-readable reason when status is 'failed' (auth / timeout / no-solve / …). */
   error?: string;
+  /** Wall-clock time this solve() call took, ms. ~0 on a cache hit. */
+  elapsed_ms?: number;
+  /** True when served from the on-disk solve cache (instant, no nova). */
+  cached?: boolean;
 }
 
 /** Pluggable plate-solver (nova in production; mock in tests). */

@@ -116,6 +116,10 @@ export const FactSheet = z.object({
     pixscale_arcsec: z.number().optional(),
     orientation_deg: z.number().optional(),
     nova_job_id: z.string().optional(),
+    /** Wall-clock plate-solve time, ms (nova, or ~0 when served from cache). */
+    solve_ms: z.number().optional(),
+    /** True when the solve was served from the on-disk cache (instant). */
+    solve_cached: z.boolean().optional(),
     /** Full WCS used to project sky → pixel (for re-projection / debug grid). */
     wcs: Wcs.optional(),
     frame: z.enum(['display', 'co-registered', 'none']), // which pixel grid the WCS applies to

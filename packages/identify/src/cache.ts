@@ -29,6 +29,7 @@ async function sha256File(path: string): Promise<string> {
 export function createCachedSolveClient(inner: SolveClient, dir = defaultSolveCacheDir()): SolveClient {
   return {
     async solve(input) {
+      const t0 = Date.now();
       let hash: string;
       try {
         hash = await sha256File(input.imagePath);
@@ -40,8 +41,9 @@ export function createCachedSolveClient(inner: SolveClient, dir = defaultSolveCa
       try {
         const cached = JSON.parse(await readFile(file, 'utf8'));
         if (cached && cached.v === CACHE_VERSION && cached.result) {
-          log(`solve hit ${hash.slice(0, 12)} — skipping nova`);
-          return cached.result;
+          const ms = Date.now() - t0;
+          log(`solve hit ${hash.slice(0, 12)} — instant (${ms}ms), skipping nova`);
+          return { ...cached.result, cached: true, elapsed_ms: ms };
         }
         // stale schema → re-solve below
       } catch {
