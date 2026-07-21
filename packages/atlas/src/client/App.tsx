@@ -24,6 +24,40 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const im = new window.Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('无法解码图像 · Could not decode image (JPG/PNG only — FITS/XISF not supported yet)'));
+    im.src = src;
+  });
+}
+
+// The reference image only needs to display + plate-solve, so downscale big
+// astrophotos in the browser before upload: keeps the payload well under the
+// body limit, speeds up the solve, and the WCS we get back matches the pixels
+// we send. Longest edge capped; JPEG re-encode. Small JPEGs pass through as-is.
+async function prepareUpload(file: File, maxEdge = 4096): Promise<{ dataUrl: string; filename: string }> {
+  const original = await readFileAsDataUrl(file);
+  const img = await loadImage(original);
+  const longest = Math.max(img.naturalWidth, img.naturalHeight);
+  const scale = Math.min(1, maxEdge / longest);
+  if (scale === 1 && /\.jpe?g$/i.test(file.name)) {
+    return { dataUrl: original, filename: file.name };
+  }
+  const w = Math.round(img.naturalWidth * scale);
+  const h = Math.round(img.naturalHeight * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas 2d context unavailable');
+  ctx.drawImage(img, 0, 0, w, h);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  const stem = file.name.replace(/\.[^.]+$/, '') || 'reference';
+  return { dataUrl, filename: `${stem}.jpg` };
+}
+
 export function App(): JSX.Element {
   const { t, lang, setLang } = useLang();
   const [types, setTypes] = useState<FeatureType[]>([]);
@@ -46,6 +80,13 @@ export function App(): JSX.Element {
   const curType = useMemo(() => types.find((x) => x.key === typeKey), [types, typeKey]);
   const geometry: Geometry = curType?.geometry ?? 'polygon';
 
+  // Display name for an annotation: its proper label, else the localized type
+  // name (not the raw key), matching the consumer-side fallback.
+  const typeName = (key: string): string => {
+    const ft = types.find((x) => x.key === key);
+    return ft ? ft[lang] : key;
+  };
+
   useEffect(() => {
     void fetchFeatureTypes().then((f) => {
       setTypes(f);
@@ -64,8 +105,8 @@ export function App(): JSX.Element {
     setBusy(true);
     setStatus(t('storing'));
     try {
-      const dataUrl = await readFileAsDataUrl(file);
-      const up = await uploadImage({ filename: file.name, imageBase64: dataUrl });
+      const { dataUrl, filename } = await prepareUpload(file);
+      const up = await uploadImage({ filename, imageBase64: dataUrl });
       if (!up.ok || !up.jobId) throw new Error(up.error ?? 'upload failed');
       const job = await pollJob(up.jobId, (j) => setStatus(j.stage === 'solving' ? t('solving') : t('storing')));
       if (job.state !== 'done' || !job.wcs || !job.imageRef) {
@@ -223,7 +264,11 @@ export function App(): JSX.Element {
 
           <section>
             <h3>{t('identity')}</h3>
+            <label className="field-label">
+              {t('primaryId')} <span className="req">* {t('required')}</span>
+            </label>
             <input
+              className={!primaryId.trim() ? 'needs-value' : ''}
               placeholder={t('primaryId')}
               value={primaryId}
               onChange={(e) => setPrimaryId(e.target.value)}
@@ -257,6 +302,8 @@ export function App(): JSX.Element {
             </div>
             <p className="hint">{t('coarseHint')}</p>
 
+            <label className="field-label">{t('labelName')}</label>
+            <p className="hint">{t('labelHelp')}</p>
             <input placeholder={t('labelZh')} value={labelZh} onChange={(e) => setLabelZh(e.target.value)} />
             <input placeholder={t('labelEn')} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
             <div className="row">
@@ -277,7 +324,7 @@ export function App(): JSX.Element {
               {annotations.map((a) => (
                 <li key={a.id}>
                   <span className="dot" style={{ background: types.find((x) => x.key === a.feature_type)?.hint }} />
-                  {a.label[lang] || a.feature_type}
+                  {a.label[lang] || typeName(a.feature_type)}
                   <button className="x" onClick={() => setAnnotations((xs) => xs.filter((y) => y.id !== a.id))}>
                     ×
                   </button>
@@ -287,6 +334,9 @@ export function App(): JSX.Element {
             <button className="primary" disabled={!session || !primaryId.trim()} onClick={save}>
               {t('save')}
             </button>
+            {(!session || !primaryId.trim()) && (
+              <p className="hint">⚠ {!session ? t('needImage') : t('needId')}</p>
+            )}
             {saveMsg && <p className="status">{saveMsg}</p>}
           </section>
 

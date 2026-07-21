@@ -23,3 +23,7 @@ pnpm-debug.log*
 # astrolens generated artifacts
 raw_llm_output.txt
 out/
+
+# atlas: uploaded reference images live via the storage adapter, not in git
+# (the atlas.json annotation data IS committable; the binaries are not)
+packages/atlas/data/refimg/

@@ -15,7 +15,15 @@ async function jsonPost<T>(url: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  return (await r.json()) as T;
+  const text = await r.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // Non-JSON response (e.g. a 413 PayloadTooLarge HTML page) — surface a
+    // legible error instead of a JSON-parse crash.
+    const hint = r.status === 413 ? '（图像过大 · image too large）' : '';
+    throw new Error(`HTTP ${r.status} ${r.statusText} ${hint}`.trim());
+  }
 }
 
 export async function fetchFeatureTypes(): Promise<FeatureType[]> {

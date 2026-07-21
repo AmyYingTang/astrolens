@@ -45,14 +45,31 @@ export function Canvas({ imageSrc, imgWidth, imgHeight, mode, shapes, draft, onA
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const img = useHtmlImage(imageSrc);
 
-  // Track container size.
+  // Track container size. Bail out when the measured size is unchanged so a
+  // ResizeObserver → setState → re-render → observe cycle can't self-sustain
+  // (that feedback loop is what makes the canvas flash). rAF-defer the callback
+  // to avoid "ResizeObserver loop" warnings.
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
+    let raf = 0;
+    const measure = (): void => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      // ±1px tolerance: sub-pixel/scrollbar rounding must not re-trigger a redraw
+      // (that residual jitter shows as a thin flickering band).
+      setSize((prev) => (Math.abs(prev.w - w) <= 1 && Math.abs(prev.h - h) <= 1 ? prev : { w, h }));
+    };
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    });
     ro.observe(el);
-    setSize({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
+    measure();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, []);
 
   // Fit the image into the container whenever either changes.

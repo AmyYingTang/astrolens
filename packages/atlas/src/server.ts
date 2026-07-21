@@ -67,7 +67,9 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
   };
 
   const app = express();
-  app.use(express.json({ limit: '64mb' }));
+  // Client downscales reference images before upload, so payloads are small;
+  // this is a generous backstop for the rare large one that slips through.
+  app.use(express.json({ limit: '96mb' }));
 
   // Static feature-type vocabulary — one source for client + server.
   app.get('/api/feature-types', (_req, res) => res.json({ featureTypes: FEATURE_TYPES }));
