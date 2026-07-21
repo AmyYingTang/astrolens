@@ -5,7 +5,16 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { createNovaSolveClient, createCachedSolveClient } from '@astrolens/identify';
+import {
+  identify,
+  createNovaSolveClient,
+  createCachedSolveClient,
+  createSimbadCatalogClient,
+  createVizierCatalogClient,
+  createOpenNgcCatalogClient,
+  createCompositeCatalogClient,
+} from '@astrolens/identify';
+import type { FactSheet } from '@astrolens/schema';
 import { AtlasEntry, AtlasFile, normalizeId } from './atlas.js';
 import { LocalAtlasStore, type AtlasStore } from './store.js';
 import { FEATURE_TYPES } from './featureTypes.js';
@@ -17,6 +26,7 @@ import type {
   SaveEntryResponse,
   SolveJob,
   StatusCounts,
+  SuggestedIdentity,
   UploadRequest,
   UploadResponse,
 } from './shared.js';
@@ -46,6 +56,34 @@ function statusCounts(entry: AtlasEntry): StatusCounts {
 
 function contentType(key: string): string {
   return extname(key).toLowerCase() === '.png' ? 'image/png' : 'image/jpeg';
+}
+
+/** Derive a suggested atlas identity from the identification result: the primary
+ *  A-class object's canonical id + a deduped alias pool + its catalog type. The
+ *  user confirms/edits it, so this only needs to be a good starting point. */
+function suggestIdentity(fs: FactSheet): SuggestedIdentity | null {
+  const obj =
+    fs.objects.find((o) => o.role === 'primary' && o.tier === 'A') ??
+    fs.objects.find((o) => o.tier === 'A');
+  if (!obj) return null;
+  const primary_id = obj.designations[0] ?? obj.names[0] ?? obj.id;
+  const pool = [
+    obj.common_name?.zh,
+    obj.common_name?.en,
+    ...obj.names,
+    ...obj.designations,
+    ...Object.values(obj.catalog_ids),
+  ].filter((s): s is string => Boolean(s));
+  const seen = new Set([normalizeId(primary_id)]);
+  const aliases: string[] = [];
+  for (const s of pool) {
+    const k = normalizeId(s);
+    if (!seen.has(k)) {
+      seen.add(k);
+      aliases.push(s);
+    }
+  }
+  return { primary_id, aliases, type: obj.type ? { zh: obj.type.zh, en: obj.type.en, otype: obj.type.otype } : undefined };
 }
 
 export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasServerHandle> {
@@ -101,19 +139,35 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
           const tmpPath = join(dir, imageRef);
           await writeFile(tmpPath, buf);
 
-          jobs.set(jobId, { state: 'running', stage: 'solving' });
-          const solve = createCachedSolveClient(createNovaSolveClient({ apiKey }));
-          const result = await solve.solve({ imagePath: tmpPath, width: meta.width, height: meta.height });
-          if (result.status !== 'solved' || !result.wcs) {
-            jobs.set(jobId, { state: 'failed', error: result.error ?? 'Plate-solve failed' });
+          // Reuse the full identification pipeline (plate-solve + A-class catalog
+          // cross-match) — same code the main path uses — so the annotation form
+          // is prefilled with the canonical identity instead of hand-typed.
+          jobs.set(jobId, { state: 'running', stage: 'identifying' });
+          const factsheet = await identify(
+            { imagePath: tmpPath, width: meta.width, height: meta.height, imageSrc: imageRef },
+            {
+              solve: createCachedSolveClient(createNovaSolveClient({ apiKey })),
+              catalog: createCompositeCatalogClient([
+                createSimbadCatalogClient(),
+                createVizierCatalogClient(),
+                createOpenNgcCatalogClient(),
+              ]),
+            },
+          );
+          if (factsheet.solve.status !== 'solved' || !factsheet.solve.wcs) {
+            jobs.set(jobId, {
+              state: 'failed',
+              error: `Plate-solve failed (${factsheet.solve.status}). ${factsheet.warnings.join(' ')}`.trim(),
+            });
             return;
           }
           jobs.set(jobId, {
             state: 'done',
-            wcs: result.wcs,
+            wcs: factsheet.solve.wcs,
             imageRef,
             width: meta.width,
             height: meta.height,
+            suggested: suggestIdentity(factsheet) ?? undefined,
           });
         } catch (e) {
           jobs.set(jobId, { state: 'failed', error: (e as Error).message });

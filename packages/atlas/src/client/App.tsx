@@ -13,6 +13,10 @@ interface Session {
   wcs: Wcs;
   width: number;
   height: number;
+  /** Object type from the identify pipeline (context only, not stored). */
+  typeContext?: string;
+  /** Whether identity was auto-detected. */
+  identityNote?: string;
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -108,18 +112,30 @@ export function App(): JSX.Element {
       const { dataUrl, filename } = await prepareUpload(file);
       const up = await uploadImage({ filename, imageBase64: dataUrl });
       if (!up.ok || !up.jobId) throw new Error(up.error ?? 'upload failed');
-      const job = await pollJob(up.jobId, (j) => setStatus(j.stage === 'solving' ? t('solving') : t('storing')));
+      const job = await pollJob(up.jobId, (j) =>
+        setStatus(j.stage === 'identifying' ? t('identifying') : j.stage === 'solving' ? t('solving') : t('storing')),
+      );
       if (job.state !== 'done' || !job.wcs || !job.imageRef) {
         setStatus(`${t('solveFailed')}: ${job.error ?? ''}`);
         return;
       }
+      const sug = job.suggested;
+      const typeContext = sug?.type
+        ? [sug.type.zh, sug.type.en].filter(Boolean).join(' / ') + ` (${sug.type.otype})`
+        : undefined;
       setSession({
         imageSrc: `/refimg/${job.imageRef}`,
         imageRef: job.imageRef,
         wcs: job.wcs,
         width: job.width ?? job.wcs.width,
         height: job.height ?? job.wcs.height,
+        typeContext,
+        identityNote: sug ? t('autoFilled') : t('noIdentify'),
       });
+      if (sug) {
+        setPrimaryId(sug.primary_id);
+        setAliasesText(sug.aliases.join(', '));
+      }
       setAnnotations([]);
       setStatus(t('solved'));
     } catch (e) {
@@ -278,6 +294,12 @@ export function App(): JSX.Element {
               value={aliasesText}
               onChange={(e) => setAliasesText(e.target.value)}
             />
+            {session?.typeContext && (
+              <p className="type-context">
+                {t('typeLabel')}: {session.typeContext}
+              </p>
+            )}
+            {session?.identityNote && <p className="hint">{session.identityNote}</p>}
           </section>
 
           <section>

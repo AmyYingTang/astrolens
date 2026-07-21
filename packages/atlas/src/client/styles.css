@@ -110,6 +110,11 @@ body {
   color: #e0af68;
   font-size: 11px;
 }
+.type-context {
+  margin: 2px 0 6px;
+  font-size: 12px;
+  color: var(--accent-strong);
+}
 
 button {
   background: var(--panel-2);
@@ -147,14 +152,23 @@ button.link {
 }
 .modes {
   display: flex;
-  gap: 14px;
-  margin: 6px 0;
+  gap: 18px;
+  margin: 6px 0 10px;
 }
 .modes label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   cursor: pointer;
+  white-space: nowrap;
+}
+/* The global `.sidebar input { width:100% }` rule would blow the radios up to
+   full width and wrap the labels; reset radios to their intrinsic size. */
+.modes input[type='radio'] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex: none;
 }
 
 .hint {
