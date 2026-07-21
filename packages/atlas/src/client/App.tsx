@@ -2,10 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { worldToPixel, pixelToWorld, type Wcs } from '@astrolens/schema';
 import { Canvas, type Shape } from './Canvas.js';
 import { useLang } from './i18n.js';
-import { fetchFeatureTypes, uploadImage, pollJob, listObjects, getObject, saveObject } from './api.js';
+import {
+  fetchFeatureTypes,
+  uploadImage,
+  pollJob,
+  listObjects,
+  getObject,
+  saveObject,
+  exportRegistry,
+} from './api.js';
 import type { FeatureType, Geometry } from '../featureTypes.js';
-import type { Annotation, AtlasEntry } from '../atlas.js';
+import type { Annotation, AnnoStatus, AtlasEntry } from '../atlas.js';
 import type { ObjectSummary } from '../shared.js';
+
+type Kind = 'new' | 'canonical' | 'other';
 
 interface Session {
   imageSrc: string;
@@ -99,7 +109,31 @@ export function App(): JSX.Element {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [objects, setObjects] = useState<ObjectSummary[]>([]);
   const [saveMsg, setSaveMsg] = useState('');
+  const [exportMsg, setExportMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewFileRef = useRef<HTMLInputElement>(null);
+
+  // Who is acting — sets author on new annotations, reviewed_by on approve.
+  const [currentUser, setCurrentUser] = useState<string>(() => {
+    try {
+      return localStorage.getItem('atlas_user') || 'amy';
+    } catch {
+      return 'amy';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('atlas_user', currentUser);
+    } catch {
+      // ignore
+    }
+  }, [currentUser]);
+
+  // Edit context: `editable` gates drawing/status/save; `kind` picks the banner
+  // and which preview actions apply. `loadedId` = the library entry in context.
+  const [editable, setEditable] = useState(true);
+  const [kind, setKind] = useState<Kind>('new');
+  const [loadedId, setLoadedId] = useState<string | null>(null);
 
   const curType = useMemo(() => types.find((x) => x.key === typeKey), [types, typeKey]);
   const geometry: Geometry = curType?.geometry ?? 'polygon';
@@ -154,7 +188,8 @@ export function App(): JSX.Element {
     setObjects(objects);
   };
 
-  const onPickFile = async (file: File): Promise<void> => {
+  const onPickFile = async (file: File, opts?: { preview?: boolean }): Promise<void> => {
+    const preview = opts?.preview ?? false;
     setBusy(true);
     setStatus(t('storing'));
     try {
@@ -166,6 +201,22 @@ export function App(): JSX.Element {
       );
       if (job.state !== 'done' || !job.wcs || !job.imageRef) {
         setStatus(`${t('solveFailed')}: ${job.error ?? ''}`);
+        return;
+      }
+      if (preview) {
+        // Mode B — verify the loaded entry's annotations on a different image of
+        // the same target. Keep annotations + identity; only swap the base image
+        // + WCS (the shapes memo reprojects via session.wcs). Read-only.
+        setSession({
+          imageSrc: `/refimg/${job.imageRef}`,
+          imageRef: job.imageRef,
+          wcs: job.wcs,
+          width: job.width ?? job.wcs.width,
+          height: job.height ?? job.wcs.height,
+        });
+        setEditable(false);
+        setKind('other');
+        setStatus(t('solved'));
         return;
       }
       const sug = job.suggested;
@@ -186,6 +237,9 @@ export function App(): JSX.Element {
         setAliasesText(sug.aliases.join(', '));
       }
       setAnnotations([]);
+      setEditable(true);
+      setKind('new');
+      setLoadedId(null);
       setStatus(t('solved'));
     } catch (e) {
       setStatus(`${t('solveFailed')}: ${(e as Error).message}`);
@@ -219,7 +273,7 @@ export function App(): JSX.Element {
       geometry: { type: geometry, vertices: verts },
       label: { zh: labelZh, en: labelEn },
       status: 'draft',
-      author: 'amy',
+      author: currentUser,
       created_at: now,
       updated_at: now,
     };
@@ -244,12 +298,37 @@ export function App(): JSX.Element {
     setDrawing(false);
   };
 
+  const setAnnoStatus = (id: string, status: AnnoStatus): void => {
+    const now = new Date().toISOString();
+    setAnnotations((xs) =>
+      xs.map((a) =>
+        a.id === id
+          ? { ...a, status, reviewed_by: status === 'approved' ? currentUser : a.reviewed_by, updated_at: now }
+          : a,
+      ),
+    );
+  };
+
+  const doExport = async (): Promise<void> => {
+    const r = await exportRegistry();
+    setExportMsg(r.ok ? `${t('exported')}: ${r.objects} · ${r.annotations}` : `⚠ ${r.error ?? ''}`);
+    setTimeout(() => setExportMsg(''), 4000);
+  };
+
+  const exitCheck = (): void => {
+    if (loadedId) void loadEntry(loadedId);
+  };
+
   const loadEntry = async (id: string): Promise<void> => {
     const { entry } = await getObject(id);
     if (!entry) return;
     setPrimaryId(entry.primary_id);
     setAliasesText(entry.aliases.join(', '));
     setAnnotations(entry.annotations);
+    setLoadedId(entry.primary_id);
+    setEditable(false);
+    setKind('canonical');
+    setDrawing(false);
     if (entry.reference) {
       setSession({
         imageSrc: `/refimg/${entry.reference.image_ref}`,
@@ -308,6 +387,34 @@ export function App(): JSX.Element {
     ? { verticesPx: draftPx, type: geometry, color: curType?.hint ?? '#7aa2f7' }
     : null;
 
+  const statusLabel = (s: AnnoStatus): string =>
+    s === 'approved' ? t('stApproved') : s === 'in_review' ? t('stReview') : t('stDraft');
+
+  const annoList = (canEdit: boolean): JSX.Element => (
+    <ul className="annos">
+      {annotations.length === 0 && <li className="muted-li">{t('annotations')} (0)</li>}
+      {annotations.map((a) => (
+        <li key={a.id}>
+          <span className="dot" style={{ background: types.find((x) => x.key === a.feature_type)?.hint }} />
+          <span className="anno-name">{displayNames.get(a.id) ?? typeName(a.feature_type)}</span>
+          {canEdit ? (
+            <select
+              className={`st st-${a.status}`}
+              value={a.status}
+              onChange={(e) => setAnnoStatus(a.id, e.target.value as AnnoStatus)}
+            >
+              <option value="draft">{t('stDraft')}</option>
+              <option value="in_review">{t('stReview')}</option>
+              <option value="approved">{t('stApproved')}</option>
+            </select>
+          ) : (
+            <span className={`st st-${a.status}`}>{statusLabel(a.status)}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="app">
       <header className="topbar">
@@ -315,9 +422,15 @@ export function App(): JSX.Element {
           <span className="brand">{t('title')}</span>
           <span className="sub">{t('subtitle')}</span>
         </div>
-        <button className="lang" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>
-          {lang === 'zh' ? 'EN' : '中文'}
-        </button>
+        <div className="topbar-right">
+          <label className="user-field">
+            {t('currentUser')}:
+            <input value={currentUser} onChange={(e) => setCurrentUser(e.target.value)} />
+          </label>
+          <button className="lang" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>
+            {lang === 'zh' ? 'EN' : '中文'}
+          </button>
+        </div>
       </header>
 
       <div className="body">
@@ -339,6 +452,17 @@ export function App(): JSX.Element {
                 e.target.value = '';
               }}
             />
+            <input
+              ref={previewFileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void onPickFile(f, { preview: true });
+                e.target.value = '';
+              }}
+            />
             {status && <p className="status">{status}</p>}
           </section>
 
@@ -349,14 +473,16 @@ export function App(): JSX.Element {
               {t('primaryId')} <span className="req">* {t('required')}</span>
             </label>
             <input
-              className={!primaryId.trim() ? 'needs-value' : ''}
+              className={editable && !primaryId.trim() ? 'needs-value' : ''}
               placeholder={t('primaryId')}
               value={primaryId}
+              disabled={!editable}
               onChange={(e) => setPrimaryId(e.target.value)}
             />
             <input
               placeholder={t('aliases')}
               value={aliasesText}
+              disabled={!editable}
               onChange={(e) => setAliasesText(e.target.value)}
             />
             {session?.typeContext && (
@@ -367,70 +493,91 @@ export function App(): JSX.Element {
             {session?.identityNote && <p className="hint">{session.identityNote}</p>}
           </section>
 
-          {/* Step 3 — draw features */}
-          <section className={session ? '' : 'locked'}>
-            <StepHead n={3} title={t('stepDraw')} />
-            <p className="hint substeps">{t('drawSteps')}</p>
-
-            <label className="field-label">{t('featureType')}</label>
-            <select value={typeKey} disabled={drawing} onChange={(e) => setTypeKey(e.target.value)}>
-              {types.map((ft) => (
-                <option key={ft.key} value={ft.key}>
-                  {ft.zh} · {ft.en} ({ft.geometry})
-                </option>
-              ))}
-            </select>
-
-            <label className="field-label">
-              {t('labelName')}
-              <HelpIcon text={t('labelHelp')} />
-            </label>
-            <input placeholder={t('labelZh')} value={labelZh} onChange={(e) => setLabelZh(e.target.value)} />
-            <input placeholder={t('labelEn')} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
-
-            {drawing ? (
-              <>
-                <p className="status">{t('pointsPlaced').replace('{n}', String(draftPx.length))}</p>
-                <div className="row">
-                  <button className="primary" disabled={!canFinish} onClick={finishSave}>
-                    {t('finishSave')}
+          {/* Read-only preview banner + actions (library entry / verify mode) */}
+          {session && !editable && (
+            <section>
+              <p className={`banner ${kind === 'other' ? 'banner-check' : 'banner-preview'}`}>
+                {kind === 'other' ? t('checkingOther') : t('previewOnly')}
+              </p>
+              {annoList(false)}
+              <div className="row">
+                {kind === 'canonical' && (
+                  <button className="primary" onClick={() => setEditable(true)}>
+                    {t('editCanonical')}
                   </button>
-                  <button onClick={endDraw}>{t('endDraw')}</button>
-                </div>
-              </>
-            ) : (
-              <div className="btn-help-row">
-                <button className="primary" onClick={startDraw}>
-                  {t('startDraw')}
-                </button>
-                <HelpIcon align="right" text={`${t('navHint')}\n${t('listHint')}`} />
+                )}
+                {kind === 'other' ? (
+                  <button onClick={exitCheck}>{t('exitCheck')}</button>
+                ) : (
+                  <button onClick={() => previewFileRef.current?.click()}>{t('checkOther')}</button>
+                )}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
-          {/* Step 4 — save */}
-          <section className={session ? '' : 'locked'}>
-            <StepHead n={4} title={t('stepSave')} />
-            <ul className="annos">
-              {annotations.length === 0 && <li className="muted-li">{t('annotations')} (0)</li>}
-              {annotations.map((a) => (
-                <li key={a.id}>
-                  <span className="dot" style={{ background: types.find((x) => x.key === a.feature_type)?.hint }} />
-                  {displayNames.get(a.id) ?? typeName(a.feature_type)}
-                  <button className="x" onClick={() => setAnnotations((xs) => xs.filter((y) => y.id !== a.id))}>
-                    ×
+          {/* Step 3 — draw features (edit mode only) */}
+          {session && editable && (
+            <section>
+              <StepHead n={3} title={t('stepDraw')} />
+              {kind === 'canonical' && <p className="banner banner-edit">{t('editingCanonical')}</p>}
+              <p className="hint substeps">{t('drawSteps')}</p>
+
+              <label className="field-label">{t('featureType')}</label>
+              <select value={typeKey} disabled={drawing} onChange={(e) => setTypeKey(e.target.value)}>
+                {types.map((ft) => (
+                  <option key={ft.key} value={ft.key}>
+                    {ft.zh} · {ft.en} ({ft.geometry})
+                  </option>
+                ))}
+              </select>
+
+              <label className="field-label">
+                {t('labelName')}
+                <HelpIcon text={t('labelHelp')} />
+              </label>
+              <input placeholder={t('labelZh')} value={labelZh} onChange={(e) => setLabelZh(e.target.value)} />
+              <input placeholder={t('labelEn')} value={labelEn} onChange={(e) => setLabelEn(e.target.value)} />
+
+              {drawing ? (
+                <>
+                  <p className="status">{t('pointsPlaced').replace('{n}', String(draftPx.length))}</p>
+                  <div className="row">
+                    <button className="primary" disabled={!canFinish} onClick={finishSave}>
+                      {t('finishSave')}
+                    </button>
+                    <button onClick={endDraw}>{t('endDraw')}</button>
+                  </div>
+                </>
+              ) : (
+                <div className="btn-help-row">
+                  <button className="primary" onClick={startDraw}>
+                    {t('startDraw')}
                   </button>
-                </li>
-              ))}
-            </ul>
-            <button className="primary" disabled={!session || !primaryId.trim()} onClick={save}>
-              {t('save')} ({annotations.length})
-            </button>
-            {(!session || !primaryId.trim()) && (
-              <p className="hint">⚠ {!session ? t('needImage') : t('needId')}</p>
-            )}
-            {saveMsg && <p className="status">{saveMsg}</p>}
-          </section>
+                  <HelpIcon align="right" text={`${t('navHint')}\n${t('listHint')}`} />
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Step 4 — review status + save (edit mode only) */}
+          {session && editable && (
+            <section>
+              <StepHead n={4} title={t('stepSave')} />
+              {annoList(true)}
+              <button className="primary" disabled={!primaryId.trim()} onClick={save}>
+                {t('save')} ({annotations.length})
+              </button>
+              {!primaryId.trim() && <p className="hint">⚠ {t('needId')}</p>}
+              {saveMsg && <p className="status">{saveMsg}</p>}
+            </section>
+          )}
+
+          {!session && (
+            <section className="locked">
+              <StepHead n={3} title={t('stepDraw')} />
+              <p className="hint">{t('needImage')}</p>
+            </section>
+          )}
 
           {objects.length > 0 && (
             <section className="library">
@@ -447,6 +594,8 @@ export function App(): JSX.Element {
                   </li>
                 ))}
               </ul>
+              <button onClick={doExport}>{t('exportRegistry')}</button>
+              {exportMsg && <p className="status">{exportMsg}</p>}
             </section>
           )}
         </aside>
@@ -458,6 +607,7 @@ export function App(): JSX.Element {
               imgWidth={session.width}
               imgHeight={session.height}
               drawing={drawing}
+              allowDelete={editable && !drawing}
               shapes={shapes}
               draft={draft}
               onAddPoint={onAddPoint}

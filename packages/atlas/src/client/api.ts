@@ -1,5 +1,6 @@
 import type {
   EntryResponse,
+  ExportRegistryResponse,
   ObjectsResponse,
   SaveEntryRequest,
   SaveEntryResponse,
@@ -53,6 +54,11 @@ export async function getObject(id: string): Promise<EntryResponse> {
 
 export function saveObject(id: string, body: SaveEntryRequest): Promise<SaveEntryResponse> {
   return jsonPost<SaveEntryResponse>(`/api/object/${encodeURIComponent(id)}`, body);
+}
+
+export async function exportRegistry(): Promise<ExportRegistryResponse> {
+  const r = await fetch('/api/export-registry', { method: 'POST' });
+  return (await r.json()) as ExportRegistryResponse;
 }
 
 /** Poll a solve job until done/failed. */

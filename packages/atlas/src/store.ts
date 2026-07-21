@@ -18,6 +18,8 @@ export interface AtlasStore {
   putRefImage(key: string, data: Buffer): Promise<string>;
   /** Fetch a reference image by key (works for local FS or object storage). */
   getRefImage(key: string): Promise<Buffer>;
+  /** Write the read-optimized approved-only registry (the apply-side artifact). */
+  saveRegistry(registry: unknown): Promise<void>;
 }
 
 export interface LocalStoreOptions {
@@ -28,11 +30,13 @@ export interface LocalStoreOptions {
 export class LocalAtlasStore implements AtlasStore {
   private readonly dataDir: string;
   private readonly atlasPath: string;
+  private readonly registryPath: string;
   private readonly imgDir: string;
 
   constructor(opts: LocalStoreOptions) {
     this.dataDir = resolve(opts.dataDir);
     this.atlasPath = join(this.dataDir, 'atlas.json');
+    this.registryPath = join(this.dataDir, 'registry.json');
     this.imgDir = join(this.dataDir, 'refimg');
   }
 
@@ -62,6 +66,11 @@ export class LocalAtlasStore implements AtlasStore {
 
   async getRefImage(key: string): Promise<Buffer> {
     return readFile(this.safePath(key));
+  }
+
+  async saveRegistry(registry: unknown): Promise<void> {
+    await mkdir(this.dataDir, { recursive: true });
+    await writeFile(this.registryPath, JSON.stringify(registry, null, 2) + '\n', 'utf8');
   }
 
   /** Guard against path traversal in a ref-image key. */

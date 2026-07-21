@@ -22,6 +22,7 @@ import type {
   ObjectsResponse,
   ObjectSummary,
   EntryResponse,
+  ExportRegistryResponse,
   SaveEntryRequest,
   SaveEntryResponse,
   SolveJob,
@@ -238,6 +239,34 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
       res.json({ ok: true } satisfies SaveEntryResponse);
     } catch (e) {
       res.status(400).json({ ok: false, error: (e as Error).message } satisfies SaveEntryResponse);
+    }
+  });
+
+  // Export the read-optimized, approved-only registry the apply side consumes.
+  // Slim: only what apply needs (id + aliases + feature_type + geometry + label).
+  app.post('/api/export-registry', async (_req, res) => {
+    try {
+      const atlas = await store.loadAtlas();
+      const objects = atlas.objects
+        .map((o) => ({
+          primary_id: o.primary_id,
+          aliases: o.aliases,
+          annotations: o.annotations
+            .filter((a) => a.status === 'approved')
+            .map((a) => ({
+              feature_type: a.feature_type,
+              geometry: a.geometry,
+              label: a.label,
+              ...(a.note ? { note: a.note } : {}),
+            })),
+        }))
+        .filter((o) => o.annotations.length > 0);
+      const registry = { schema_version: 1 as const, objects };
+      await store.saveRegistry(registry);
+      const annotations = objects.reduce((n, o) => n + o.annotations.length, 0);
+      res.json({ ok: true, objects: objects.length, annotations } satisfies ExportRegistryResponse);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: (e as Error).message } satisfies ExportRegistryResponse);
     }
   });
 

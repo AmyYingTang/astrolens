@@ -18,6 +18,8 @@ interface CanvasProps {
   imgHeight: number;
   /** Drawing = clicks place vertices; not drawing = drag to pan. Wheel zooms in both. */
   drawing: boolean;
+  /** Show the on-shape × delete handles (edit mode only, not in read-only preview). */
+  allowDelete: boolean;
   /** Committed shapes (already-added annotations), in image px. */
   shapes: Shape[];
   /** In-progress shape being drawn. */
@@ -46,6 +48,7 @@ export function Canvas({
   imgWidth,
   imgHeight,
   drawing,
+  allowDelete,
   shapes,
   draft,
   onAddPoint,
@@ -171,8 +174,8 @@ export function Canvas({
                     fillAfterStrokeEnabled
                     listening={false}
                   />
-                  {/* Delete handle on the shape itself (only when not drawing). */}
-                  {!drawing && (
+                  {/* Delete handle on the shape itself (edit mode, not drawing). */}
+                  {allowDelete && (
                     <Group onClick={() => onDeleteShape(s.id)} onTap={() => onDeleteShape(s.id)}>
                       <Circle x={ax} y={ay} radius={badgeR} fill="#e0555a" />
                       <Text

@@ -66,3 +66,10 @@ export interface SaveEntryResponse {
   ok: boolean;
   error?: string;
 }
+
+export interface ExportRegistryResponse {
+  ok: boolean;
+  objects?: number;
+  annotations?: number;
+  error?: string;
+}
