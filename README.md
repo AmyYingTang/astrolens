@@ -25,7 +25,9 @@ That's it. The studio (at `http://localhost:3000`) is the whole tool in one wind
 
 Edits auto-save. Stop the server with Ctrl+C. Everything lives under `out/<name>/`.
 
-For most use, the two commands above are all you need.
+For most use, the two commands above are all you need. To solve **offline** (local
+astrometry.net, no network/queue), add your **own** B-class annotations, or deploy
+for others, see **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ---
 
