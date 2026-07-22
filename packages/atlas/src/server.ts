@@ -7,8 +7,8 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import {
   identify,
-  createNovaSolveClient,
-  createCachedSolveClient,
+  createConfiguredSolveClient,
+  isLocalSolver,
   createSimbadCatalogClient,
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
@@ -95,11 +95,11 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
   const jobs = new Map<string, SolveJob>();
   let jobSeq = 0;
 
-  const requireApiKey = (): string => {
+  const requireApiKey = (): string | undefined => {
     const apiKey = process.env.ASTROMETRY_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !isLocalSolver()) {
       throw new Error(
-        'Plate-solving needs a nova API key. Put ASTROMETRY_API_KEY in a .env file (where you run the atlas server) or export it, then restart. Free key from nova.astrometry.net.',
+        'Plate-solving needs a nova API key. Put ASTROMETRY_API_KEY in a .env file (where you run the atlas server) or export it, then restart — or set ASTROLENS_SOLVER=local for offline solving. Free key from nova.astrometry.net.',
       );
     }
     return apiKey;
@@ -147,7 +147,7 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
           const factsheet = await identify(
             { imagePath: tmpPath, width: meta.width, height: meta.height, imageSrc: imageRef },
             {
-              solve: createCachedSolveClient(createNovaSolveClient({ apiKey })),
+              solve: createConfiguredSolveClient({ apiKey }),
               catalog: createCompositeCatalogClient([
                 createSimbadCatalogClient(),
                 createVizierCatalogClient(),

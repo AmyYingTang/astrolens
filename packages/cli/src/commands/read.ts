@@ -1,8 +1,13 @@
 import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { resolve, join, extname } from 'node:path';
 import sharp from 'sharp';
-import { identify, createSimbadCatalogClient, defaultRegistryPath } from '@astrolens/identify';
-import { createSolver } from '../solver.js';
+import {
+  identify,
+  createConfiguredSolveClient,
+  solverName,
+  createSimbadCatalogClient,
+  defaultRegistryPath,
+} from '@astrolens/identify';
 import { generateReading, ReaderError } from '@astrolens/reader';
 import { TOOL_VERSION } from '../version.js';
 
@@ -29,10 +34,9 @@ export async function readReport(args: ReadArgs): Promise<void> {
   await mkdir(outDir, { recursive: true });
   const imageName = `image${(extname(imagePath) || '.jpg').toLowerCase()}`;
 
-  const solve = createSolver({ apiKey, cache: args.cache });
+  const solve = createConfiguredSolveClient({ apiKey, cache: args.cache });
 
-  const solverName = (process.env.ASTROLENS_SOLVER ?? '').toLowerCase() === 'local' ? 'local astrometry.net' : 'nova';
-  console.log(`Plate-solving (${solverName})…`);
+  console.log(`Plate-solving (${solverName()})…`);
   const factsheet = await identify(
     {
       imagePath,

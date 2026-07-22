@@ -57,6 +57,7 @@ export {
 } from './atlasApply.js';
 export { createCachedSolveClient, defaultSolveCacheDir } from './cache.js';
 export { createLocalSolveClient, type LocalSolveOptions } from './localSolve.js';
+export { createConfiguredSolveClient, isLocalSolver, solverName } from './solveClient.js';
 export type {
   Wcs,
   SolveClient,

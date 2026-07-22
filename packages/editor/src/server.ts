@@ -6,8 +6,8 @@ import sharp from 'sharp';
 import { Reading, FactSheet } from '@astrolens/schema';
 import {
   identify,
-  createNovaSolveClient,
-  createCachedSolveClient,
+  createConfiguredSolveClient,
+  isLocalSolver,
   createSimbadCatalogClient,
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
@@ -142,11 +142,13 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
     res.json({ projects });
   });
 
-  const requireApiKey = (): string => {
+  // The nova key is only needed for the nova solver; the local astrometry.net
+  // solver (ASTROLENS_SOLVER=local) needs no key.
+  const requireApiKey = (): string | undefined => {
     const apiKey = process.env.ASTROMETRY_API_KEY;
-    if (!apiKey) {
+    if (!apiKey && !isLocalSolver()) {
       throw new Error(
-        'Plate-solving needs a nova API key. Put ASTROMETRY_API_KEY in a .env file (where you run the studio) or export it, then restart. Free key from nova.astrometry.net.',
+        'Plate-solving needs a nova API key. Put ASTROMETRY_API_KEY in a .env file (where you run the studio) or export it, then restart — or set ASTROLENS_SOLVER=local for offline solving. Free key from nova.astrometry.net.',
       );
     }
     return apiKey;
@@ -160,7 +162,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
     imageName: string,
     width: number,
     height: number,
-    opts: { apiKey: string; hint?: string; lang: 'zh' | 'en'; starMagMax?: number },
+    opts: { apiKey?: string; hint?: string; lang: 'zh' | 'en'; starMagMax?: number },
   ): Promise<void> => {
     try {
       const factsheet = await identify(
@@ -174,7 +176,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
           registryPath: defaultRegistryPath(),
         },
         {
-          solve: createCachedSolveClient(createNovaSolveClient({ apiKey: opts.apiKey })),
+          solve: createConfiguredSolveClient({ apiKey: opts.apiKey }),
           catalog: createCompositeCatalogClient([
             createSimbadCatalogClient(),
             createVizierCatalogClient(),

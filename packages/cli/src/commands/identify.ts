@@ -3,13 +3,13 @@ import { resolve, join, extname } from 'node:path';
 import sharp from 'sharp';
 import {
   identify,
+  createConfiguredSolveClient,
   createSimbadCatalogClient,
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
   createCompositeCatalogClient,
   defaultRegistryPath,
 } from '@astrolens/identify';
-import { createSolver } from '../solver.js';
 
 export interface IdentifyArgs {
   image: string;
@@ -36,7 +36,7 @@ export async function identifyImage(args: IdentifyArgs): Promise<void> {
   const band =
     args.band === 'broadband' || args.band === 'narrowband' ? args.band : ('unknown' as const);
 
-  const solve = createSolver({ apiKey, cache: args.cache });
+  const solve = createConfiguredSolveClient({ apiKey, cache: args.cache });
 
   console.log('Plate-solving (nova — this can take 30s to a few minutes; cached after the first solve)…');
   const factsheet = await identify(
