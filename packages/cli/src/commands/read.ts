@@ -1,13 +1,8 @@
 import { mkdir, copyFile, writeFile } from 'node:fs/promises';
 import { resolve, join, extname } from 'node:path';
 import sharp from 'sharp';
-import {
-  identify,
-  createNovaSolveClient,
-  createCachedSolveClient,
-  createSimbadCatalogClient,
-  defaultRegistryPath,
-} from '@astrolens/identify';
+import { identify, createSimbadCatalogClient, defaultRegistryPath } from '@astrolens/identify';
+import { createSolver } from '../solver.js';
 import { generateReading, ReaderError } from '@astrolens/reader';
 import { TOOL_VERSION } from '../version.js';
 
@@ -26,12 +21,6 @@ export interface ReadArgs {
 export async function readReport(args: ReadArgs): Promise<void> {
   const lang = args.lang === 'en' ? 'en' : 'zh';
   const apiKey = args.apiKey ?? process.env.ASTROMETRY_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'No nova API key. Put ASTROMETRY_API_KEY in a .env file (cwd), export it, or pass --api-key. Free key from nova.astrometry.net.',
-    );
-  }
-
   const imagePath = resolve(args.image);
   const meta = await sharp(imagePath).metadata();
   if (!meta.width || !meta.height) throw new Error(`Could not read image dimensions: ${imagePath}`);
@@ -40,10 +29,10 @@ export async function readReport(args: ReadArgs): Promise<void> {
   await mkdir(outDir, { recursive: true });
   const imageName = `image${(extname(imagePath) || '.jpg').toLowerCase()}`;
 
-  const nova = createNovaSolveClient({ apiKey });
-  const solve = args.cache === false ? nova : createCachedSolveClient(nova);
+  const solve = createSolver({ apiKey, cache: args.cache });
 
-  console.log('Plate-solving (nova — this can take 30s to a few minutes; cached after the first solve)…');
+  const solverName = (process.env.ASTROLENS_SOLVER ?? '').toLowerCase() === 'local' ? 'local astrometry.net' : 'nova';
+  console.log(`Plate-solving (${solverName})…`);
   const factsheet = await identify(
     {
       imagePath,
