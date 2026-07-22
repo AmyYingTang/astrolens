@@ -6,7 +6,7 @@ import {
   createConfiguredSolveClient,
   solverName,
   createSimbadCatalogClient,
-  defaultRegistryPath,
+  defaultRegistryPaths,
 } from '@astrolens/identify';
 import { generateReading, ReaderError } from '@astrolens/reader';
 import { TOOL_VERSION } from '../version.js';
@@ -44,7 +44,7 @@ export async function readReport(args: ReadArgs): Promise<void> {
       height: meta.height,
       imageSrc: imageName,
       targetName: args.hint,
-      registryPath: defaultRegistryPath(),
+      registryPaths: defaultRegistryPaths(),
     },
     { solve, catalog: createSimbadCatalogClient() },
   );

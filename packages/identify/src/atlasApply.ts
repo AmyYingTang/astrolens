@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { homedir } from 'node:os';
 import {
   Registry,
+  normalizeId,
   findRegistryEntry,
   worldToPixel,
   pixelToWorld,
@@ -41,15 +43,28 @@ function pipelineType(atlasType: string): FeatureTypeKey {
   return ATLAS_TO_PIPELINE[atlasType] ?? 'emission_color_region';
 }
 
-/** Default location of the atlas registry: `$ATLAS_REGISTRY`, else the atlas
- *  package's exported `packages/atlas/data/registry.json` (relative to cwd —
- *  callers run from the repo root, mirroring the atlas tool's default). */
+/** The shipped, curated baseline registry: `$ATLAS_REGISTRY`, else the atlas
+ *  package's committed `packages/atlas/data/registry.json` (relative to cwd —
+ *  callers run from the repo root). Read-only from a user's perspective. */
 export function defaultRegistryPath(): string {
   return process.env.ATLAS_REGISTRY ?? resolve('packages/atlas/data/registry.json');
 }
 
-/** Read + validate a registry.json. Returns null if the file is absent (apply
- *  simply produces no B-class features — a valid "no atlas" state). */
+/** A self-deployer's local overlay registry (their own approved annotations):
+ *  `$ATLAS_USER_REGISTRY`, else `~/.astrolens/atlas/registry.json`. Merged on
+ *  top of the baseline so users extend coverage without touching the shipped
+ *  data. */
+export function userRegistryPath(): string {
+  return process.env.ATLAS_USER_REGISTRY ?? join(homedir(), '.astrolens', 'atlas', 'registry.json');
+}
+
+/** The layered default: baseline first, then the user overlay. */
+export function defaultRegistryPaths(): string[] {
+  return [defaultRegistryPath(), userRegistryPath()];
+}
+
+/** Read + validate a registry.json. Returns null if the file is absent (a valid
+ *  "no atlas" state). */
 export async function loadRegistry(path: string): Promise<Registry | null> {
   try {
     return Registry.parse(JSON.parse(await readFile(path, 'utf8')));
@@ -57,6 +72,38 @@ export async function loadRegistry(path: string): Promise<Registry | null> {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw e;
   }
+}
+
+/** Merge registries in priority order (later overlays extend earlier baselines).
+ *  Entries with the same normalized primary_id are unioned: aliases combined,
+ *  annotations concatenated (baseline first). Disjoint ids are just added. */
+export function mergeRegistries(regs: Registry[]): Registry {
+  const byKey = new Map<string, RegistryEntry>();
+  const order: string[] = [];
+  for (const reg of regs) {
+    for (const entry of reg.objects) {
+      const key = normalizeId(entry.primary_id);
+      const prev = byKey.get(key);
+      if (!prev) {
+        byKey.set(key, { ...entry, aliases: [...entry.aliases], annotations: [...entry.annotations] });
+        order.push(key);
+      } else {
+        for (const a of entry.aliases) if (!prev.aliases.includes(a)) prev.aliases.push(a);
+        prev.annotations.push(...entry.annotations);
+      }
+    }
+  }
+  return { schema_version: 1, objects: order.map((k) => byKey.get(k)!) };
+}
+
+/** Load + merge several registry files (missing ones skipped). null if none. */
+export async function loadRegistries(paths: string[]): Promise<Registry | null> {
+  const regs: Registry[] = [];
+  for (const p of paths) {
+    const r = await loadRegistry(p);
+    if (r) regs.push(r);
+  }
+  return regs.length ? mergeRegistries(regs) : null;
 }
 
 /** The A-object fields apply needs (subset of the assembled factsheet object). */

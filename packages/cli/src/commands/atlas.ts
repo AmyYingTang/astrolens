@@ -1,15 +1,19 @@
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { startAtlasServer } from '@astrolens/atlas';
 
 export interface AtlasArgs {
-  dataDir: string;
+  dataDir?: string;
   port: number;
   open: boolean;
 }
 
 export async function atlas(args: AtlasArgs): Promise<void> {
-  const dataDir = resolve(args.dataDir);
+  // Default to a per-user dir OUTSIDE the repo so a self-deployer's annotations
+  // never clobber the shipped/curated seed (packages/atlas/data). Amy curates
+  // the seed by passing --data-dir packages/atlas/data (quickastrolens does).
+  const dataDir = resolve(args.dataDir ?? join(homedir(), '.astrolens', 'atlas'));
   const handle = await startAtlasServer({ dataDir, port: args.port });
 
   console.log(`astrolens feature-atlas tool running at ${handle.url}`);

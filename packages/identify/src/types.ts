@@ -64,9 +64,10 @@ export interface IdentifyInput {
   imageSrc?: string;
   /** Precomputed image hash; if omitted, computed from the file (sha256). */
   hash?: string;
-  /** Path to the atlas registry.json (approved B-class annotations). When set,
-   * B-class features are projected from it; absent/missing file → no B-class. */
-  registryPath?: string;
+  /** Atlas registry.json paths (approved B-class annotations), in priority order
+   * — typically [baseline, user overlay]. Merged; B-class features are projected
+   * from the result. Absent/all-missing → no B-class. */
+  registryPaths?: string[];
   targetName?: string;
   band?: 'broadband' | 'narrowband' | 'unknown';
   starless?: boolean;

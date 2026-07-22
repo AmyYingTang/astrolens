@@ -51,7 +51,11 @@ export { runAiFeaturePass, type RunClaudeFn } from './aiFeatures.js';
 export {
   applyAtlas,
   loadRegistry,
+  loadRegistries,
+  mergeRegistries,
   defaultRegistryPath,
+  userRegistryPath,
+  defaultRegistryPaths,
   type AtlasHost,
   type AtlasApplyResult,
 } from './atlasApply.js';

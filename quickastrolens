@@ -149,11 +149,12 @@ case "$cmd" in
   atlas)
     shift
     ensure_built
-    if [ $# -ge 1 ]; then
-      node "$CLI" atlas --port "$1"
-    else
-      node "$CLI" atlas
-    fi
+    # This wrapper is the seed-curation entry point → write the shipped seed
+    # (packages/atlas/data). Self-deployers extending their own atlas use the
+    # bare CLI (`astrolens atlas`), which defaults to ~/.astrolens/atlas.
+    args=(atlas --data-dir "$ROOT/packages/atlas/data")
+    if [ $# -ge 1 ]; then args+=(--port "$1"); fi
+    node "$CLI" "${args[@]}"
     ;;
 
   help | -h | --help)

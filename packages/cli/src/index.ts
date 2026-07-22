@@ -91,9 +91,7 @@ cli
 
 cli
   .command('atlas', 'Launch the feature-atlas annotation tool (build the B-class baseline library)')
-  .option('--data-dir <dir>', 'Atlas data dir (atlas.json + reference images)', {
-    default: 'packages/atlas/data',
-  })
+  .option('--data-dir <dir>', 'Atlas data dir (default ~/.astrolens/atlas; seed curators pass packages/atlas/data)')
   .option('--port <port>', 'Port to serve on', { default: 3100 })
   .option('--no-open', 'Do not open the browser automatically')
   .action(async (options) => {

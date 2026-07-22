@@ -12,7 +12,7 @@ import {
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
   createCompositeCatalogClient,
-  defaultRegistryPath,
+  defaultRegistryPaths,
 } from '@astrolens/identify';
 import { readingFromFactsheet, tailorReading, ReaderError } from '@astrolens/reader';
 import { renderAnnotatedBuffer, generateEmbedHtml, renderPosterBuffers } from '@astrolens/renderer';
@@ -173,7 +173,7 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
           imageSrc: imageName,
           targetName: opts.hint,
           starMagMax: opts.starMagMax,
-          registryPath: defaultRegistryPath(),
+          registryPaths: defaultRegistryPaths(),
         },
         {
           solve: createConfiguredSolveClient({ apiKey: opts.apiKey }),
