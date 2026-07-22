@@ -24,7 +24,7 @@ export interface FeatureType {
 
 export const FEATURE_TYPES: readonly FeatureType[] = [
   { key: 'pillar', zh: '象鼻 / 柱', en: 'Pillar / Elephant Trunk', geometry: 'polygon', defaultOn: true, hint: '#ff9e64' },
-  { key: 'bright_rim', zh: '电离亮缘 / 锋面', en: 'Bright Rim / Ionization Front', geometry: 'polyline', defaultOn: true, hint: '#2ac3de' },
+  { key: 'bright_rim', zh: '电离锋面', en: 'Ionization Front', geometry: 'polyline', defaultOn: true, hint: '#2ac3de' },
   { key: 'filament', zh: '丝状结构', en: 'Filament', geometry: 'polyline', defaultOn: true, hint: '#bb9af7' },
   { key: 'silhouette', zh: '剪影暗形', en: 'Dark Silhouette', geometry: 'polygon', defaultOn: true, hint: '#565f89' },
   { key: 'globule', zh: '暗球 / Bok球 / 彗状球', en: 'Globule (Bok / cometary)', geometry: 'polygon', defaultOn: true, hint: '#414868' },

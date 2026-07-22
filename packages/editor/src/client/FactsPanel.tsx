@@ -266,7 +266,7 @@ export function FactsPanel({
           <h3>
             {t.factsFeaturesB} ({bFeatures.length})
           </h3>
-          {(['cv', 'geometric', 'ai'] as const).map((src) => {
+          {(['atlas', 'cv', 'geometric', 'ai'] as const).map((src) => {
             const rows = bFeatures.filter(
               (f) => (objById.get(f.id)?.detection_source ?? 'geometric') === src,
             );
@@ -276,7 +276,9 @@ export function FactsPanel({
                 ? t.factsBSourceCv
                 : src === 'ai'
                   ? t.factsBSourceAi
-                  : t.factsBSourceGeometric;
+                  : src === 'atlas'
+                    ? t.factsBSourceAtlas
+                    : t.factsBSourceGeometric;
             return (
               <div key={src} className="b-source-group">
                 <p className="b-source-head muted">── {srcLabel} ──</p>

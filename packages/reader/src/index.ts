@@ -229,28 +229,26 @@ function buildReading(
     let arc: { cx: number; cy: number; r: number; a0: number; a1: number } | undefined;
     let polygon: [number, number][] | undefined;
     if (shape === 'polygon') {
-      // A pillar: draw its detected contour + use arrow_to (already a sky→pixel
-      // point) as the 迎光 arrow. Set the badge radius to the contour's extent so
-      // the numbered badge sits OUTSIDE the outline, not on top of it.
+      // Draw the contour; use arrow_to (a sky→pixel point) as the 迎光 arrow.
       polygon = obj.polygon;
       if (obj.arrow_to?.pixel) arrow_to = obj.arrow_to.pixel;
       if (polygon && polygon.length >= 2) {
-        let maxd = starR;
-        for (const [vx, vy] of polygon) maxd = Math.max(maxd, Math.hypot(vx - cx, vy - cy));
-        r = Math.round(maxd);
+        // Anchor the badge hugging the shape's top edge (a small radius off its
+        // topmost vertex), not out at centroid+extent — that floated the badge
+        // far from large/elongated outlines. Still draggable.
+        [cx, cy] = polygon.reduce((a, p) => (p[1] < a[1] ? p : a), polygon[0]);
+        r = starR;
       } else {
         shape = 'shell'; // no contour → fall back to a marker
         r = starR;
       }
     }
     if (shape === 'polyline') {
-      // A pillar's bright rim: a thin open line through its lit-edge points; badge
-      // anchored just outside the segment.
+      // A thin open line through its points; badge hugs the top of the segment.
       polygon = obj.polygon;
       if (polygon && polygon.length >= 2) {
-        let maxd = starR;
-        for (const [vx, vy] of polygon) maxd = Math.max(maxd, Math.hypot(vx - cx, vy - cy));
-        r = Math.round(maxd);
+        [cx, cy] = polygon.reduce((a, p) => (p[1] < a[1] ? p : a), polygon[0]);
+        r = starR;
       } else {
         shape = 'shell';
         r = starR;

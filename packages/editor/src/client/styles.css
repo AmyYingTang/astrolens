@@ -434,6 +434,36 @@ button.primary:disabled {
   justify-content: space-between;
   align-items: center;
 }
+.block-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  width: auto;
+}
+.link-btn:hover {
+  color: var(--text);
+}
+.collapse-toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 4px 0 0;
+  width: auto;
+  font-size: 12px;
+  flex: none;
+}
+.collapse-toggle:hover {
+  color: var(--text);
+}
 
 textarea,
 input,

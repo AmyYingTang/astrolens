@@ -166,6 +166,8 @@ export function reducer(state: EditorState, action: Action): EditorState {
         fact_ref: null,
         label: { zh: '新标注', en: 'New label' },
         color_key: 'star',
+        shape: 'circle',
+        draw: true,
         circle: { cx: Math.round(width / 2), cy: Math.round(height / 2), r: Math.round(Math.min(width, height) / 8) },
         badge: { num: String(state.report.features.length + 1), offset_x: 0, offset_y: 0, bubble_r: 30 },
         explanation: { zh: '', en: '' },

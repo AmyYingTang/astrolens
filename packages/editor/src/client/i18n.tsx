@@ -35,6 +35,8 @@ export interface Strings {
   narrative: string;
   featuresLabel: string;
   add: string;
+  collapseAll: string;
+  expandAll: string;
   save: string;
   saved: string;
   deleteFeature: string;
@@ -75,6 +77,7 @@ export interface Strings {
   factsBSourceCv: string;
   factsBSourceGeometric: string;
   factsBSourceAi: string;
+  factsBSourceAtlas: string;
   factsNoneYet: string;
 }
 
@@ -111,6 +114,8 @@ const STRINGS: Record<UiLang, Strings> = {
     narrative: '导读',
     featuresLabel: '标注',
     add: '+ 添加',
+    collapseAll: '全部折叠',
+    expandAll: '全部展开',
     save: '保存',
     saved: '已保存',
     deleteFeature: '删除标注',
@@ -151,6 +156,7 @@ const STRINGS: Record<UiLang, Strings> = {
     factsBSourceCv: '图像检测 (CV)',
     factsBSourceGeometric: '几何推断',
     factsBSourceAi: 'AI 推断',
+    factsBSourceAtlas: '基准标注库',
     factsNoneYet: '没有事实层(此项目早于识别阶段)。',
   },
   en: {
@@ -186,6 +192,8 @@ const STRINGS: Record<UiLang, Strings> = {
     narrative: 'Narrative',
     featuresLabel: 'Features',
     add: '+ Add',
+    collapseAll: 'Collapse all',
+    expandAll: 'Expand all',
     save: 'Save',
     saved: 'Saved',
     deleteFeature: 'Delete feature',
@@ -226,6 +234,7 @@ const STRINGS: Record<UiLang, Strings> = {
     factsBSourceCv: 'Image-detected (CV)',
     factsBSourceGeometric: 'Geometric',
     factsBSourceAi: 'AI',
+    factsBSourceAtlas: 'Feature atlas',
     factsNoneYet: 'No fact sheet (this project predates the identification stage).',
   },
 };

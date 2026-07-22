@@ -57,7 +57,7 @@ export const FEATURE_TAXONOMY = {
   hh_jet: { zh: 'HH 喷流', en: 'Herbig–Haro jet', default_class: 'A', default_color_key: 'shock', catalogs: ['SIMBAD HH'], applies_to: ['emission_nebula'] },
 
   // — Ionization structures —
-  ionization_front: { zh: '电离锋面/bright rim', en: 'Ionization front', default_class: 'B-anchor', default_color_key: 'front', catalogs: ['anchor', 'BRC cat'], applies_to: ['emission_nebula'] },
+  ionization_front: { zh: '电离锋面', en: 'Ionization front', default_class: 'B-anchor', default_color_key: 'front', catalogs: ['anchor', 'BRC cat'], applies_to: ['emission_nebula'] },
   ionization_layering: { zh: '电离分层', en: 'Ionization stratification', default_class: 'B-visual', default_color_key: 'front', catalogs: ['color region'], applies_to: ['planetary_nebula', 'emission_nebula'] },
 
   // — Pillars / globules —

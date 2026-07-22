@@ -1,4 +1,5 @@
 import type * as React from 'react';
+import { useState } from 'react';
 import { ColorKey, COLOR_PALETTE, type Reading } from '@astrolens/schema';
 import type { Action } from './state.js';
 import { useUi } from './i18n.js';
@@ -24,6 +25,17 @@ export function Sidebar({
 }: Props): React.JSX.Element {
   const { t, lang } = useUi();
   const obj = report.object;
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const toggleCollapse = (id: string): void =>
+    setCollapsed((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const allCollapsed = report.features.length > 0 && report.features.every((f) => collapsed.has(f.id));
+  const toggleAll = (): void =>
+    setCollapsed(allCollapsed ? new Set() : new Set(report.features.map((f) => f.id)));
   return (
     <aside className="sidebar" style={style}>
       <header className="sidebar-head">
@@ -64,7 +76,14 @@ export function Sidebar({
           <label className="field-label">
             {t.featuresLabel} ({report.features.length})
           </label>
-          <button onClick={() => dispatch({ type: 'addFeature' })}>{t.add}</button>
+          <div className="block-head-actions">
+            {report.features.length > 1 && (
+              <button className="link-btn" onClick={toggleAll}>
+                {allCollapsed ? t.expandAll : t.collapseAll}
+              </button>
+            )}
+            <button onClick={() => dispatch({ type: 'addFeature' })}>{t.add}</button>
+          </div>
         </div>
 
         {report.features.map((f) => {
@@ -84,6 +103,16 @@ export function Sidebar({
                 </div>
               )}
               <div className="feature-row">
+                <button
+                  className="collapse-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCollapse(f.id);
+                  }}
+                  aria-label={collapsed.has(f.id) ? 'expand' : 'collapse'}
+                >
+                  {collapsed.has(f.id) ? '▸' : '▾'}
+                </button>
                 <span className="badge-dot" style={{ background: COLOR_PALETTE[f.color_key].badge }}>
                   {f.badge.num}
                 </span>
@@ -104,42 +133,46 @@ export function Sidebar({
                 </button>
               </div>
 
-              <div className="feature-row">
-                <select
-                  value={f.color_key}
-                  onChange={(e) =>
-                    dispatch({ type: 'setColor', id: f.id, color: e.target.value as ColorKey })
-                  }
-                >
-                  {ColorKey.options.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="num-input"
-                  value={f.badge.num}
-                  title={t.badgeNum}
-                  onFocus={() => dispatch({ type: 'beginChange' })}
-                  onChange={(e) =>
-                    dispatch({ type: 'setBadgeNum', id: f.id, num: e.target.value, commit: false })
-                  }
-                />
-              </div>
+              {!collapsed.has(f.id) && (
+                <>
+                  <div className="feature-row">
+                    <select
+                      value={f.color_key}
+                      onChange={(e) =>
+                        dispatch({ type: 'setColor', id: f.id, color: e.target.value as ColorKey })
+                      }
+                    >
+                      {ColorKey.options.map((k) => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      className="num-input"
+                      value={f.badge.num}
+                      title={t.badgeNum}
+                      onFocus={() => dispatch({ type: 'beginChange' })}
+                      onChange={(e) =>
+                        dispatch({ type: 'setBadgeNum', id: f.id, num: e.target.value, commit: false })
+                      }
+                    />
+                  </div>
 
-              <textarea
-                className="explanation"
-                value={[f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
-                  .filter(Boolean)
-                  .join('\n\n')}
-                rows={7}
-                placeholder={t.phExplanation}
-                onFocus={() => dispatch({ type: 'beginChange' })}
-                onChange={(e) =>
-                  dispatch({ type: 'setFeatureBody', id: f.id, lang, value: e.target.value, commit: false })
-                }
-              />
+                  <textarea
+                    className="explanation"
+                    value={[f.explanation[lang], f.physics?.[lang], f.interesting?.[lang]]
+                      .filter(Boolean)
+                      .join('\n\n')}
+                    rows={7}
+                    placeholder={t.phExplanation}
+                    onFocus={() => dispatch({ type: 'beginChange' })}
+                    onChange={(e) =>
+                      dispatch({ type: 'setFeatureBody', id: f.id, lang, value: e.target.value, commit: false })
+                    }
+                  />
+                </>
+              )}
             </div>
           );
         })}
