@@ -77,9 +77,13 @@ function toWcs(w: WcsInfo, input: SolveInput): Wcs {
     crpix_x: input.width / 2,
     crpix_y: input.height / 2,
     scale_deg: w.pixscale / 3600,
-    orientation_deg: w.orientation,
-    // wcsinfo parity: +1 normal, -1 flipped. Our CD convention (diag(parity,1)
-    // + a y-flip in worldToPixel) needs the opposite sign, same as nova.
+    // wcsinfo "orientation" = up (image +Y) E of N; our worldToPixel flips Y
+    // (internal +Y is down), so our orientation is 180° − it. Calibrated against
+    // nova on real fields (center 0.1px, edges ~19px = linear-TAN inter-solver
+    // scatter, not error). See localSolve calibration.
+    orientation_deg: 180 - w.orientation,
+    // wcsinfo parity: +1 normal, -1 flipped → our convention flips the sign
+    // (same as nova's cal.parity mapping).
     parity: w.parity < 0 ? 1 : -1,
     width: input.width,
     height: input.height,
