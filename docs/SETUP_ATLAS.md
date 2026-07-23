@@ -37,14 +37,19 @@ identifies it so the target's identity is filled in for you.
 Two layers, merged at apply time, so you can extend coverage without touching
 curated data:
 
-- **Shipped baseline** — `packages/atlas/data/` (what ships with the repo).
-- **Your overlay** — `~/.astrolens/atlas/` (**the default** for `astrolens atlas`).
+| layer | registry file | who owns it |
+|---|---|---|
+| **shipped baseline** | `packages/atlas/data/registry.json` (or `$ATLAS_REGISTRY`) | the project — curated; you get updates by pulling a new release |
+| **your overlay** | `~/.astrolens/atlas/registry.json` (or `$ATLAS_USER_REGISTRY`) | you, locally |
+
+They're merged by object identity: your overlay **extends** the baseline — add
+annotations to an existing target, or add targets it doesn't cover — without ever
+touching the shipped file. No merge conflicts.
 
 `./quickastrolens atlas` deliberately points at the **shipped seed**
 (`packages/atlas/data`) because this repo's launcher is the curator's entry point.
 If you're extending the atlas for yourself, use the bare CLI (`astrolens atlas`,
-which defaults to `~/.astrolens/atlas`) or pass `--data-dir <your dir>`. Details:
-[DEPLOY.md §2](DEPLOY.md#2-the-feature-atlas--baseline--your-own-overlay).
+which defaults to `~/.astrolens/atlas`) or pass `--data-dir <your dir>`.
 
 ## 3. Annotate
 
@@ -94,8 +99,9 @@ cloudflared tunnel --url http://localhost:3100     # prints an https://…tryclo
 ```
 
 That URL changes on every restart. For a stable address plus email-based access
-control, use a named tunnel on your own Cloudflare domain and add Cloudflare
-Access — see [DEPLOY.md §2](DEPLOY.md#hosting-it-for-a-reviewer-no-setup-on-their-side).
+control, use a named tunnel on your own Cloudflare domain (`cloudflared tunnel
+login` → `create` → `route dns` → `run`) and add Cloudflare Access (Zero Trust →
+Access → Applications) restricted to your and your reviewer's emails.
 
 > ⚠️ Only expose **port 3100** (the atlas tool). The studio on **3000 has no
 > authentication** — never tunnel it.
@@ -122,7 +128,33 @@ for the password.
 - There's no in-tool commenting — discuss elsewhere; the tool carries status and
   who approved.
 
-## 6. Troubleshooting
+## 6. Contributing back to the shipped atlas
+
+Coverage is the whole point, so contributions are welcome. Open a PR adding your
+approved entries to `packages/atlas/data/registry.json` (and reference images if
+useful). Maintainers review and merge; your targets then ship to everyone in the
+next release.
+
+## 7. Curating the shipped seed (maintainers)
+
+`./quickastrolens atlas` is the seed-curation entry point — it points the tool at
+the committed `packages/atlas/data/` instead of the per-user dir. Draw, approve,
+**Export registry**, then commit `packages/atlas/data/registry.json`.
+
+Under `packages/atlas/data/`, `atlas.json` and the reference images are working
+data; `registry.json` (approved-only) is the shipped artifact.
+
+## 8. Notes for self-deployers
+
+- **No hardcoded storage.** Reference images go through a storage adapter — local
+  filesystem by default; an R2/S3 backend is pluggable for a shared/hosted
+  instance. Credentials stay server-side env, never `VITE_`-prefixed.
+- **Readers need zero storage.** The apply side only reads `registry.json` (sky
+  coordinates); it never touches reference images.
+- **Plate-solving is replaceable** — nova, local astrometry.net, or your own
+  `SolveClient` (`packages/identify/src/solveClient.ts`).
+
+## 9. Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|

@@ -27,11 +27,14 @@ Edits auto-save. Stop the server with Ctrl+C. Everything lives under `out/<name>
 
 For most use, the two commands above are all you need.
 
-**Setting up from a fresh clone?** → [docs/SETUP_ASTROLENS.md](docs/SETUP_ASTROLENS.md)
-(the reading tool) · [docs/SETUP_ATLAS.md](docs/SETUP_ATLAS.md) (the feature-atlas
-annotation tool, incl. hosting it for a reviewer). Deeper configuration — offline
-plate-solving, the atlas data model, contributing annotations — is in
-[docs/DEPLOY.md](docs/DEPLOY.md).
+**Setting up from a fresh clone?** Two guides:
+
+- **[docs/SETUP_ASTROLENS.md](docs/SETUP_ASTROLENS.md)** — the reading tool:
+  prerequisites, install, choosing a plate-solver (incl. fully offline solving),
+  running the studio and CLI.
+- **[docs/SETUP_ATLAS.md](docs/SETUP_ATLAS.md)** — the feature-atlas annotation
+  tool: annotating, the atlas data model, hosting it for a reviewer, and
+  contributing annotations back.
 
 ---
 
