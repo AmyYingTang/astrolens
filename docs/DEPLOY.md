@@ -164,6 +164,46 @@ Your data, and where it lives:
 - **`registry.json`** — the approved-only export the consumer side reads. Merged
   with the baseline automatically.
 
+### Hosting it for a reviewer (no setup on their side)
+
+If a collaborator should review/annotate but isn't going to install anything,
+host the atlas tool yourself and give them a URL. This removes three problems at
+once: they need no git, no copy of the reference images, and no plate-solver —
+the images and solving live on your machine.
+
+```bash
+ATLAS_PASSWORD='pick-something-long' caffeinate -s ./quickastrolens atlas
+```
+
+- **`ATLAS_PASSWORD`** turns on HTTP Basic auth over the whole tool — pages, API
+  and reference images. **Set it before exposing the tool to a network**; unset,
+  the tool is wide open (fine only on localhost). Any username works.
+- **`caffeinate -s`** keeps the machine from sleeping while it runs. Locking the
+  screen is fine — processes keep running — but a *system* sleep kills the server
+  and any tunnel with it.
+
+Then expose it. A tunnel is the least setup (no public IP, no port forwarding):
+`cloudflared tunnel --url http://localhost:3100` gives an HTTPS URL; Cloudflare
+Access can additionally restrict it to specific emails. For always-on access
+that doesn't depend on your laptop, run the tool on a small VPS instead and keep
+the data dir there.
+
+**Two people, one instance** — safe by design, with one rule:
+
+- Each person sets the top-bar **current user** to their own name, so `author` /
+  `reviewed_by` are recorded truthfully.
+- Saves are serialized, and each entry carries a revision. If someone saves an
+  entry that changed since they loaded it, the save is **rejected** (not merged,
+  not silently applied) with a "reload before saving" message — so nobody's
+  approvals get clobbered by a stale tab. **Reload and redo that edit.**
+- Typical loop: the annotator draws and sets features to *in review*; the
+  reviewer opens the entry (read-only), clicks **Edit canonical**, and flips
+  each to *approved* or back to *draft*. When a batch is approved, **Export
+  registry** and commit `registry.json`.
+
+Only the person running the host needs git — the data lives on that machine, so
+they commit `atlas.json` / `registry.json` when checkpointing or shipping.
+
 ### Contribute back to the shipped atlas
 
 Coverage is the whole value, so contributions are welcome. Open a PR adding your

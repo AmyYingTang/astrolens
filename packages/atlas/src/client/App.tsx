@@ -136,6 +136,8 @@ export function App(): JSX.Element {
   const [editable, setEditable] = useState(true);
   const [kind, setKind] = useState<Kind>('new');
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  // Revision of the loaded entry, for optimistic-concurrency on save.
+  const [entryRev, setEntryRev] = useState(0);
 
   const curType = useMemo(() => types.find((x) => x.key === typeKey), [types, typeKey]);
   const geometry: Geometry = curType?.geometry ?? 'polygon';
@@ -240,6 +242,7 @@ export function App(): JSX.Element {
         setAliasesText(sug.aliases.join(', '));
       }
       setAnnotations([]);
+      setEntryRev(0);
       setEditable(true);
       setKind('new');
       setLoadedId(null);
@@ -328,6 +331,7 @@ export function App(): JSX.Element {
     setPrimaryId(entry.primary_id);
     setAliasesText(entry.aliases.join(', '));
     setAnnotations(entry.annotations);
+    setEntryRev(entry.rev ?? 0);
     setLoadedId(entry.primary_id);
     setEditable(false);
     setKind('canonical');
@@ -356,10 +360,21 @@ export function App(): JSX.Element {
         height_px: session.height,
       },
       annotations,
+      // The rev we loaded — the server rejects the save if it moved on, so we
+      // can't silently clobber the other editor's work.
+      rev: entryRev,
     };
     const r = await saveObject(entry.primary_id, { entry });
+    if (r.conflict) {
+      // Stale page: keep their edits on screen but make it clear a reload is needed.
+      setSaveMsg(`⚠ ${t('saveConflict')}`);
+      return; // no auto-clear — this one must be read
+    }
     setSaveMsg(r.ok ? t('saved') : `⚠ ${r.error ?? ''}`);
-    if (r.ok) void refreshObjects();
+    if (r.ok) {
+      setEntryRev(r.rev ?? entryRev + 1);
+      void refreshObjects();
+    }
     setTimeout(() => setSaveMsg(''), 2500);
   };
 

@@ -65,6 +65,10 @@ export interface SaveEntryRequest {
 export interface SaveEntryResponse {
   ok: boolean;
   error?: string;
+  /** New entry revision after a successful save. */
+  rev?: number;
+  /** True when the save was rejected because someone else changed the entry. */
+  conflict?: boolean;
 }
 
 export interface ExportRegistryResponse {

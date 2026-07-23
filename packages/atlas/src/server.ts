@@ -1,6 +1,7 @@
 import express from 'express';
 import { resolve, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { timingSafeEqual } from 'node:crypto';
 import { writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -88,9 +89,28 @@ function suggestIdentity(fs: FactSheet): SuggestedIdentity | null {
   return { primary_id, aliases, type: obj.type ? { zh: obj.type.zh, en: obj.type.en, otype: obj.type.otype } : undefined };
 }
 
+/** Constant-time string compare, so the shared password can't be timing-probed. */
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
 export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasServerHandle> {
   const port = opts.port ?? 3100;
   const store: AtlasStore = opts.store ?? new LocalAtlasStore({ dataDir: opts.dataDir });
+
+  // Serialize every atlas read-modify-write. Without this two concurrent saves
+  // can both load, then both write — silently losing one.
+  let writeChain: Promise<unknown> = Promise.resolve();
+  const withAtlasLock = <T>(fn: () => Promise<T>): Promise<T> => {
+    const run = writeChain.then(() => fn());
+    writeChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  };
 
   // In-memory solve jobs (nova is slow; upload returns a jobId the client polls).
   const jobs = new Map<string, SolveJob>();
@@ -107,6 +127,25 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
   };
 
   const app = express();
+
+  // Shared-password gate. Unset ($ATLAS_PASSWORD) → open, as for local single-
+  // user use. Set → HTTP Basic on everything (pages, API and reference images),
+  // which is what you want before exposing this over a tunnel. Any username.
+  const password = process.env.ATLAS_PASSWORD;
+  if (password) {
+    app.use((req, res, next) => {
+      const header = req.headers.authorization ?? '';
+      const [scheme, encoded] = header.split(' ');
+      if (scheme === 'Basic' && encoded) {
+        const given = Buffer.from(encoded, 'base64').toString('utf8');
+        const pass = given.slice(given.indexOf(':') + 1);
+        if (safeEqual(pass, password)) return next();
+      }
+      res.set('WWW-Authenticate', 'Basic realm="astrolens atlas", charset="UTF-8"');
+      res.status(401).send('Authentication required.');
+    });
+  }
+
   // Client downscales reference images before upload, so payloads are small;
   // this is a generous backstop for the rare large one that slips through.
   app.use(express.json({ limit: '96mb' }));
@@ -231,18 +270,35 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
     res.json({ entry } satisfies EntryResponse);
   });
 
-  // Upsert an entry (matched by normalised primary_id). Read-modify-write on the
-  // single atlas data file — fine for the single-editor internal tool.
+  // Upsert an entry (matched by normalised primary_id). Serialized, and guarded
+  // by the entry's `rev`: the client must send the rev it loaded, so a stale page
+  // can't silently overwrite someone else's edits (two people, one instance).
   app.put('/api/object/:id', async (req, res) => {
     try {
-      const entry = AtlasEntry.parse((req.body as SaveEntryRequest).entry);
-      const atlas = await store.loadAtlas();
-      const key = normalizeId(entry.primary_id);
-      const idx = atlas.objects.findIndex((o) => normalizeId(o.primary_id) === key);
-      if (idx >= 0) atlas.objects[idx] = entry;
-      else atlas.objects.push(entry);
-      await store.saveAtlas(AtlasFile.parse(atlas));
-      res.json({ ok: true } satisfies SaveEntryResponse);
+      const incoming = AtlasEntry.parse((req.body as SaveEntryRequest).entry);
+      const result = await withAtlasLock(async () => {
+        const atlas = await store.loadAtlas();
+        const key = normalizeId(incoming.primary_id);
+        const idx = atlas.objects.findIndex((o) => normalizeId(o.primary_id) === key);
+        const current = idx >= 0 ? atlas.objects[idx] : undefined;
+        if (current && current.rev !== incoming.rev) {
+          return { conflict: true, rev: current.rev } as const;
+        }
+        const saved = { ...incoming, rev: (current?.rev ?? 0) + 1 };
+        if (idx >= 0) atlas.objects[idx] = saved;
+        else atlas.objects.push(saved);
+        await store.saveAtlas(AtlasFile.parse(atlas));
+        return { conflict: false, rev: saved.rev } as const;
+      });
+      if (result.conflict) {
+        res.status(409).json({
+          ok: false,
+          conflict: true,
+          error: 'This entry was changed by someone else since you loaded it. Reload before saving.',
+        } satisfies SaveEntryResponse);
+        return;
+      }
+      res.json({ ok: true, rev: result.rev } satisfies SaveEntryResponse);
     } catch (e) {
       res.status(400).json({ ok: false, error: (e as Error).message } satisfies SaveEntryResponse);
     }

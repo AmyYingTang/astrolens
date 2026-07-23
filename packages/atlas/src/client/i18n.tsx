@@ -62,6 +62,10 @@ const STRINGS = {
   annotations: { zh: '标注', en: 'Annotations' },
   save: { zh: '保存到库', en: 'Save to atlas' },
   saved: { zh: '已保存', en: 'Saved' },
+  saveConflict: {
+    zh: '这条已被他人修改，请刷新页面重新载入后再保存（避免覆盖对方的改动）。',
+    en: 'Someone else changed this entry — reload before saving so you don’t overwrite their work.',
+  },
   required: { zh: '必填', en: 'required' },
   needImage: { zh: '需先上传并定位一张参考图', en: 'Upload & solve a reference image first' },
   needId: { zh: '需先填「主 ID」才能保存', en: 'Enter a primary ID to save' },

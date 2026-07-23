@@ -56,6 +56,11 @@ export const AtlasEntry = z.object({
   aliases: z.array(z.string()).default([]),
   reference: Reference.optional(),
   annotations: z.array(Annotation).default([]),
+  /** Optimistic-concurrency counter, bumped by the server on every save. A
+   *  client must send back the rev it loaded; a mismatch means someone else
+   *  saved meanwhile, so the write is rejected instead of silently clobbering
+   *  their work (two people share one hosted instance). */
+  rev: z.number().default(0),
 });
 export type AtlasEntry = z.infer<typeof AtlasEntry>;
 
