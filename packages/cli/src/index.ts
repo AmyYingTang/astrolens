@@ -84,9 +84,17 @@ cli
   .command('studio', 'Launch the astrolens studio (home + editor) in the browser')
   .option('--workspace <dir>', 'Projects directory', { default: 'out' })
   .option('--port <port>', 'Port to serve on', { default: 3000 })
+  .option('--atlas-data-dir <dir>', 'Feature-atlas data dir (default ~/.astrolens/atlas)')
+  .option('--atlas-port <port>', 'Port for the co-launched feature-atlas tool', { default: 3100 })
   .option('--no-open', 'Do not open the browser automatically')
   .action(async (options) => {
-    await studio({ workspace: options.workspace, port: Number(options.port), open: options.open });
+    await studio({
+      workspace: options.workspace,
+      port: Number(options.port),
+      open: options.open,
+      atlasDataDir: options.atlasDataDir,
+      atlasPort: Number(options.atlasPort),
+    });
   });
 
 cli

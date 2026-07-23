@@ -5,6 +5,7 @@ export type UiLang = 'zh' | 'en';
 
 export interface Strings {
   newReading: string;
+  atlasLink: string;
   newReadingDesc: string;
   pickImage: string;
   hintPlaceholder: string;
@@ -84,6 +85,7 @@ export interface Strings {
 const STRINGS: Record<UiLang, Strings> = {
   zh: {
     newReading: '新读图',
+    atlasLink: '基准标注库',
     newReadingDesc: '选一张深空摄影图,astrolens 会识别天体并自动标注,然后进入微调页面。',
     pickImage: '选择图片…',
     hintPlaceholder: '对象名提示(可选),如 "Sh2-308"',
@@ -161,6 +163,7 @@ const STRINGS: Record<UiLang, Strings> = {
   },
   en: {
     newReading: 'New reading',
+    atlasLink: 'Feature Atlas',
     newReadingDesc:
       'Pick a deep-sky photo — astrolens identifies the object, annotates it, then opens the editor.',
     pickImage: 'Choose image…',

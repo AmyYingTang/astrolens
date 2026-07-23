@@ -61,7 +61,17 @@ export function Home(): React.JSX.Element {
     <div className="home">
       <div className="home-header">
         <h1 className="home-title">astrolens</h1>
-        <LangToggle />
+        <div className="home-header-actions">
+          <a
+            className="atlas-link"
+            href={`http://${window.location.hostname}:3100`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t.atlasLink} ↗
+          </a>
+          <LangToggle />
+        </div>
       </div>
 
       <section className="home-card">

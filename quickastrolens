@@ -52,7 +52,8 @@ cmd="${1:-studio}"
 case "$cmd" in
   studio)
     ensure_built
-    node "$CLI" studio
+    # Curator context → the co-launched atlas edits the shipped seed.
+    node "$CLI" studio --atlas-data-dir "$ROOT/packages/atlas/data"
     ;;
 
   setup)
