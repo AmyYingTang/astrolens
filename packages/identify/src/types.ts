@@ -18,6 +18,8 @@ export interface SolveResult {
   elapsed_ms?: number;
   /** True when served from the on-disk solve cache (instant, no nova). */
   cached?: boolean;
+  /** Which solver produced this: 'nova' | 'local astrometry.net'. */
+  solver?: string;
 }
 
 /** Pluggable plate-solver (nova in production; mock in tests). */

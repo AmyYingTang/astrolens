@@ -8,6 +8,7 @@ import {
   identify,
   createConfiguredSolveClient,
   isLocalSolver,
+  solverName,
   createSimbadCatalogClient,
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
@@ -111,6 +112,11 @@ export async function startStudioServer(opts: StudioServerOptions): Promise<Stud
 
   const app = express();
   app.use(express.json({ limit: '48mb' }));
+
+  // Which plate-solver is configured — shown in the studio UI.
+  app.get('/api/config', (_req, res) =>
+    res.json({ solver: solverName(), localSolver: isLocalSolver() }),
+  );
 
   app.get('/api/projects', async (_req, res) => {
     const entries = await readdir(workspace, { withFileTypes: true });

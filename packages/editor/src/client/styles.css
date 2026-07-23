@@ -885,3 +885,17 @@ textarea.explanation {
   font-size: 12px;
   padding: 2px 8px;
 }
+
+/* Which plate-solver is configured (studio home header). */
+.solver-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #2c3247);
+  color: var(--muted, #7a86a8);
+  white-space: nowrap;
+}
+.solver-badge.local {
+  color: #9ece6a;
+  border-color: #9ece6a;
+}

@@ -27,6 +27,11 @@ async function jsonPost<T>(url: string, body: unknown): Promise<T> {
   }
 }
 
+export async function fetchConfig(): Promise<{ solver: string; localSolver: boolean }> {
+  const r = await fetch('/api/config');
+  return (await r.json()) as { solver: string; localSolver: boolean };
+}
+
 export async function fetchFeatureTypes(): Promise<FeatureType[]> {
   const r = await fetch('/api/feature-types');
   const { featureTypes } = (await r.json()) as { featureTypes: FeatureType[] };

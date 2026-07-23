@@ -2,6 +2,7 @@ import { resolve, join } from 'node:path';
 import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { startAtlasServer } from '@astrolens/atlas';
+import { solverName } from '@astrolens/identify';
 
 export interface AtlasArgs {
   dataDir?: string;
@@ -18,6 +19,7 @@ export async function atlas(args: AtlasArgs): Promise<void> {
 
   console.log(`astrolens feature-atlas tool running at ${handle.url}`);
   console.log(`Data dir: ${dataDir}`);
+  console.log(`Plate-solver: ${solverName()}`);
   console.log('Press Ctrl+C to stop.');
 
   if (args.open) {

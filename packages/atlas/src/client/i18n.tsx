@@ -33,6 +33,7 @@ const STRINGS = {
   listHint: { zh: '存入库前，可点图上标记「×」删除某条', en: 'Before saving, click the × on a shape to delete it' },
   libraryTitle: { zh: '库中已有', en: 'In the atlas' },
   currentUser: { zh: '当前用户', en: 'Current user' },
+  solverLabel: { zh: '解算器', en: 'Solver' },
   // edit modes
   previewOnly: { zh: '只读预览 — 点「编辑真值」修改或审核', en: 'Read-only preview — click "Edit canonical" to change or review' },
   editingCanonical: { zh: '编辑真值中（改动会写回基准库）', en: 'Editing canonical (changes go to the shared baseline)' },

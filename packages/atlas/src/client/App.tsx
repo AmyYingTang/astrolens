@@ -4,6 +4,7 @@ import { Canvas, type Shape } from './Canvas.js';
 import { useLang } from './i18n.js';
 import {
   fetchFeatureTypes,
+  fetchConfig,
   uploadImage,
   pollJob,
   listObjects,
@@ -110,6 +111,7 @@ export function App(): JSX.Element {
   const [objects, setObjects] = useState<ObjectSummary[]>([]);
   const [saveMsg, setSaveMsg] = useState('');
   const [exportMsg, setExportMsg] = useState('');
+  const [solverInfo, setSolverInfo] = useState<{ solver: string; localSolver: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const previewFileRef = useRef<HTMLInputElement>(null);
 
@@ -180,6 +182,7 @@ export function App(): JSX.Element {
       const first = f.find((x) => x.defaultOn) ?? f[0];
       if (first) setTypeKey(first.key);
     });
+    void fetchConfig().then(setSolverInfo).catch(() => setSolverInfo(null));
     void refreshObjects();
   }, []);
 
@@ -423,6 +426,11 @@ export function App(): JSX.Element {
           <span className="sub">{t('subtitle')}</span>
         </div>
         <div className="topbar-right">
+          {solverInfo && (
+            <span className={solverInfo.localSolver ? 'solver-badge local' : 'solver-badge'}>
+              {t('solverLabel')}: {solverInfo.solver}
+            </span>
+          )}
           <label className="user-field">
             {t('currentUser')}:
             <input value={currentUser} onChange={(e) => setCurrentUser(e.target.value)} />

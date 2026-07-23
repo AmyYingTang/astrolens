@@ -22,11 +22,16 @@ export function Home(): React.JSX.Element {
   const [hint, setHint] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [solver, setSolver] = useState<{ solver: string; localSolver: boolean } | null>(null);
 
   useEffect(() => {
     listProjects()
       .then(setProjects)
       .catch(() => setProjects([]));
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then(setSolver)
+      .catch(() => setSolver(null));
   }, []);
 
   // Home only runs Stage 1 (identify). The AI reading is generated later from the
@@ -62,6 +67,18 @@ export function Home(): React.JSX.Element {
       <div className="home-header">
         <h1 className="home-title">astrolens</h1>
         <div className="home-header-actions">
+          {solver && (
+            <span
+              className={`solver-badge${solver.localSolver ? ' local' : ''}`}
+              title={
+                solver.localSolver
+                  ? 'Offline local astrometry.net (ASTROLENS_SOLVER=local)'
+                  : 'Remote nova.astrometry.net — needs network'
+              }
+            >
+              {t.solverLabel}: {solver.solver}
+            </span>
+          )}
           <a
             className="atlas-link"
             href={`http://${window.location.hostname}:3100`}

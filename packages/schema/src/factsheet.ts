@@ -120,6 +120,9 @@ export const FactSheet = z.object({
     solve_ms: z.number().optional(),
     /** True when the solve was served from the on-disk cache (instant). */
     solve_cached: z.boolean().optional(),
+    /** Which solver produced this WCS: 'nova' | 'local astrometry.net'. On a
+     * cache hit this is the solver that originally solved the image. */
+    solver: z.string().optional(),
     /** Full WCS used to project sky → pixel (for re-projection / debug grid). */
     wcs: Wcs.optional(),
     frame: z.enum(['display', 'co-registered', 'none']), // which pixel grid the WCS applies to

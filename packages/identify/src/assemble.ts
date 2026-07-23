@@ -92,6 +92,8 @@ export interface AssembleArgs {
   /** Plate-solve wall-clock time (ms) + whether it was a cache hit. */
   solveMs?: number;
   solveCached?: boolean;
+  /** Which solver produced the WCS ('nova' | 'local astrometry.net'). */
+  solver?: string;
   /** Already gated, prominence-filtered and ranked (see selectObjects). */
   selected: GatedCandidate[];
   queries: string[];
@@ -187,6 +189,7 @@ export function assembleFactSheet(args: AssembleArgs): FactSheet {
       nova_job_id: args.novaJobId,
       ...(args.solveMs != null ? { solve_ms: args.solveMs } : {}),
       ...(args.solveCached != null ? { solve_cached: args.solveCached } : {}),
+      ...(args.solver ? { solver: args.solver } : {}),
       wcs,
       frame: 'display',
     },

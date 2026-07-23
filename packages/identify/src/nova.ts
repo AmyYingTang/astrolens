@@ -148,7 +148,7 @@ export function createNovaSolveClient(opts: NovaOptions): SolveClient {
         width: input.width,
         height: input.height,
       };
-      return { status: 'solved', wcs, nova_job_id: String(jobId), elapsed_ms: Date.now() - t0 };
+      return { status: 'solved', wcs, nova_job_id: String(jobId), elapsed_ms: Date.now() - t0, solver: 'nova' };
     } catch (e) {
       const msg = errMsg(e);
       log(`failed in ${secs()}: ${msg}`);

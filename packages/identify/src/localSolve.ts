@@ -144,7 +144,7 @@ export function createLocalSolveClient(opts: LocalSolveOptions = {}): SolveClien
 
       const wcs = toWcs(info, input);
       log(`✔ solved in ${((Date.now() - t0) / 1000).toFixed(1)}s: ra=${wcs.ra0_deg.toFixed(4)} dec=${wcs.dec0_deg.toFixed(4)} pixscale=${info.pixscale.toFixed(2)}″/px`);
-      return { status: 'solved', wcs, elapsed_ms: Date.now() - t0 };
+      return { status: 'solved', wcs, elapsed_ms: Date.now() - t0, solver: 'local astrometry.net' };
     } catch (e) {
       return { status: 'failed', error: (e as Error).message, elapsed_ms: Date.now() - t0 };
     } finally {

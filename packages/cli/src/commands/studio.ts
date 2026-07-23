@@ -3,6 +3,7 @@ import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { startStudioServer } from '@astrolens/editor';
 import { startAtlasServer } from '@astrolens/atlas';
+import { solverName } from '@astrolens/identify';
 import { TOOL_VERSION } from '../version.js';
 
 export interface StudioArgs {
@@ -32,6 +33,7 @@ export async function studio(args: StudioArgs): Promise<void> {
 
   console.log(`astrolens studio running at ${handle.url}`);
   console.log(`Workspace: ${workspace}`);
+  console.log(`Plate-solver: ${solverName()}`);
   console.log('Press Ctrl+C to stop.');
 
   if (args.open) {

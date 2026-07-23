@@ -9,6 +9,7 @@ import {
   identify,
   createConfiguredSolveClient,
   isLocalSolver,
+  solverName,
   createSimbadCatalogClient,
   createVizierCatalogClient,
   createOpenNgcCatalogClient,
@@ -109,6 +110,11 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
   // Client downscales reference images before upload, so payloads are small;
   // this is a generous backstop for the rare large one that slips through.
   app.use(express.json({ limit: '96mb' }));
+
+  // Which plate-solver is configured — shown in the tool's UI.
+  app.get('/api/config', (_req, res) =>
+    res.json({ solver: solverName(), localSolver: isLocalSolver() }),
+  );
 
   // Static feature-type vocabulary — one source for client + server.
   app.get('/api/feature-types', (_req, res) => res.json({ featureTypes: FEATURE_TYPES }));

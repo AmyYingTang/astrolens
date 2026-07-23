@@ -385,3 +385,17 @@ button.link {
   height: 100%;
   color: var(--muted);
 }
+
+/* Which plate-solver is configured (top bar). */
+.solver-badge {
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.solver-badge.local {
+  color: #9ece6a;
+  border-color: #9ece6a;
+}
