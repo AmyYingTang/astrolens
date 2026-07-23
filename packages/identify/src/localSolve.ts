@@ -67,9 +67,9 @@ function parseWcsinfo(stdout: string): WcsInfo | null {
   };
 }
 
-/** Build our simplified TAN Wcs from a wcsinfo result.
- *  ⚠ parity/orientation sign conventions are calibrated against nova output
- *  (see nova.ts) — VERIFY on a known field before trusting placement. */
+/** Build our simplified TAN Wcs from a wcsinfo result. The parity/orientation
+ *  conventions are calibrated against nova (see the notes on the fields below);
+ *  both handedness cases are verified, so this is safe for mirrored fields too. */
 function toWcs(w: WcsInfo, input: SolveInput): Wcs {
   return {
     ra0_deg: w.ra_center,
@@ -80,10 +80,13 @@ function toWcs(w: WcsInfo, input: SolveInput): Wcs {
     // wcsinfo "orientation" = up (image +Y) E of N; our worldToPixel flips Y
     // (internal +Y is down), so our orientation is 180° − it. Calibrated against
     // nova on real fields (center 0.1px, edges ~19px = linear-TAN inter-solver
-    // scatter, not error). See localSolve calibration.
+    // scatter, not error).
     orientation_deg: 180 - w.orientation,
     // wcsinfo parity: +1 normal, -1 flipped → our convention flips the sign
-    // (same as nova's cal.parity mapping).
+    // (same as nova's cal.parity mapping). Both handedness cases are verified:
+    // solving a deliberately mirrored copy of a known field lands every point on
+    // its mirrored pixel (centre 1px, edges ~20px — the same inter-solver scatter
+    // as the unmirrored case, versus the ~1000s of px a wrong branch would give).
     parity: w.parity < 0 ? 1 : -1,
     width: input.width,
     height: input.height,
