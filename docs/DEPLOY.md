@@ -94,6 +94,31 @@ image is instant regardless of solver.
 `SOLVE_FIELD`, `WCSINFO` (binary/config paths), `ASTROLENS_FOV_LOW` /
 `ASTROLENS_FOV_HIGH` (field-width degree bounds).
 
+### Switching, and checking which one is active
+
+Put the choice in `.env` (repo root) so every entry point picks it up:
+
+```bash
+ASTROLENS_SOLVER=local     # or: nova  (omit the line for nova)
+```
+
+…or override per-run: `ASTROLENS_SOLVER=nova ./quickastrolens read img.jpg`.
+
+Three places tell you which solver a run is using — worth a glance before a live
+session:
+
+1. **Startup log** — `astrolens studio` / `astrolens atlas` print a
+   `Plate-solver: …` line; `read` prints `Plate-solving (…)`.
+2. **In the UI** — a badge in the studio home header and the atlas top bar shows
+   the configured solver, **green when it's the offline local one**.
+3. **Per-run, after the fact** — `factsheet.solve.solver` records which solver
+   produced that WCS, so an old reading still tells you. (On a cache hit it's the
+   solver that *originally* solved that image.)
+
+Solve timing is logged too — `Plate-solved in 12.3s` or `cache (instant)`, plus
+`factsheet.solve.solve_ms` / `solve_cached` — so you can see what a live session
+will actually cost.
+
 ---
 
 ## 2. The feature atlas — baseline + your own overlay
