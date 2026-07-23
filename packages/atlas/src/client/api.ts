@@ -5,6 +5,7 @@ import type {
   SaveEntryRequest,
   SaveEntryResponse,
   SolveJob,
+  TargetsResponse,
   UploadRequest,
   UploadResponse,
 } from '../shared.js';
@@ -45,6 +46,11 @@ export function uploadImage(body: UploadRequest): Promise<UploadResponse> {
 export async function getJob(id: string): Promise<SolveJob> {
   const r = await fetch(`/api/job/${id}`);
   return (await r.json()) as SolveJob;
+}
+
+export async function fetchTargets(): Promise<TargetsResponse> {
+  const r = await fetch('/api/targets');
+  return (await r.json()) as TargetsResponse;
 }
 
 export async function listObjects(): Promise<ObjectsResponse> {

@@ -20,6 +20,7 @@ import type { FactSheet } from '@astrolens/schema';
 import { AtlasEntry, AtlasFile, normalizeId } from './atlas.js';
 import { LocalAtlasStore, type AtlasStore } from './store.js';
 import { FEATURE_TYPES } from './featureTypes.js';
+import { SEED_TARGETS } from './seedTargets.js';
 import type {
   ObjectsResponse,
   ObjectSummary,
@@ -30,6 +31,8 @@ import type {
   SolveJob,
   StatusCounts,
   SuggestedIdentity,
+  TargetRow,
+  TargetsResponse,
   UploadRequest,
   UploadResponse,
 } from './shared.js';
@@ -258,6 +261,58 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
       status: statusCounts(o),
     }));
     res.json({ objects } satisfies ObjectsResponse);
+  });
+
+  // The target list: the curated seed pool LEFT-JOINed with real atlas entries,
+  // so un-annotated targets simply show 0. Nothing here is written to atlas.json
+  // — the pool is static config. Entries that aren't in the pool (user-added) are
+  // appended so the list is still the complete picture.
+  app.get('/api/targets', async (_req, res) => {
+    const atlas = await store.loadAtlas();
+    const claimed = new Set<AtlasEntry>();
+    const targets: TargetRow[] = SEED_TARGETS.map((t) => {
+      const keys = new Set(t.match.map(normalizeId));
+      const entry = atlas.objects.find(
+        (o) => keys.has(normalizeId(o.primary_id)) || o.aliases.some((a) => keys.has(normalizeId(a))),
+      );
+      if (entry) claimed.add(entry);
+      return {
+        key: t.key,
+        name_en: t.name_en,
+        name_zh: t.name_zh,
+        kind_en: t.kind_en,
+        kind_zh: t.kind_zh,
+        note_en: t.note_en,
+        note_zh: t.note_zh,
+        hemisphere: t.hemisphere,
+        features: [...t.features],
+        match: [...t.match],
+        seed: true,
+        ...(entry ? { primary_id: entry.primary_id } : {}),
+        annotations: entry?.annotations.length ?? 0,
+        status: entry ? statusCounts(entry) : { draft: 0, in_review: 0, approved: 0 },
+      };
+    });
+    for (const o of atlas.objects) {
+      if (claimed.has(o)) continue;
+      targets.push({
+        key: `entry:${o.primary_id}`,
+        name_en: o.primary_id,
+        name_zh: o.primary_id,
+        kind_en: '—',
+        kind_zh: '—',
+        note_en: 'Added outside the seed pool.',
+        note_zh: '清单之外自行添加的条目。',
+        hemisphere: '',
+        features: [],
+        match: [o.primary_id, ...o.aliases],
+        seed: false,
+        primary_id: o.primary_id,
+        annotations: o.annotations.length,
+        status: statusCounts(o),
+      });
+    }
+    res.json({ targets } satisfies TargetsResponse);
   });
 
   app.get('/api/object/:id', async (req, res) => {

@@ -7,14 +7,14 @@ import {
   fetchConfig,
   uploadImage,
   pollJob,
-  listObjects,
+  fetchTargets,
   getObject,
   saveObject,
   exportRegistry,
 } from './api.js';
 import type { FeatureType, Geometry } from '../featureTypes.js';
 import type { Annotation, AnnoStatus, AtlasEntry } from '../atlas.js';
-import type { ObjectSummary } from '../shared.js';
+import type { TargetRow } from '../shared.js';
 
 type Kind = 'new' | 'canonical' | 'other';
 
@@ -108,7 +108,9 @@ export function App(): JSX.Element {
   const [labelZh, setLabelZh] = useState('');
   const [labelEn, setLabelEn] = useState('');
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [objects, setObjects] = useState<ObjectSummary[]>([]);
+  const [targets, setTargets] = useState<TargetRow[]>([]);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'none' | 'draft' | 'review' | 'approved'>('all');
   const [saveMsg, setSaveMsg] = useState('');
   const [exportMsg, setExportMsg] = useState('');
   const [solverInfo, setSolverInfo] = useState<{ solver: string; localSolver: boolean } | null>(null);
@@ -185,12 +187,12 @@ export function App(): JSX.Element {
       if (first) setTypeKey(first.key);
     });
     void fetchConfig().then(setSolverInfo).catch(() => setSolverInfo(null));
-    void refreshObjects();
+    void refreshTargets();
   }, []);
 
-  const refreshObjects = async (): Promise<void> => {
-    const { objects } = await listObjects();
-    setObjects(objects);
+  const refreshTargets = async (): Promise<void> => {
+    const { targets } = await fetchTargets();
+    setTargets(targets);
   };
 
   const onPickFile = async (file: File, opts?: { preview?: boolean }): Promise<void> => {
@@ -373,7 +375,7 @@ export function App(): JSX.Element {
     setSaveMsg(r.ok ? t('saved') : `⚠ ${r.error ?? ''}`);
     if (r.ok) {
       setEntryRev(r.rev ?? entryRev + 1);
-      void refreshObjects();
+      void refreshTargets();
     }
     setTimeout(() => setSaveMsg(''), 2500);
   };
@@ -404,6 +406,22 @@ export function App(): JSX.Element {
   const draft = session
     ? { verticesPx: draftPx, type: geometry, color: curType?.hint ?? '#7aa2f7' }
     : null;
+
+  // Target list = seed pool ⟕ real entries, narrowed by search + status filter.
+  const visibleTargets = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return targets.filter((x) => {
+      if (filter === 'none' && x.annotations !== 0) return false;
+      if (filter === 'draft' && x.status.draft === 0) return false;
+      if (filter === 'review' && x.status.in_review === 0) return false;
+      if (filter === 'approved' && x.status.approved === 0) return false;
+      if (!q) return true;
+      return [x.name_en, x.name_zh, x.kind_en, x.kind_zh, x.primary_id ?? '', ...x.match]
+        .join(' ')
+        .toLowerCase()
+        .includes(q);
+    });
+  }, [targets, query, filter]);
 
   const statusLabel = (s: AnnoStatus): string =>
     s === 'approved' ? t('stApproved') : s === 'in_review' ? t('stReview') : t('stDraft');
@@ -602,25 +620,77 @@ export function App(): JSX.Element {
             </section>
           )}
 
-          {objects.length > 0 && (
-            <section className="library">
-              <h3>
-                {t('libraryTitle')} ({objects.length})
-              </h3>
-              <ul className="annos">
-                {objects.map((o) => (
-                  <li key={o.primary_id}>
-                    <button className="link" onClick={() => void loadEntry(o.primary_id)}>
-                      {o.primary_id}
-                    </button>
-                    <span className="count">{o.annotations}</span>
+          <section className="library">
+            <h3>
+              {t('targetsTitle')} ·{' '}
+              {t('targetsDone')
+                .replace('{a}', String(targets.filter((x) => x.annotations > 0).length))
+                .replace('{b}', String(targets.length))}
+            </h3>
+            <input
+              className="target-search"
+              placeholder={t('searchPlaceholder')}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <div className="filters">
+              {(['all', 'none', 'draft', 'review', 'approved'] as const).map((f) => (
+                <button
+                  key={f}
+                  className={filter === f ? 'chip active' : 'chip'}
+                  onClick={() => setFilter(f)}
+                >
+                  {t(
+                    f === 'all'
+                      ? 'fAll'
+                      : f === 'none'
+                        ? 'fNone'
+                        : f === 'draft'
+                          ? 'fDraft'
+                          : f === 'review'
+                            ? 'fReview'
+                            : 'fApproved',
+                  )}
+                </button>
+              ))}
+            </div>
+            <ul className="targets">
+              {visibleTargets.length === 0 && <li className="muted-li">{t('noMatch')}</li>}
+              {visibleTargets.map((x) => {
+                const done = x.status.approved > 0 && x.status.approved === x.annotations;
+                return (
+                  <li
+                    key={x.key}
+                    className={x.annotations === 0 ? 'target none' : done ? 'target done' : 'target'}
+                    title={`${lang === 'zh' ? x.kind_zh : x.kind_en}\n${lang === 'zh' ? x.note_zh : x.note_en}${
+                      x.features.length ? `\n${t('suggested')}: ${x.features.join(', ')}` : ''
+                    }`}
+                  >
+                    {x.primary_id ? (
+                      <button className="link" onClick={() => void loadEntry(x.primary_id!)}>
+                        {lang === 'zh' ? x.name_zh : x.name_en}
+                      </button>
+                    ) : (
+                      <span className="target-name">{lang === 'zh' ? x.name_zh : x.name_en}</span>
+                    )}
+                    <span className="target-counts">
+                      {x.annotations === 0 ? (
+                        '0'
+                      ) : (
+                        <>
+                          {x.status.approved > 0 && <b className="ok">{x.status.approved}✓</b>}
+                          {x.status.in_review > 0 && <b className="rev">{x.status.in_review}⏳</b>}
+                          {x.status.draft > 0 && <b className="dft">{x.status.draft}</b>}
+                        </>
+                      )}
+                    </span>
                   </li>
-                ))}
-              </ul>
-              <button onClick={doExport}>{t('exportRegistry')}</button>
-              {exportMsg && <p className="status">{exportMsg}</p>}
-            </section>
-          )}
+                );
+              })}
+            </ul>
+            <button onClick={doExport}>{t('exportRegistry')}</button>
+            {exportMsg && <p className="status">{exportMsg}</p>}
+          </section>
         </aside>
 
         <main className="stage-area">

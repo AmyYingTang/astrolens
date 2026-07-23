@@ -71,6 +71,33 @@ export interface SaveEntryResponse {
   conflict?: boolean;
 }
 
+/** A row in the target list: a seed-pool target and/or a real atlas entry. */
+export interface TargetRow {
+  key: string;
+  name_en: string;
+  name_zh: string;
+  kind_en: string;
+  kind_zh: string;
+  note_en: string;
+  note_zh: string;
+  hemisphere: string;
+  /** Suggested feature types to draw. */
+  features: string[];
+  /** Identity strings, so search finds a target even before it's annotated. */
+  match: string[];
+  /** True when this came from the curated seed pool (false = user-added entry). */
+  seed: boolean;
+  /** The atlas entry's primary_id, when one exists. */
+  primary_id?: string;
+  /** 0 when nothing has been annotated for this target yet. */
+  annotations: number;
+  status: StatusCounts;
+}
+
+export interface TargetsResponse {
+  targets: TargetRow[];
+}
+
 export interface ExportRegistryResponse {
   ok: boolean;
   objects?: number;

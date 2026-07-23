@@ -399,3 +399,79 @@ button.link {
   color: #9ece6a;
   border-color: #9ece6a;
 }
+
+/* Target list (seed pool ⟕ atlas entries) */
+.target-search {
+  margin-bottom: 8px;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.chip {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: auto;
+}
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0d1017;
+  font-weight: 600;
+}
+.targets {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.targets li.target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(44, 50, 71, 0.5);
+}
+.targets li.target.none .target-name,
+.targets li.target.none .target-counts {
+  color: var(--muted);
+}
+.targets li.target.done .link {
+  color: #9ece6a;
+}
+.target-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.targets .link {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.target-counts {
+  margin-left: auto;
+  font-size: 11px;
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+.target-counts .ok {
+  color: #9ece6a;
+}
+.target-counts .rev {
+  color: #e0af68;
+}
+.target-counts .dft {
+  color: var(--muted);
+}
