@@ -278,6 +278,7 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
       if (entry) claimed.add(entry);
       return {
         key: t.key,
+        designation: t.designation,
         name_en: t.name_en,
         name_zh: t.name_zh,
         kind_en: t.kind_en,
@@ -297,6 +298,7 @@ export async function startAtlasServer(opts: AtlasServerOptions): Promise<AtlasS
       if (claimed.has(o)) continue;
       targets.push({
         key: `entry:${o.primary_id}`,
+        designation: o.primary_id,
         name_en: o.primary_id,
         name_zh: o.primary_id,
         kind_en: '—',

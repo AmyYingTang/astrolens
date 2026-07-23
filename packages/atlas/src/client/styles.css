@@ -475,3 +475,13 @@ button.link {
 .target-counts .dft {
   color: var(--muted);
 }
+.target-desig {
+  flex: none;
+  min-width: 78px;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.targets li.target.done .target-desig {
+  color: #7e9e5e;
+}

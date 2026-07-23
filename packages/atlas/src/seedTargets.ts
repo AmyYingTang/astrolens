@@ -19,6 +19,8 @@ export type Hemisphere = 'north' | 'south' | 'equatorial';
 export interface SeedTarget {
   /** Stable internal key (not the atlas identity). */
   key: string;
+  /** Catalogue designation, shown next to the nickname so similar names can't be confused. */
+  designation: string;
   name_en: string;
   name_zh: string;
   /** Identity strings to match against atlas entries (primary_id + aliases). */
@@ -37,7 +39,7 @@ export interface SeedTarget {
 export const SEED_TARGETS: readonly SeedTarget[] = [
   // ── Southern / equatorial emission nebulae ──────────────────────────────
   {
-    key: 'ngc3372', name_en: 'Carina Nebula', name_zh: '船底座星云',
+    key: 'ngc3372', designation: 'NGC 3372', name_en: 'Carina Nebula', name_zh: '船底座星云',
     match: ['NGC 3372', 'Carina Nebula', 'Caldwell 92', 'RCW 53'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim', 'silhouette', 'region'],
@@ -45,7 +47,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '内容最丰富的一片:神秘山象鼻、锁孔暗形剪影、四处被雕蚀的电离锋面。',
   },
   {
-    key: 'm16', name_en: 'Eagle Nebula', name_zh: '鹰状星云',
+    key: 'm16', designation: 'M 16', name_en: 'Eagle Nebula', name_zh: '鹰状星云',
     match: ['M 16', 'M16', 'NGC 6611', 'Eagle Nebula', 'Messier 16'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -53,7 +55,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '创生之柱 —— 象鼻的标杆目标。旁边还有一根「尖塔」。',
   },
   {
-    key: 'm8', name_en: 'Lagoon Nebula', name_zh: '礁湖星云',
+    key: 'm8', designation: 'M 8', name_en: 'Lagoon Nebula', name_zh: '礁湖星云',
     match: ['M 8', 'M8', 'NGC 6523', 'Lagoon Nebula', 'Messier 8'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'region', 'globule'],
@@ -61,7 +63,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '沙漏是极小的高激发亮核 —— 值得单独圈一个区域。全图散布着暗的 Bok 球。',
   },
   {
-    key: 'm20', name_en: 'Trifid Nebula', name_zh: '三叶星云',
+    key: 'm20', designation: 'M 20', name_en: 'Trifid Nebula', name_zh: '三叶星云',
     match: ['M 20', 'M20', 'NGC 6514', 'Trifid Nebula', 'Messier 20'],
     hemisphere: 'south', kind_en: 'Emission + reflection', kind_zh: '发射 + 反射星云',
     features: ['dust_lane', 'region'],
@@ -69,7 +71,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '把它切成三瓣的尘埃暗带就是主角。北边那片蓝色反射区可单独圈。',
   },
   {
-    key: 'ngc2237', name_en: 'Rosette Nebula', name_zh: '玫瑰星云',
+    key: 'ngc2237', designation: 'NGC 2237', name_en: 'Rosette Nebula', name_zh: '玫瑰星云',
     match: ['NGC 2237', 'NGC 2244', 'Rosette Nebula', 'Caldwell 49'],
     hemisphere: 'equatorial', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'globule', 'bright_rim'],
@@ -77,7 +79,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '象鼻与暗球环绕着中心被星团吹空的腔;边缘一圈电离锋面。',
   },
   {
-    key: 'ngc2264', name_en: 'Cone Nebula', name_zh: '锥状星云',
+    key: 'ngc2264', designation: 'NGC 2264', name_en: 'Cone Nebula', name_zh: '锥状星云',
     match: ['NGC 2264', 'Cone Nebula', 'Christmas Tree Cluster'],
     hemisphere: 'equatorial', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -85,7 +87,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '一根压倒性的锥形象鼻 —— 少见的「单特征」干净目标。',
   },
   {
-    key: 'ngc6334', name_en: "Cat's Paw Nebula", name_zh: '猫掌星云',
+    key: 'ngc6334', designation: 'NGC 6334', name_en: "Cat's Paw Nebula", name_zh: '猫掌星云',
     match: ['NGC 6334', "Cat's Paw Nebula", 'Bear Claw Nebula'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'region'],
@@ -93,7 +95,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '几个「肉垫」是彼此分开的亮发射团 —— 每个圈成一个区域。',
   },
   {
-    key: 'ngc6357', name_en: 'War and Peace Nebula', name_zh: '战争与和平星云',
+    key: 'ngc6357', designation: 'NGC 6357', name_en: 'War and Peace Nebula', name_zh: '战争与和平星云',
     match: ['NGC 6357', 'War and Peace Nebula', 'Lobster Nebula'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'region'],
@@ -101,7 +103,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'Pismis 24 星团吹出的泡状空腔;腔壁上的锋面很显著。',
   },
   {
-    key: 'ngc3576', name_en: 'Statue of Liberty Nebula', name_zh: '自由女神星云',
+    key: 'ngc3576', designation: 'NGC 3576', name_en: 'Statue of Liberty Nebula', name_zh: '自由女神星云',
     match: ['NGC 3576', 'Statue of Liberty Nebula', 'RCW 57'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'filament'],
@@ -109,7 +111,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '卷曲的「手臂」丝状结构是它得名的原因。旧 CV 会把它和铅笔星云搞混 —— 正是 atlas 要救的场景。',
   },
   {
-    key: 'ic4628', name_en: 'Prawn Nebula', name_zh: '对虾星云',
+    key: 'ic4628', designation: 'IC 4628', name_en: 'Prawn Nebula', name_zh: '对虾星云',
     match: ['IC 4628', 'Prawn Nebula', 'Gum 56'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'globule'],
@@ -117,7 +119,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '大而暗的 HII 区,边缘一串带亮缘的团块。',
   },
   {
-    key: 'ic2944', name_en: 'Running Chicken Nebula', name_zh: '奔鸡星云',
+    key: 'ic2944', designation: 'IC 2944', name_en: 'Running Chicken Nebula', name_zh: '奔鸡星云',
     match: ['IC 2944', 'Running Chicken Nebula', 'Lambda Centauri Nebula'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['globule', 'silhouette'],
@@ -125,7 +127,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'Thackeray 暗球 —— 逆光剪影的小暗块。暗球类的招牌目标。',
   },
   {
-    key: 'ngc2070', name_en: 'Tarantula Nebula', name_zh: '蜘蛛星云',
+    key: 'ngc2070', designation: 'NGC 2070', name_en: 'Tarantula Nebula', name_zh: '蜘蛛星云',
     match: ['NGC 2070', 'Tarantula Nebula', '30 Doradus', 'Caldwell 103'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['filament', 'region'],
@@ -135,7 +137,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Dark nebulae ────────────────────────────────────────────────────────
   {
-    key: 'b33', name_en: 'Horsehead Nebula', name_zh: '马头星云',
+    key: 'b33', designation: 'B 33', name_en: 'Horsehead Nebula', name_zh: '马头星云',
     match: ['Barnard 33', 'B 33', 'Horsehead Nebula', 'IC 434'],
     hemisphere: 'equatorial', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette', 'bright_rim'],
@@ -143,7 +145,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '剪影的教科书。它背后 IC 434 的那道脊就是干净的电离亮缘。',
   },
   {
-    key: 'coalsack', name_en: 'Coalsack Nebula', name_zh: '煤袋星云',
+    key: 'coalsack', designation: 'Caldwell 99', name_en: 'Coalsack Nebula', name_zh: '煤袋星云',
     match: ['Coalsack Nebula', 'Caldwell 99', 'Coalsack'],
     hemisphere: 'south', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette'],
@@ -151,7 +153,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '银河上肉眼可见的巨大暗斑 —— 圈它的几个瓣,别整块圈。',
   },
   {
-    key: 'pipe', name_en: 'Pipe Nebula', name_zh: '烟斗星云',
+    key: 'pipe', designation: 'B 59', name_en: 'Pipe Nebula', name_zh: '烟斗星云',
     match: ['Pipe Nebula', 'Barnard 59', 'B 59', 'LDN 1773'],
     hemisphere: 'south', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette'],
@@ -159,7 +161,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '斗和杆可以当两条独立的剪影来标。',
   },
   {
-    key: 'darkdoodad', name_en: 'Dark Doodad Nebula', name_zh: '暗黑涂鸦星云',
+    key: 'darkdoodad', designation: 'TGU H1868', name_en: 'Dark Doodad Nebula', name_zh: '暗黑涂鸦星云',
     match: ['Dark Doodad', 'Dark Doodad Nebula', 'TGU H1868', 'Sandqvist 149'],
     hemisphere: 'south', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette', 'filament'],
@@ -169,7 +171,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Supernova remnants ──────────────────────────────────────────────────
   {
-    key: 'ngc2736', name_en: 'Pencil Nebula', name_zh: '铅笔星云',
+    key: 'ngc2736', designation: 'NGC 2736', name_en: 'Pencil Nebula', name_zh: '铅笔星云',
     match: ['NGC 2736', 'Pencil Nebula', 'Herschel\'s Ray'],
     hemisphere: 'south', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -177,7 +179,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '侧看的激波锋面 —— 一条明亮笔直的丝。属于船帆座遗迹的一部分。',
   },
   {
-    key: 'vela', name_en: 'Vela Supernova Remnant', name_zh: '船帆座超新星遗迹',
+    key: 'vela', designation: 'Gum 16', name_en: 'Vela Supernova Remnant', name_zh: '船帆座超新星遗迹',
     match: ['Vela SNR', 'Vela Supernova Remnant', 'Gum 16'],
     hemisphere: 'south', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -187,7 +189,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Planetary nebulae / shells (south) ──────────────────────────────────
   {
-    key: 'ngc7293', name_en: 'Helix Nebula', name_zh: '螺旋星云',
+    key: 'ngc7293', designation: 'NGC 7293', name_en: 'Helix Nebula', name_zh: '螺旋星云',
     match: ['NGC 7293', 'Helix Nebula', 'Caldwell 63'],
     hemisphere: 'south', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -195,7 +197,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '两层嵌套的环 + 外围暗晕。放射状「辐条」/彗状结可作为区域标注。',
   },
   {
-    key: 'homunculus', name_en: 'Homunculus Nebula (Eta Carinae)', name_zh: '侏儒星云(海山二)',
+    key: 'homunculus', designation: 'η Car', name_en: 'Homunculus Nebula (Eta Carinae)', name_zh: '侏儒星云(海山二)',
     match: ['Homunculus Nebula', 'Eta Carinae', 'eta Car', 'Homunculus'],
     hemisphere: 'south', kind_en: 'Ejecta nebula', kind_zh: '抛射星云',
     features: ['shell'],
@@ -205,7 +207,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Galaxies (south) ────────────────────────────────────────────────────
   {
-    key: 'ngc5128', name_en: 'Centaurus A', name_zh: '半人马座 A',
+    key: 'ngc5128', designation: 'NGC 5128', name_en: 'Centaurus A', name_zh: '半人马座 A',
     match: ['NGC 5128', 'Centaurus A', 'Cen A', 'Caldwell 77'],
     hemisphere: 'south', kind_en: 'Galaxy (peculiar)', kind_zh: '星系(特殊)',
     features: ['dust_lane'],
@@ -213,7 +215,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '全天最戏剧化的尘埃带,来自一次并合。',
   },
   {
-    key: 'm83', name_en: 'Southern Pinwheel', name_zh: '南风车星系',
+    key: 'm83', designation: 'M 83', name_en: 'Southern Pinwheel', name_zh: '南风车星系',
     match: ['M 83', 'M83', 'NGC 5236', 'Southern Pinwheel', 'Messier 83'],
     hemisphere: 'south', kind_en: 'Galaxy (barred spiral)', kind_zh: '星系(棒旋)',
     features: ['spiral_arm', 'region'],
@@ -221,7 +223,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '旋臂界限清楚,臂上串着粉色的 HII 结。',
   },
   {
-    key: 'm104', name_en: 'Sombrero Galaxy', name_zh: '草帽星系',
+    key: 'm104', designation: 'M 104', name_en: 'Sombrero Galaxy', name_zh: '草帽星系',
     match: ['M 104', 'M104', 'NGC 4594', 'Sombrero Galaxy', 'Messier 104'],
     hemisphere: 'equatorial', kind_en: 'Galaxy (edge-on)', kind_zh: '星系(侧向)',
     features: ['dust_lane'],
@@ -229,7 +231,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '一条刀锋般的尘埃带横切核球 —— 非常干净的单一特征。',
   },
   {
-    key: 'antennae', name_en: 'Antennae Galaxies', name_zh: '触须星系',
+    key: 'antennae', designation: 'NGC 4038/4039', name_en: 'Antennae Galaxies', name_zh: '触须星系',
     match: ['NGC 4038', 'NGC 4039', 'Antennae Galaxies', 'Caldwell 60'],
     hemisphere: 'equatorial', kind_en: 'Galaxy (merger)', kind_zh: '星系(并合)',
     features: ['tidal_tail'],
@@ -239,7 +241,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Northern emission nebulae ───────────────────────────────────────────
   {
-    key: 'ngc7000', name_en: 'North America & Pelican', name_zh: '北美洲 + 鹈鹕星云',
+    key: 'ngc7000', designation: 'NGC 7000', name_en: 'North America & Pelican', name_zh: '北美洲 + 鹈鹕星云',
     match: ['NGC 7000', 'IC 5070', 'North America Nebula', 'Pelican Nebula', 'Caldwell 20'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'dust_lane'],
@@ -247,7 +249,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '「墨西哥湾」海岸线就是一条长亮缘;两片星云之间的暗带是那堵墙。',
   },
   {
-    key: 'ic1396', name_en: "Elephant's Trunk Nebula", name_zh: '象鼻星云',
+    key: 'ic1396', designation: 'IC 1396', name_en: "Elephant's Trunk Nebula", name_zh: '象鼻星云',
     match: ['IC 1396', "Elephant's Trunk Nebula", 'IC 1396A'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -255,7 +257,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '那根「象鼻」是教科书式的带亮缘球状体 + 长尾。',
   },
   {
-    key: 'ic1805', name_en: 'Heart & Soul Nebulae', name_zh: '心脏 + 灵魂星云',
+    key: 'ic1805', designation: 'IC 1805 + IC 1848', name_en: 'Heart & Soul Nebulae', name_zh: '心脏 + 灵魂星云',
     match: ['IC 1805', 'IC 1848', 'Heart Nebula', 'Soul Nebula'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim', 'globule'],
@@ -263,7 +265,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '一对宽场目标;心脏核心附近(鱼头一带)的小象鼻是精华。',
   },
   {
-    key: 'ngc1499', name_en: 'California Nebula', name_zh: '加州星云',
+    key: 'ngc1499', designation: 'NGC 1499', name_en: 'California Nebula', name_zh: '加州星云',
     match: ['NGC 1499', 'California Nebula'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim'],
@@ -271,7 +273,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '被英仙座 ξ 从一侧电离的长脊 —— 基本就是一道大亮缘。',
   },
   {
-    key: 'ic405', name_en: 'Flaming Star & Tadpoles', name_zh: '火焰星 + 蝌蚪星云',
+    key: 'ic405', designation: 'IC 405 + IC 410', name_en: 'Flaming Star & Tadpoles', name_zh: '火焰星 + 蝌蚪星云',
     match: ['IC 405', 'IC 410', 'Flaming Star Nebula', 'Tadpoles'],
     hemisphere: 'north', kind_en: 'Emission + reflection', kind_zh: '发射 + 反射星云',
     features: ['bright_rim', 'globule'],
@@ -279,7 +281,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'IC 410 里那两只「蝌蚪」是彗状球,尾巴背对星团。',
   },
   {
-    key: 'ngc7380', name_en: 'Wizard Nebula', name_zh: '巫师星云',
+    key: 'ngc7380', designation: 'NGC 7380', name_en: 'Wizard Nebula', name_zh: '巫师星云',
     match: ['NGC 7380', 'Wizard Nebula', 'Sh2-142'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -287,7 +289,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '中心星团周围被雕出的脊和小象鼻。',
   },
   {
-    key: 'sh2-155', name_en: 'Cave Nebula', name_zh: '洞穴星云',
+    key: 'sh2-155', designation: 'Sh2-155', name_en: 'Cave Nebula', name_zh: '洞穴星云',
     match: ['Sh2-155', 'Cave Nebula', 'Caldwell 9'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim'],
@@ -295,7 +297,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '那个「洞」其实是暗云边缘一道弧形亮缘。',
   },
   {
-    key: 'ic5146', name_en: 'Cocoon Nebula', name_zh: '茧状星云',
+    key: 'ic5146', designation: 'IC 5146', name_en: 'Cocoon Nebula', name_zh: '茧状星云',
     match: ['IC 5146', 'Cocoon Nebula', 'Caldwell 19'],
     hemisphere: 'north', kind_en: 'Emission + reflection', kind_zh: '发射 + 反射星云',
     features: ['dust_lane', 'region'],
@@ -303,7 +305,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '通向茧的那条长暗带(B168)和星云本身一样是主角。',
   },
   {
-    key: 'm42', name_en: 'Orion Nebula', name_zh: '猎户座大星云',
+    key: 'm42', designation: 'M 42', name_en: 'Orion Nebula', name_zh: '猎户座大星云',
     match: ['M 42', 'M42', 'NGC 1976', 'Orion Nebula', 'Messier 42'],
     hemisphere: 'equatorial', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'region', 'dust_lane'],
@@ -313,7 +315,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Shells / bubbles (north) ────────────────────────────────────────────
   {
-    key: 'ngc6888', name_en: 'Crescent Nebula', name_zh: '新月星云',
+    key: 'ngc6888', designation: 'NGC 6888', name_en: 'Crescent Nebula', name_zh: '新月星云',
     match: ['NGC 6888', 'Crescent Nebula', 'Caldwell 27'],
     hemisphere: 'north', kind_en: 'Wolf–Rayet bubble', kind_zh: '沃夫–瑞叶星风泡',
     features: ['shell'],
@@ -321,7 +323,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'WR 星吹出的壳 —— 这个壳就是天体本身。',
   },
   {
-    key: 'ngc7635', name_en: 'Bubble Nebula', name_zh: '气泡星云',
+    key: 'ngc7635', designation: 'NGC 7635', name_en: 'Bubble Nebula', name_zh: '气泡星云',
     match: ['NGC 7635', 'Bubble Nebula', 'Caldwell 11'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['shell', 'bright_rim'],
@@ -331,7 +333,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Supernova remnants (north) ──────────────────────────────────────────
   {
-    key: 'veil', name_en: 'Veil Nebula', name_zh: '面纱星云',
+    key: 'veil', designation: 'NGC 6960 / 6992', name_en: 'Veil Nebula', name_zh: '面纱星云',
     match: ['NGC 6960', 'NGC 6992', 'NGC 6995', 'Veil Nebula', 'Cygnus Loop', 'Caldwell 33', 'Caldwell 34'],
     hemisphere: 'north', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -339,7 +341,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '丝状结构的橱窗 —— 西侧(女巫扫帚)、东侧弧,还有 Pickering 三角。',
   },
   {
-    key: 'm1', name_en: 'Crab Nebula', name_zh: '蟹状星云',
+    key: 'm1', designation: 'M 1', name_en: 'Crab Nebula', name_zh: '蟹状星云',
     match: ['M 1', 'M1', 'NGC 1952', 'Crab Nebula', 'Messier 1'],
     hemisphere: 'north', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -347,7 +349,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '很小;包在同步辐射内体外的丝状「笼子」要长焦才分得出。',
   },
   {
-    key: 'simeis147', name_en: 'Spaghetti Nebula', name_zh: '意大利面星云',
+    key: 'simeis147', designation: 'Sh2-240', name_en: 'Spaghetti Nebula', name_zh: '意大利面星云',
     match: ['Simeis 147', 'Sh2-240', 'Spaghetti Nebula'],
     hemisphere: 'north', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -357,7 +359,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Planetary nebulae (north) ───────────────────────────────────────────
   {
-    key: 'm27', name_en: 'Dumbbell Nebula', name_zh: '哑铃星云',
+    key: 'm27', designation: 'M 27', name_en: 'Dumbbell Nebula', name_zh: '哑铃星云',
     match: ['M 27', 'M27', 'NGC 6853', 'Dumbbell Nebula', 'Messier 27'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -365,7 +367,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '明亮的双极叶(「苹果核」)外面还有一层更暗的圆壳。',
   },
   {
-    key: 'm57', name_en: 'Ring Nebula', name_zh: '环状星云',
+    key: 'm57', designation: 'M 57', name_en: 'Ring Nebula', name_zh: '环状星云',
     match: ['M 57', 'M57', 'NGC 6720', 'Ring Nebula', 'Messier 57'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell'],
@@ -373,7 +375,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '环状的原型;深曝光能拍到环外更暗的外圈。',
   },
   {
-    key: 'ngc6543', name_en: "Cat's Eye Nebula", name_zh: '猫眼星云',
+    key: 'ngc6543', designation: 'NGC 6543', name_en: "Cat's Eye Nebula", name_zh: '猫眼星云',
     match: ['NGC 6543', "Cat's Eye Nebula", 'Caldwell 6'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -381,7 +383,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '极小的亮核带同心壳层,外面套着一圈巨大的暗晕。',
   },
   {
-    key: 'm97', name_en: 'Owl Nebula', name_zh: '猫头鹰星云',
+    key: 'm97', designation: 'M 97', name_en: 'Owl Nebula', name_zh: '猫头鹰星云',
     match: ['M 97', 'M97', 'NGC 3587', 'Owl Nebula', 'Messier 97'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -391,7 +393,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Galaxies (north) ────────────────────────────────────────────────────
   {
-    key: 'm31', name_en: 'Andromeda Galaxy', name_zh: '仙女座星系',
+    key: 'm31', designation: 'M 31', name_en: 'Andromeda Galaxy', name_zh: '仙女座星系',
     match: ['M 31', 'M31', 'NGC 224', 'Andromeda Galaxy', 'Messier 31'],
     hemisphere: 'north', kind_en: 'Galaxy (spiral)', kind_zh: '星系(旋涡)',
     features: ['dust_lane', 'region'],
@@ -399,7 +401,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '接近侧向,所以旋臂主要表现为大幅尘埃暗带。NGC 206 星云可作区域标注。',
   },
   {
-    key: 'm51', name_en: 'Whirlpool Galaxy', name_zh: '涡状星系',
+    key: 'm51', designation: 'M 51', name_en: 'Whirlpool Galaxy', name_zh: '涡状星系',
     match: ['M 51', 'M51', 'NGC 5194', 'Whirlpool Galaxy', 'Messier 51'],
     hemisphere: 'north', kind_en: 'Galaxy (interacting)', kind_zh: '星系(相互作用)',
     features: ['spiral_arm', 'tidal_tail'],
@@ -407,7 +409,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '教科书式的宏象旋臂,加上连向伴星系 NGC 5195 的桥/尾。',
   },
   {
-    key: 'm81', name_en: 'Bode\'s & Cigar Galaxies', name_zh: '波德 + 雪茄星系',
+    key: 'm81', designation: 'M 81 + M 82', name_en: 'Bode\'s & Cigar Galaxies', name_zh: '波德 + 雪茄星系',
     match: ['M 81', 'M81', 'M 82', 'M82', 'NGC 3031', 'NGC 3034', 'Bode\'s Galaxy', 'Cigar Galaxy'],
     hemisphere: 'north', kind_en: 'Galaxy pair', kind_zh: '星系对',
     features: ['spiral_arm', 'filament', 'region'],
@@ -415,7 +417,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'M81 标旋臂;M82 标那股垂直于盘面喷出的红色 Hα 外流。',
   },
   {
-    key: 'm101', name_en: 'Pinwheel Galaxy', name_zh: '风车星系',
+    key: 'm101', designation: 'M 101', name_en: 'Pinwheel Galaxy', name_zh: '风车星系',
     match: ['M 101', 'M101', 'NGC 5457', 'Pinwheel Galaxy', 'Messier 101'],
     hemisphere: 'north', kind_en: 'Galaxy (face-on spiral)', kind_zh: '星系(正向旋涡)',
     features: ['spiral_arm', 'region'],
@@ -423,7 +425,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '正对我们且不对称 —— 旋臂好描,臂上有很大的 HII 复合体。',
   },
   {
-    key: 'ngc891', name_en: 'NGC 891', name_zh: 'NGC 891',
+    key: 'ngc891', designation: 'NGC 891', name_en: 'NGC 891', name_zh: 'NGC 891',
     match: ['NGC 891', 'Caldwell 23'],
     hemisphere: 'north', kind_en: 'Galaxy (edge-on)', kind_zh: '星系(侧向)',
     features: ['dust_lane'],
@@ -431,7 +433,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '完美侧向 + 刀刃般的尘埃带 —— 侧向星系的经典演示。',
   },
   {
-    key: 'leotriplet', name_en: 'Leo Triplet', name_zh: '狮子座三重星系',
+    key: 'leotriplet', designation: 'M 65/66 + NGC 3628', name_en: 'Leo Triplet', name_zh: '狮子座三重星系',
     match: ['M 66', 'M66', 'M 65', 'M65', 'NGC 3628', 'Leo Triplet'],
     hemisphere: 'north', kind_en: 'Galaxy group', kind_zh: '星系群',
     features: ['tidal_tail', 'dust_lane'],
@@ -441,7 +443,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── More emission nebulae / HII ─────────────────────────────────────────
   {
-    key: 'ngc3324', name_en: 'Gabriela Mistral / Cosmic Cliffs', name_zh: '宇宙悬崖',
+    key: 'ngc3324', designation: 'NGC 3324', name_en: 'Gabriela Mistral / Cosmic Cliffs', name_zh: '宇宙悬崖',
     match: ['NGC 3324', 'Gabriela Mistral Nebula', 'Cosmic Cliffs'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'pillar'],
@@ -449,7 +451,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'JWST 那张「宇宙悬崖」—— 一道被雕出的长锋面,上面立着象鼻。在船底座星云边缘。',
   },
   {
-    key: 'ngc281', name_en: 'Pacman Nebula', name_zh: '吃豆人星云',
+    key: 'ngc281', designation: 'NGC 281', name_en: 'Pacman Nebula', name_zh: '吃豆人星云',
     match: ['NGC 281', 'Pacman Nebula', 'IC 1590'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['globule', 'bright_rim', 'silhouette'],
@@ -457,7 +459,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '那道暗「嘴」加上锋面上一串 Bok 暗球。',
   },
   {
-    key: 'ngc7822', name_en: 'NGC 7822 / Ced 214', name_zh: 'NGC 7822',
+    key: 'ngc7822', designation: 'NGC 7822', name_en: 'NGC 7822 / Ced 214', name_zh: 'NGC 7822',
     match: ['NGC 7822', 'Ced 214', 'Sh2-171'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -465,7 +467,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '大空腔边缘一圈象鼻和柱 —— 被低估的象鼻场。',
   },
   {
-    key: 'ic2177', name_en: 'Seagull Nebula', name_zh: '海鸥星云',
+    key: 'ic2177', designation: 'IC 2177', name_en: 'Seagull Nebula', name_zh: '海鸥星云',
     match: ['IC 2177', 'Seagull Nebula', 'Sh2-292'],
     hemisphere: 'equatorial', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'dust_lane'],
@@ -473,7 +475,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '「翅膀」是一道长弧锋面;头部(Sh2-292)是独立的圆形区域。',
   },
   {
-    key: 'ngc6188', name_en: 'NGC 6188 (Fighting Dragons of Ara)', name_zh: '天坛座「争斗的巨龙」',
+    key: 'ngc6188', designation: 'NGC 6188', name_en: 'NGC 6188 (Fighting Dragons of Ara)', name_zh: '天坛座「争斗的巨龙」',
     match: ['NGC 6188', 'Fighting Dragons of Ara', 'RCW 108'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim', 'pillar'],
@@ -481,7 +483,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '极壮观的卷曲锋面 —— 那两个「龙头」就是纯粹的亮缘形态。',
   },
   {
-    key: 'ngc2359', name_en: "Thor's Helmet", name_zh: '雷神之盔',
+    key: 'ngc2359', designation: 'NGC 2359', name_en: "Thor's Helmet", name_zh: '雷神之盔',
     match: ['NGC 2359', "Thor's Helmet", 'Sh2-298'],
     hemisphere: 'equatorial', kind_en: 'Wolf–Rayet bubble', kind_zh: '沃夫–瑞叶星风泡',
     features: ['shell', 'filament'],
@@ -489,7 +491,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'WR 泡加两侧后掠的「翅膀」—— 壳 + 翼状丝。',
   },
   {
-    key: 'sh2-308', name_en: 'Dolphin Head Nebula', name_zh: '海豚头星云',
+    key: 'sh2-308', designation: 'Sh2-308', name_en: 'Dolphin Head Nebula', name_zh: '海豚头星云',
     match: ['Sh2-308', 'Dolphin Head Nebula', 'SH2-308'],
     hemisphere: 'south', kind_en: 'Wolf–Rayet bubble', kind_zh: '沃夫–瑞叶星风泡',
     features: ['shell'],
@@ -497,7 +499,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '围绕 WR 星的近球形蓝色 OIII 泡 —— 这个壳就是天体本身。',
   },
   {
-    key: 'ngc3199', name_en: 'NGC 3199', name_zh: 'NGC 3199',
+    key: 'ngc3199', designation: 'NGC 3199', name_en: 'NGC 3199', name_zh: 'NGC 3199',
     match: ['NGC 3199', 'RCW 48'],
     hemisphere: 'south', kind_en: 'Wolf–Rayet bubble', kind_zh: '沃夫–瑞叶星风泡',
     features: ['shell', 'bright_rim'],
@@ -505,7 +507,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '偏心的新月 —— 亮边是撞进星际介质的弓形激波。',
   },
   {
-    key: 'sh2-101', name_en: 'Tulip Nebula', name_zh: '郁金香星云',
+    key: 'sh2-101', designation: 'Sh2-101', name_en: 'Tulip Nebula', name_zh: '郁金香星云',
     match: ['Sh2-101', 'Tulip Nebula'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['bright_rim'],
@@ -513,7 +515,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '紧凑的碗状锋面;天鹅座 X-1 就在附近,带一道暗弱弓激波。',
   },
   {
-    key: 'ngc6820', name_en: 'NGC 6820 / Sh2-86', name_zh: 'NGC 6820',
+    key: 'ngc6820', designation: 'NGC 6820', name_en: 'NGC 6820 / Sh2-86', name_zh: 'NGC 6820',
     match: ['NGC 6820', 'NGC 6823', 'Sh2-86'],
     hemisphere: 'north', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -521,7 +523,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '一根醒目的柱,直指中心星团。',
   },
   {
-    key: 'barnardsloop', name_en: "Barnard's Loop", name_zh: '巴纳德环',
+    key: 'barnardsloop', designation: 'Sh2-276', name_en: "Barnard's Loop", name_zh: '巴纳德环',
     match: ["Barnard's Loop", 'Sh2-276', 'Barnards Loop'],
     hemisphere: 'equatorial', kind_en: 'Emission arc (SNR/HII)', kind_zh: '发射弧',
     features: ['filament', 'bright_rim'],
@@ -529,7 +531,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '环绕猎户座的巨弧 —— 只有超宽场拍得到;用一条长折线画即可。',
   },
   {
-    key: 'sh2-129', name_en: 'Flying Bat & Squid', name_zh: '飞蝠 + 乌贼星云',
+    key: 'sh2-129', designation: 'Sh2-129 + Ou4', name_en: 'Flying Bat & Squid', name_zh: '飞蝠 + 乌贼星云',
     match: ['Sh2-129', 'Flying Bat Nebula', 'Ou4', 'Squid Nebula'],
     hemisphere: 'north', kind_en: 'Emission nebula + bipolar outflow', kind_zh: '发射星云 + 双极外流',
     features: ['shell', 'bright_rim'],
@@ -537,7 +539,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '蓝色的巨大「乌贼」Ou4 是双极外流,叠在红色的 HII「蝙蝠」上。',
   },
   {
-    key: 'ngc3603', name_en: 'NGC 3603', name_zh: 'NGC 3603',
+    key: 'ngc3603', designation: 'NGC 3603', name_en: 'NGC 3603', name_zh: 'NGC 3603',
     match: ['NGC 3603'],
     hemisphere: 'south', kind_en: 'Emission nebula (HII)', kind_zh: '发射星云 (HII)',
     features: ['pillar', 'bright_rim'],
@@ -547,7 +549,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── Reflection nebulae / dust ───────────────────────────────────────────
   {
-    key: 'rhooph', name_en: 'Rho Ophiuchi Complex', name_zh: '蛇夫座 ρ 星云复合体',
+    key: 'rhooph', designation: 'IC 4604 / 4603', name_en: 'Rho Ophiuchi Complex', name_zh: '蛇夫座 ρ 星云复合体',
     match: ['Rho Ophiuchi', 'IC 4604', 'IC 4603', 'Rho Ophiuchi Cloud Complex'],
     hemisphere: 'south', kind_en: 'Reflection + dark nebula', kind_zh: '反射 + 暗星云',
     features: ['dust_lane', 'silhouette', 'region'],
@@ -555,7 +557,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '色彩对比的橱窗 —— 蓝色反射、心宿二的金黄、以及暗色尘埃河。',
   },
   {
-    key: 'ngc7023', name_en: 'Iris Nebula', name_zh: '鸢尾花星云',
+    key: 'ngc7023', designation: 'NGC 7023', name_en: 'Iris Nebula', name_zh: '鸢尾花星云',
     match: ['NGC 7023', 'Iris Nebula', 'Caldwell 4'],
     hemisphere: 'north', kind_en: 'Reflection nebula', kind_zh: '反射星云',
     features: ['dust_lane', 'region'],
@@ -563,7 +565,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '蓝色花瓣间穿插暗尘埃丝,整体嵌在褐色尘埃场里。',
   },
   {
-    key: 'm78', name_en: 'M78', name_zh: 'M78',
+    key: 'm78', designation: 'M 78', name_en: 'M78', name_zh: 'M78',
     match: ['M 78', 'M78', 'NGC 2068', 'Messier 78'],
     hemisphere: 'equatorial', kind_en: 'Reflection nebula', kind_zh: '反射星云',
     features: ['dust_lane', 'region'],
@@ -571,7 +573,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '明亮的蓝色反射 + 锐利的暗尘边;附近的 McNeil 星云会变光。',
   },
   {
-    key: 'ngc1333', name_en: 'NGC 1333', name_zh: 'NGC 1333',
+    key: 'ngc1333', designation: 'NGC 1333', name_en: 'NGC 1333', name_zh: 'NGC 1333',
     match: ['NGC 1333'],
     hemisphere: 'north', kind_en: 'Reflection nebula + HH jets', kind_zh: '反射星云 + HH 喷流',
     features: ['jet', 'dust_lane', 'region'],
@@ -579,7 +581,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '恒星形成的巢,满是 Herbig–Haro 喷流 —— 少数适合标 `jet` 的目标之一。',
   },
   {
-    key: 'ic4592', name_en: 'Blue Horsehead Nebula', name_zh: '蓝马头星云',
+    key: 'ic4592', designation: 'IC 4592', name_en: 'Blue Horsehead Nebula', name_zh: '蓝马头星云',
     match: ['IC 4592', 'Blue Horsehead Nebula'],
     hemisphere: 'south', kind_en: 'Reflection nebula', kind_zh: '反射星云',
     features: ['region', 'dust_lane'],
@@ -587,7 +589,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '形似马头的暗弱蓝色反射 —— 对比度极低。',
   },
   {
-    key: 'vdb141', name_en: 'Ghost Nebula (vdB 141)', name_zh: '幽灵星云',
+    key: 'vdb141', designation: 'vdB 141', name_en: 'Ghost Nebula (vdB 141)', name_zh: '幽灵星云',
     match: ['vdB 141', 'Ghost Nebula', 'Sh2-136'],
     hemisphere: 'north', kind_en: 'Reflection + dark nebula', kind_zh: '反射 + 暗星云',
     features: ['silhouette', 'region'],
@@ -597,7 +599,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── More dark nebulae ───────────────────────────────────────────────────
   {
-    key: 'b72', name_en: 'Snake Nebula', name_zh: '蛇形星云',
+    key: 'b72', designation: 'B 72', name_en: 'Snake Nebula', name_zh: '蛇形星云',
     match: ['Barnard 72', 'B 72', 'Snake Nebula'],
     hemisphere: 'south', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette', 'filament'],
@@ -605,7 +607,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '烟斗区域里一条 S 形暗带 —— 用折线画。',
   },
   {
-    key: 'b150', name_en: 'Seahorse Nebula', name_zh: '海马星云',
+    key: 'b150', designation: 'B 150', name_en: 'Seahorse Nebula', name_zh: '海马星云',
     match: ['Barnard 150', 'B 150', 'Seahorse Nebula', 'LDN 1082'],
     hemisphere: 'north', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette', 'filament'],
@@ -613,7 +615,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '带明显「头部」的弯曲暗丝 —— 在银河背景上的剪影。',
   },
   {
-    key: 'ldn1235', name_en: 'Dark Shark Nebula', name_zh: '暗鲨星云',
+    key: 'ldn1235', designation: 'LDN 1235', name_en: 'Dark Shark Nebula', name_zh: '暗鲨星云',
     match: ['LDN 1235', 'Dark Shark Nebula', 'vdB 149', 'vdB 150'],
     hemisphere: 'north', kind_en: 'Dark nebula', kind_zh: '暗星云',
     features: ['silhouette'],
@@ -623,7 +625,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── More SNR ────────────────────────────────────────────────────────────
   {
-    key: 'puppisa', name_en: 'Puppis A', name_zh: '船尾座 A',
+    key: 'puppisa', designation: 'Puppis A', name_en: 'Puppis A', name_zh: '船尾座 A',
     match: ['Puppis A', 'SNR G260.4-03.4'],
     hemisphere: 'south', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -631,7 +633,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '暗弱的丝状壳,天球上和船帆座遗迹重叠。',
   },
   {
-    key: 'ctb1', name_en: 'CTB 1 (Abell 85)', name_zh: 'CTB 1',
+    key: 'ctb1', designation: 'Abell 85', name_en: 'CTB 1 (Abell 85)', name_zh: 'CTB 1',
     match: ['CTB 1', 'Abell 85', 'SNR G116.9+00.2'],
     hemisphere: 'north', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['shell', 'filament'],
@@ -639,7 +641,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '近圆形的泡,有一侧被吹破 —— 窄带目标。',
   },
   {
-    key: 'rcw86', name_en: 'RCW 86', name_zh: 'RCW 86',
+    key: 'rcw86', designation: 'RCW 86', name_en: 'RCW 86', name_zh: 'RCW 86',
     match: ['RCW 86', 'SNR G315.4-02.3'],
     hemisphere: 'south', kind_en: 'Supernova remnant', kind_zh: '超新星遗迹',
     features: ['filament'],
@@ -649,7 +651,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── More planetary nebulae ──────────────────────────────────────────────
   {
-    key: 'ngc6302', name_en: 'Butterfly / Bug Nebula', name_zh: '蝴蝶星云',
+    key: 'ngc6302', designation: 'NGC 6302', name_en: 'Butterfly / Bug Nebula', name_zh: '蝴蝶星云',
     match: ['NGC 6302', 'Butterfly Nebula', 'Bug Nebula', 'Caldwell 69'],
     hemisphere: 'south', kind_en: 'Planetary nebula (bipolar)', kind_zh: '行星状星云(双极)',
     features: ['shell', 'region'],
@@ -657,7 +659,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '教科书式的双极叶 + 赤道暗环 —— 双极行星状的经典。',
   },
   {
-    key: 'ngc3132', name_en: 'Southern Ring / Eight-Burst', name_zh: '南环星云',
+    key: 'ngc3132', designation: 'NGC 3132', name_en: 'Southern Ring / Eight-Burst', name_zh: '南环星云',
     match: ['NGC 3132', 'Southern Ring Nebula', 'Eight-Burst Nebula', 'Caldwell 74'],
     hemisphere: 'south', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -665,7 +667,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'JWST 名场面。同心壳层 + 亮边,中心是一对显眼的星。',
   },
   {
-    key: 'ngc5189', name_en: 'Spiral Planetary Nebula', name_zh: '螺旋行星状星云',
+    key: 'ngc5189', designation: 'NGC 5189', name_en: 'Spiral Planetary Nebula', name_zh: '螺旋行星状星云',
     match: ['NGC 5189', 'Spiral Planetary Nebula'],
     hemisphere: 'south', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'filament'],
@@ -673,7 +675,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '混乱的 S 形结构 —— 对行星状星云来说异常复杂。',
   },
   {
-    key: 'ngc246', name_en: 'Skull Nebula', name_zh: '骷髅星云',
+    key: 'ngc246', designation: 'NGC 246', name_en: 'Skull Nebula', name_zh: '骷髅星云',
     match: ['NGC 246', 'Skull Nebula', 'Caldwell 56'],
     hemisphere: 'south', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -681,7 +683,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '圆壳上两个暗「眼窝」—— 适合作区域标注。',
   },
   {
-    key: 'ic4406', name_en: 'Retina Nebula', name_zh: '视网膜星云',
+    key: 'ic4406', designation: 'IC 4406', name_en: 'Retina Nebula', name_zh: '视网膜星云',
     match: ['IC 4406', 'Retina Nebula'],
     hemisphere: 'south', kind_en: 'Planetary nebula (bipolar)', kind_zh: '行星状星云(双极)',
     features: ['shell', 'dust_lane'],
@@ -689,7 +691,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '侧向看,所以横贯其上的暗尘带特别突出。',
   },
   {
-    key: 'ngc40', name_en: 'Bow-Tie Nebula', name_zh: '领结星云',
+    key: 'ngc40', designation: 'NGC 40', name_en: 'Bow-Tie Nebula', name_zh: '领结星云',
     match: ['NGC 40', 'Bow-Tie Nebula', 'Caldwell 2'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell'],
@@ -697,7 +699,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '小而亮的壳,中心星极热,外面还有一圈暗晕。',
   },
   {
-    key: 'ngc7008', name_en: 'Fetus Nebula', name_zh: '胎儿星云',
+    key: 'ngc7008', designation: 'NGC 7008', name_en: 'Fetus Nebula', name_zh: '胎儿星云',
     match: ['NGC 7008', 'Fetus Nebula'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'region'],
@@ -705,7 +707,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '不对称的壳,一侧边缘有个亮结。',
   },
   {
-    key: 'abell21', name_en: 'Medusa Nebula', name_zh: '美杜莎星云',
+    key: 'abell21', designation: 'Abell 21', name_en: 'Medusa Nebula', name_zh: '美杜莎星云',
     match: ['Abell 21', 'Medusa Nebula', 'Sh2-274'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell', 'filament'],
@@ -713,7 +715,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '大而暗的新月,带编织状的丝 —— 就是那些「蛇发」。',
   },
   {
-    key: 'jnEr1', name_en: 'Jones-Emberson 1', name_zh: 'Jones-Emberson 1',
+    key: 'jnEr1', designation: 'JnEr 1', name_en: 'Jones-Emberson 1', name_zh: 'Jones-Emberson 1',
     match: ['Jones-Emberson 1', 'JnEr 1', 'PK 164+31.1', 'Headphone Nebula'],
     hemisphere: 'north', kind_en: 'Planetary nebula', kind_zh: '行星状星云',
     features: ['shell'],
@@ -721,7 +723,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '极暗的「耳机」—— 大圆壳上两段亮弧。',
   },
   {
-    key: 'm76', name_en: 'Little Dumbbell', name_zh: '小哑铃星云',
+    key: 'm76', designation: 'M 76', name_en: 'Little Dumbbell', name_zh: '小哑铃星云',
     match: ['M 76', 'M76', 'NGC 650', 'NGC 651', 'Little Dumbbell Nebula', 'Messier 76'],
     hemisphere: 'north', kind_en: 'Planetary nebula (bipolar)', kind_zh: '行星状星云(双极)',
     features: ['shell', 'region'],
@@ -731,7 +733,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
 
   // ── More galaxies ───────────────────────────────────────────────────────
   {
-    key: 'm33', name_en: 'Triangulum Galaxy', name_zh: '三角座星系',
+    key: 'm33', designation: 'M 33', name_en: 'Triangulum Galaxy', name_zh: '三角座星系',
     match: ['M 33', 'M33', 'NGC 598', 'Triangulum Galaxy', 'Messier 33'],
     hemisphere: 'north', kind_en: 'Galaxy (face-on spiral)', kind_zh: '星系(正向旋涡)',
     features: ['spiral_arm', 'region'],
@@ -739,7 +741,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '松散的絮状旋臂,布满 HII 区 —— NGC 604 极大,值得单独圈。',
   },
   {
-    key: 'm64', name_en: 'Black Eye Galaxy', name_zh: '黑眼星系',
+    key: 'm64', designation: 'M 64', name_en: 'Black Eye Galaxy', name_zh: '黑眼星系',
     match: ['M 64', 'M64', 'NGC 4826', 'Black Eye Galaxy', 'Messier 64'],
     hemisphere: 'north', kind_en: 'Galaxy (spiral)', kind_zh: '星系(旋涡)',
     features: ['dust_lane'],
@@ -747,7 +749,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '横过核心的一条厚暗尘带 —— 就是那只「黑眼」。',
   },
   {
-    key: 'ngc253', name_en: 'Sculptor Galaxy', name_zh: '玉夫座星系',
+    key: 'ngc253', designation: 'NGC 253', name_en: 'Sculptor Galaxy', name_zh: '玉夫座星系',
     match: ['NGC 253', 'Sculptor Galaxy', 'Caldwell 65', 'Silver Coin Galaxy'],
     hemisphere: 'south', kind_en: 'Galaxy (starburst)', kind_zh: '星系(星暴)',
     features: ['dust_lane', 'region'],
@@ -755,7 +757,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '接近侧向的星暴盘,布满尘埃斑驳;明亮好拍。',
   },
   {
-    key: 'ngc4565', name_en: 'Needle Galaxy', name_zh: '针状星系',
+    key: 'ngc4565', designation: 'NGC 4565', name_en: 'Needle Galaxy', name_zh: '针状星系',
     match: ['NGC 4565', 'Needle Galaxy', 'Caldwell 38'],
     hemisphere: 'north', kind_en: 'Galaxy (edge-on)', kind_zh: '星系(侧向)',
     features: ['dust_lane'],
@@ -763,7 +765,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '北天最锐利的侧向星系 —— 核球上一条干净的尘埃带。',
   },
   {
-    key: 'ngc5907', name_en: 'Splinter Galaxy', name_zh: '裂片星系',
+    key: 'ngc5907', designation: 'NGC 5907', name_en: 'Splinter Galaxy', name_zh: '裂片星系',
     match: ['NGC 5907', 'Splinter Galaxy', 'Knife Edge Galaxy', 'Caldwell 45'],
     hemisphere: 'north', kind_en: 'Galaxy (edge-on)', kind_zh: '星系(侧向)',
     features: ['dust_lane', 'tidal_tail'],
@@ -771,7 +773,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '侧向 + 尘埃带,外面还有环绕的巨大暗弱恒星流。',
   },
   {
-    key: 'm106', name_en: 'M106', name_zh: 'M106',
+    key: 'm106', designation: 'M 106', name_en: 'M106', name_zh: 'M106',
     match: ['M 106', 'M106', 'NGC 4258', 'Messier 106'],
     hemisphere: 'north', kind_en: 'Galaxy (spiral, active)', kind_zh: '星系(旋涡,活动)',
     features: ['spiral_arm', 'region'],
@@ -779,7 +781,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '正常旋臂之外,还有活动核喷出的两条「异常臂」(激波气体)。',
   },
   {
-    key: 'ngc1365', name_en: 'Great Barred Spiral', name_zh: '大棒旋星系',
+    key: 'ngc1365', designation: 'NGC 1365', name_en: 'Great Barred Spiral', name_zh: '大棒旋星系',
     match: ['NGC 1365', 'Great Barred Spiral Galaxy'],
     hemisphere: 'south', kind_en: 'Galaxy (barred spiral)', kind_zh: '星系(棒旋)',
     features: ['spiral_arm', 'dust_lane'],
@@ -787,7 +789,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '棒旋的标杆 —— 尘埃带沿着棒笔直通向核心。',
   },
   {
-    key: 'm87', name_en: 'M87', name_zh: 'M87',
+    key: 'm87', designation: 'M 87', name_en: 'M87', name_zh: 'M87',
     match: ['M 87', 'M87', 'NGC 4486', 'Virgo A', 'Messier 87'],
     hemisphere: 'equatorial', kind_en: 'Galaxy (elliptical, AGN)', kind_zh: '星系(椭圆,活动核)',
     features: ['jet'],
@@ -795,7 +797,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '著名的相对论喷流 —— 极少数业余可及的 `jet` 目标。',
   },
   {
-    key: 'ngc4631', name_en: 'Whale & Hockey Stick', name_zh: '鲸鱼 + 曲棍球杆星系',
+    key: 'ngc4631', designation: 'NGC 4631 + 4656', name_en: 'Whale & Hockey Stick', name_zh: '鲸鱼 + 曲棍球杆星系',
     match: ['NGC 4631', 'NGC 4656', 'Whale Galaxy', 'Hockey Stick Galaxy', 'Caldwell 32'],
     hemisphere: 'north', kind_en: 'Galaxy pair (interacting)', kind_zh: '星系对(相互作用)',
     features: ['tidal_tail', 'dust_lane'],
@@ -803,7 +805,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '鲸鱼被交会扭曲;曲棍球杆本身就是潮汐形变的产物。',
   },
   {
-    key: 'stephan', name_en: "Stephan's Quintet", name_zh: '斯蒂芬五重星系',
+    key: 'stephan', designation: 'HCG 92', name_en: "Stephan's Quintet", name_zh: '斯蒂芬五重星系',
     match: ["Stephan's Quintet", 'NGC 7317', 'NGC 7318', 'NGC 7319', 'NGC 7320', 'HCG 92'],
     hemisphere: 'north', kind_en: 'Compact galaxy group', kind_zh: '致密星系群',
     features: ['tidal_tail', 'region'],
@@ -811,7 +813,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: 'JWST 名场面,致密群 + 潮汐碎屑;需要长焦。',
   },
   {
-    key: 'arp188', name_en: 'Tadpole Galaxy', name_zh: '蝌蚪星系',
+    key: 'arp188', designation: 'Arp 188', name_en: 'Tadpole Galaxy', name_zh: '蝌蚪星系',
     match: ['Arp 188', 'Tadpole Galaxy', 'UGC 10214'],
     hemisphere: 'north', kind_en: 'Galaxy (disrupted)', kind_zh: '星系(受扰)',
     features: ['tidal_tail'],
@@ -819,7 +821,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '一条极长笔直的潮汐尾 —— 潮汐尾最纯粹的样本。',
   },
   {
-    key: 'ngc300', name_en: 'NGC 300', name_zh: 'NGC 300',
+    key: 'ngc300', designation: 'NGC 300', name_en: 'NGC 300', name_zh: 'NGC 300',
     match: ['NGC 300', 'Caldwell 70'],
     hemisphere: 'south', kind_en: 'Galaxy (face-on spiral)', kind_zh: '星系(正向旋涡)',
     features: ['spiral_arm', 'region'],
@@ -827,7 +829,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '近而大;松散旋臂上有很多 HII 结。',
   },
   {
-    key: 'ngc55', name_en: 'NGC 55', name_zh: 'NGC 55',
+    key: 'ngc55', designation: 'NGC 55', name_en: 'NGC 55', name_zh: 'NGC 55',
     match: ['NGC 55', 'Caldwell 72'],
     hemisphere: 'south', kind_en: 'Galaxy (edge-on, irregular)', kind_zh: '星系(侧向,不规则)',
     features: ['dust_lane', 'region'],
@@ -835,7 +837,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '不对称的侧向星系,尘埃斑驳,亮 HII 结偏离中心。',
   },
   {
-    key: 'm94', name_en: 'M94', name_zh: 'M94',
+    key: 'm94', designation: 'M 94', name_en: 'M94', name_zh: 'M94',
     match: ['M 94', 'M94', 'NGC 4736', 'Croc\'s Eye Galaxy', 'Messier 94'],
     hemisphere: 'north', kind_en: 'Galaxy (spiral)', kind_zh: '星系(旋涡)',
     features: ['spiral_arm', 'region'],
@@ -843,7 +845,7 @@ export const SEED_TARGETS: readonly SeedTarget[] = [
     note_zh: '明亮的内星暴环 + 极暗的巨大外环。',
   },
   {
-    key: 'ngc2903', name_en: 'NGC 2903', name_zh: 'NGC 2903',
+    key: 'ngc2903', designation: 'NGC 2903', name_en: 'NGC 2903', name_zh: 'NGC 2903',
     match: ['NGC 2903'],
     hemisphere: 'north', kind_en: 'Galaxy (barred spiral)', kind_zh: '星系(棒旋)',
     features: ['spiral_arm', 'dust_lane'],

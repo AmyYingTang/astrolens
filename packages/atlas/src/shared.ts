@@ -74,6 +74,8 @@ export interface SaveEntryResponse {
 /** A row in the target list: a seed-pool target and/or a real atlas entry. */
 export interface TargetRow {
   key: string;
+  /** Catalogue designation, shown alongside the nickname. */
+  designation: string;
   name_en: string;
   name_zh: string;
   kind_en: string;

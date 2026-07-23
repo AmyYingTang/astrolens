@@ -416,7 +416,7 @@ export function App(): JSX.Element {
       if (filter === 'review' && x.status.in_review === 0) return false;
       if (filter === 'approved' && x.status.approved === 0) return false;
       if (!q) return true;
-      return [x.name_en, x.name_zh, x.kind_en, x.kind_zh, x.primary_id ?? '', ...x.match]
+      return [x.designation, x.name_en, x.name_zh, x.kind_en, x.kind_zh, x.primary_id ?? '', ...x.match]
         .join(' ')
         .toLowerCase()
         .includes(q);
@@ -666,6 +666,7 @@ export function App(): JSX.Element {
                       x.features.length ? `\n${t('suggested')}: ${x.features.join(', ')}` : ''
                     }`}
                   >
+                    <span className="target-desig">{x.designation}</span>
                     {x.primary_id ? (
                       <button className="link" onClick={() => void loadEntry(x.primary_id!)}>
                         {lang === 'zh' ? x.name_zh : x.name_en}
