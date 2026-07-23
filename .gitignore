@@ -27,3 +27,7 @@ out/
 # atlas: uploaded reference images live via the storage adapter, not in git
 # (the atlas.json annotation data IS committable; the binaries are not)
 packages/atlas/data/refimg/
+
+# design/handoff docs are kept outside git (user-facing docs/ and README stay)
+*_REDESIGN.md
+*_HANDOFF.md
